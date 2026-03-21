@@ -229,6 +229,14 @@ void resetPanTrimAtCenter() {
   }
 }
 
+void activatePanOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* label) {
+  Serial.println(label);
+  digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
+  digitalWrite(panSpeedDownOnly, HIGH); //signal to nano to use top speed
+  setDirectionalOutput(isPanReversed, normalPin, reversedPin, HIGH);
+  panStop = PAN_STOP_ACTIVE;
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -341,32 +349,11 @@ void loop() {
   ////////////////////////////
 
   if (swingInMotion == 0 && rightStickXvalue == STICK_MIN) {
-    Serial.println("panleftnonly with top speed");
-
-    digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
-    digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
-
-    if (!isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-    panStop = PAN_STOP_ACTIVE;
+    activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
   }
 
   if (swingInMotion == 0 && rightStickXvalue == STICK_MAX) {
-    Serial.println("panrightonly with top speed");
-    digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
-    digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
-
-    if (!isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-    panStop = PAN_STOP_ACTIVE;
+    activatePanOnlyMotion(panRight, panLeft, "panrightonly with top speed");
   }
 
   if (swingInMotion == 0 && panStop == PAN_STOP_ACTIVE && rightStickXvalue == STICK_CENTER) {
