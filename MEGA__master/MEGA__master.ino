@@ -77,9 +77,9 @@ unsigned long timelapsePhaseStartMs = 0;
 
 // Motion Control Variables
 int bounce = 0;
-int count = 0;
-int mocoDistance = 0;
 int stage = 0;
+unsigned long bouncePhaseStartMs = 0;
+unsigned long bounceMoveDurationMs = 0;
 
 constexpr uint8_t DIP_SWITCH_1 = 35;
 constexpr uint8_t DIP_SWITCH_2 = 43;
@@ -475,7 +475,8 @@ void resetTimelapseState() {
 void resetBounceState() {
   bounce = 0;
   stage = 0;
-  count = 0;
+  bouncePhaseStartMs = 0;
+  bounceMoveDurationMs = 0;
   stopAllMotors();
 }
 
@@ -633,44 +634,48 @@ void stopBounceModeOutputs(int mode) {
 }
 
 void advanceBounceToStage1() {
+  unsigned long now = millis();
   stopBounceModeOutputs(bounce);
-  mocoDistance = count;
-  count = 0;
+  bounceMoveDurationMs = now - bouncePhaseStartMs;
+  bouncePhaseStartMs = now;
   stage = 1;
 }
 
-void handleBounceStage0() {
+void handleBounceStage0(unsigned long now) {
   if (bounce == 0 || stage != 0) {
     return;
   }
 
+  if (bouncePhaseStartMs == 0) {
+    bouncePhaseStartMs = now;
+  }
+
   setBounceModeOutputs(bounce, true, HIGH);
-  count++;
 
   if (ps2x.ButtonReleased(PSB_L3)) {
     advanceBounceToStage1();
   }
 }
 
-void handleBounceStage1() {
+void handleBounceStage1(unsigned long now) {
   if (bounce == 0 || stage != 1) {
     return;
   }
 
-  if (count <= mocoDistance) {
+  if (bounceMoveDurationMs == 0) {
+    return;
+  }
+
+  unsigned long elapsed = (now - bouncePhaseStartMs) % (bounceMoveDurationMs * 2);
+
+  if (elapsed < bounceMoveDurationMs) {
+    // first half: traveling away from endpoint (back toward start)
     setBounceModeOutputs(bounce, true, LOW);
     setBounceModeOutputs(bounce, false, HIGH);
-    count++;
-  }
-
-  if (count >= mocoDistance) {
+  } else {
+    // second half: traveling toward endpoint
     setBounceModeOutputs(bounce, false, LOW);
     setBounceModeOutputs(bounce, true, HIGH);
-    count++;
-  }
-
-  if (count >= mocoDistance * 2) {
-    count = 0;
   }
 }
 
@@ -867,7 +872,7 @@ void loop() {
 
   updateBounceModeSelection();
 
-  handleBounceStage0();
+  handleBounceStage0(millis());
 
-  handleBounceStage1();
+  handleBounceStage1(millis());
 }
