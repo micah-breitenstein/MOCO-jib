@@ -480,13 +480,9 @@ void loop() {
   // 5th AXIS (CAMERA FOCUS)
   handleFocusAxis();
 
-  ////////////////////////////////////////////////////
-  /////////////////////Timelapse/////////////////////
-  //////////////////////////////////////////////////
+  // Timelapse
 
-  ///////swing left boom down
-  ///////////////////////////////////
-
+  // Mode 1: swing left, boom down
   if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 1; //swing left boom down
   }
@@ -539,8 +535,7 @@ void loop() {
     digitalWrite(tiltDown, LOW);
   }
 
-  ///////swing LEFT and lift UP
-  ///////////////////////////////////
+  // Mode 2: swing left, boom up
   if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 2; //swing left boom up
   }
@@ -590,8 +585,7 @@ void loop() {
     digitalWrite(tiltDown, LOW);
   }
 
-  ///////swing right and boomup
-  ///////////////////////////////////
+  // Mode 3: swing right, boom up
   if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 3;  //swing right and boom up
   }
@@ -642,8 +636,7 @@ void loop() {
     digitalWrite(tiltDown, LOW);
   }
 
-  ///////swing right and boomdown
-  ///////////////////////////////////
+  // Mode 4: swing right, boom down
   if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 4; //swing right and boomdown
   }
@@ -693,9 +686,7 @@ void loop() {
     digitalWrite(tiltDown, LOW);
   }
 
-  ///////swing left
-  ///////////////////////////////////
-
+  // Mode 5: swing left
   if (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 5; //swing left
   }
@@ -728,8 +719,7 @@ void loop() {
 
   }
 
-  ///////lift up
-  ///////////////////////////////////
+  // Mode 6: boom up
   if (timelapseMode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 6; // boom up
   }
@@ -762,8 +752,7 @@ void loop() {
     digitalWrite(tiltDown, LOW);
   }
 
-  ///////swing right
-  ///////////////////////////////////
+  // Mode 7: swing right
   if (timelapseMode == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 7;  //swing right
   }
@@ -796,8 +785,7 @@ void loop() {
 
   }
 
-  /////lift DOWN
-  ///////////////
+  // Mode 8: boom down
   if (timelapseMode == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 8;
   }
@@ -830,16 +818,9 @@ void loop() {
     digitalWrite(tiltDown, LOW);
   }
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////MOCO moves
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+  // MOCO Moves (bounce)
 
-//turn off bounce?
-
-  /////Bounce 1
-  ////////swing LEFT boom DOWN
-  ///////////////////////////
-
+  // Bounce 1: swing left, boom down
   if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
     bounce = 1;
     Serial.println ("bounce 1");
@@ -1018,10 +999,7 @@ void loop() {
     }
   }
 
-  /////Bounce2
-  ///////swing LEFT Boom UP
-  /////////////////////////
-
+  // Bounce 2: swing left, boom up
   if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START))  {
     bounce = 2;
     Serial.println ("bounce 2");
@@ -1199,9 +1177,7 @@ void loop() {
     }
   }
 
-  /////Bounce3
-  ///////swing RIGHT Boom UP
-  /////////////////////////
+  // Bounce 3: swing right, boom up
   if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START)) {
     bounce = 3; //swing right boom up
     Serial.println ("bounce 3");
@@ -1383,9 +1359,7 @@ void loop() {
     }
   }
 
-  //Bounce 4
-  /////swing RIGHT and boom DOWN
-  /////////////////////////////
+  // Bounce 4: swing right, boom down
   if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
     bounce = 4;
     Serial.println ("bounce 4");
@@ -1569,10 +1543,7 @@ void loop() {
 
   }
 
-  //Bounce 5
-  //////////swing LEFT
-  ////////////////////////////////////
-
+  // Bounce 5: swing left
   if (bounce == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_START)) {
     bounce = 5;// Swing left
     Serial.println ("bounce 5");
@@ -1678,9 +1649,7 @@ void loop() {
     }
   }
 
-  //Bounce 6
-  /////lift UP
-  /////////////////
+  // Bounce 6: boom up
   if (bounce == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_START))  {
     bounce = 6;   // boom up
     Serial.println ("bounce 6");
@@ -1786,10 +1755,7 @@ void loop() {
     }
   }
 
-  ///Bounce 7
-  ///////////swing RIGHT
-  ///////////////////////
-
+  // Bounce 7: swing right
   if (bounce == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
     bounce = 7;
     Serial.println ("bounce 7");
@@ -1892,9 +1858,7 @@ void loop() {
     }
   }
 
-  /////Bounce 8
-  /////////////Lift DOWN
-  //////////////////////
+  // Bounce 8: boom down
   if (bounce == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
     bounce = 8;
     Serial.println ("bounce 8");
