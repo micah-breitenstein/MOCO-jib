@@ -497,6 +497,12 @@ void loop() {
 
   // Timelapse
 
+  // R3 (right stick click) cancels active timelapse and stops all motors
+  if (timelapseMode != 0 && ps2x.ButtonReleased(PSB_R3)) {
+    timelapseMode = 0;
+    stopAllMotors();
+  }
+
   // Mode 1: swing left, boom down
   if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 1; //swing left boom down
