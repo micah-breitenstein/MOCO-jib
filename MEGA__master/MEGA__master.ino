@@ -58,8 +58,7 @@ int leftStickYvalue;
 int rightStickXvalue;
 int rightStickYvalue;
 
-//timelapse variables
-///////////////////
+// Timelapse Variables
 int timelapseMode = 0;
 int intervalSeconds = 15;
 int interval;
@@ -67,17 +66,17 @@ int intervalDelay;
 int stepDist = 100;
 int trigger = 28;
 
-//motion control variables
+// Motion Control Variables
 int bounce = 0;
 int count = 0;
 int mocoDistance = 0;
 int stage = 0;
 
-int dipSwitch1 = 35;
-int dipSwitch2 = 43;
-int dipSwitch3 = 37;
-int dipSwitch4 = 39;
-int dipSwitch5 = 41;
+constexpr uint8_t DIP_SWITCH_1 = 35;
+constexpr uint8_t DIP_SWITCH_2 = 43;
+constexpr uint8_t DIP_SWITCH_3 = 37;
+constexpr uint8_t DIP_SWITCH_4 = 39;
+constexpr uint8_t DIP_SWITCH_5 = 41;
 
 int swingSwitch = 0;
 int panSwitch = 0;
@@ -114,11 +113,11 @@ void setup() {
   pinMode(trigger, OUTPUT);
   interval = intervalSeconds * 1000;
 
-  pinMode (dipSwitch1, INPUT_PULLUP);
-  pinMode (dipSwitch2, INPUT_PULLUP);
-  pinMode (dipSwitch3, INPUT_PULLUP);
-  pinMode (dipSwitch4, INPUT_PULLUP);
-  pinMode (dipSwitch5, INPUT_PULLUP);
+  pinMode (DIP_SWITCH_1, INPUT_PULLUP);
+  pinMode (DIP_SWITCH_2, INPUT_PULLUP);
+  pinMode (DIP_SWITCH_3, INPUT_PULLUP);
+  pinMode (DIP_SWITCH_4, INPUT_PULLUP);
+  pinMode (DIP_SWITCH_5, INPUT_PULLUP);
 
   pinMode (tiltSpeedUpOnly, OUTPUT);
   pinMode (tiltSpeedDownOnly, OUTPUT);
@@ -190,11 +189,11 @@ void loop() {
   else { //DualShock Controller
     ps2x.read_gamepad(false, vibrate); //uneccessary vibration
 
-    swingSwitch = digitalRead(dipSwitch1);
-    panSwitch = digitalRead(dipSwitch2);
-    liftSwitch = digitalRead(dipSwitch3);
-    tiltSwitch = digitalRead(dipSwitch4);
-    focusSwitch =  digitalRead(dipSwitch5);
+    swingSwitch = digitalRead(DIP_SWITCH_1);
+    panSwitch = digitalRead(DIP_SWITCH_2);
+    liftSwitch = digitalRead(DIP_SWITCH_3);
+    tiltSwitch = digitalRead(DIP_SWITCH_4);
+    focusSwitch =  digitalRead(DIP_SWITCH_5);
 
     rightStickYvalue = ps2x.Analog(PSS_RY);
     rightStickXvalue = ps2x.Analog(PSS_RX);
