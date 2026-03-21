@@ -1,9 +1,9 @@
 #include <PS2X_lib.h>  //for v1.6
 
-#define PS2_DAT        10  //14    
-#define PS2_CMD        9  //15
-#define PS2_SEL        8  //16
-#define PS2_CLK        11  //17
+#define PS2_DAT 10
+#define PS2_CMD 9
+#define PS2_SEL 8
+#define PS2_CLK 11
 
 //#define pressures   true
 #define pressures   false
