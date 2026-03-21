@@ -90,8 +90,8 @@ constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr int STICK_MIN = 0;
 constexpr int STICK_CENTER = 128;
 constexpr int STICK_MAX = 255;
-constexpr int TIMELAPSE_STICK_LOW_THRESHOLD = 123;
-constexpr int TIMELAPSE_STICK_HIGH_THRESHOLD = 133;
+constexpr int STICK_MODE_LOW_THRESHOLD = 123;
+constexpr int STICK_MODE_HIGH_THRESHOLD = 133;
 constexpr int PAN_STOP_NONE = 0;
 constexpr int PAN_STOP_ACTIVE = 1;
 constexpr int PAN_STOP_TRIM = 2;
@@ -480,28 +480,25 @@ void resetBounceState() {
   stopAllMotors();
 }
 
+// Returns 1-8 based on left-stick position, or 0 if no match.
+// Used by both timelapse and bounce mode selection.
+int stickPositionToMode(int stickX, int stickY) {
+  if (stickX < STICK_MODE_LOW_THRESHOLD  && stickY > STICK_MODE_HIGH_THRESHOLD) return 1;
+  if (stickX < STICK_MODE_LOW_THRESHOLD  && stickY < STICK_MODE_LOW_THRESHOLD)  return 2;
+  if (stickX > STICK_MODE_HIGH_THRESHOLD && stickY < STICK_MODE_LOW_THRESHOLD)  return 3;
+  if (stickX > STICK_MODE_HIGH_THRESHOLD && stickY > STICK_MODE_HIGH_THRESHOLD) return 4;
+  if (stickX == STICK_MIN) return 5;
+  if (stickY == STICK_MIN) return 6;
+  if (stickX == STICK_MAX) return 7;
+  if (stickY == STICK_MAX) return 8;
+  return 0;
+}
+
 void updateTimelapseModeSelection() {
   if (timelapseMode != 0 || !ps2x.ButtonReleased(PSB_SELECT)) {
     return;
   }
-
-  if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
-    timelapseMode = 1;
-  } else if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
-    timelapseMode = 2;
-  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
-    timelapseMode = 3;
-  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
-    timelapseMode = 4;
-  } else if (leftStickXvalue == STICK_MIN) {
-    timelapseMode = 5;
-  } else if (leftStickYvalue == STICK_MIN) {
-    timelapseMode = 6;
-  } else if (leftStickXvalue == STICK_MAX) {
-    timelapseMode = 7;
-  } else if (leftStickYvalue == STICK_MAX) {
-    timelapseMode = 8;
-  }
+  timelapseMode = stickPositionToMode(leftStickXvalue, leftStickYvalue);
 }
 
 const char* getBounceModeSerialLabel(int mode) {
@@ -531,25 +528,7 @@ void updateBounceModeSelection() {
   if (bounce != 0 || !ps2x.ButtonReleased(PSB_START)) {
     return;
   }
-
-  if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
-    bounce = 1;
-  } else if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
-    bounce = 2;
-  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
-    bounce = 3;
-  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
-    bounce = 4;
-  } else if (leftStickXvalue == STICK_MIN) {
-    bounce = 5;
-  } else if (leftStickYvalue == STICK_MIN) {
-    bounce = 6;
-  } else if (leftStickXvalue == STICK_MAX) {
-    bounce = 7;
-  } else if (leftStickYvalue == STICK_MAX) {
-    bounce = 8;
-  }
-
+  bounce = stickPositionToMode(leftStickXvalue, leftStickYvalue);
   const char* bounceLabel = getBounceModeSerialLabel(bounce);
   if (bounceLabel != nullptr) {
     Serial.println(bounceLabel);
