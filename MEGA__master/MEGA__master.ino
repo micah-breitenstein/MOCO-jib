@@ -496,6 +496,58 @@ void updateTimelapseModeSelection() {
   }
 }
 
+const char* getBounceModeSerialLabel(int mode) {
+  switch (mode) {
+    case 1:
+      return "bounce 1";
+    case 2:
+      return "bounce 2";
+    case 3:
+      return "bounce 3";
+    case 4:
+      return "bounce 4";
+    case 5:
+      return "bounce 5";
+    case 6:
+      return "bounce 6";
+    case 7:
+      return "bounce 7";
+    case 8:
+      return "bounce 8";
+    default:
+      return nullptr;
+  }
+}
+
+void updateBounceModeSelection() {
+  if (bounce != 0 || !ps2x.ButtonReleased(PSB_START)) {
+    return;
+  }
+
+  if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
+    bounce = 1;
+  } else if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
+    bounce = 2;
+  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
+    bounce = 3;
+  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
+    bounce = 4;
+  } else if (leftStickXvalue == STICK_MIN) {
+    bounce = 5;
+  } else if (leftStickYvalue == STICK_MIN) {
+    bounce = 6;
+  } else if (leftStickXvalue == STICK_MAX) {
+    bounce = 7;
+  } else if (leftStickYvalue == STICK_MAX) {
+    bounce = 8;
+  }
+
+  const char* bounceLabel = getBounceModeSerialLabel(bounce);
+  if (bounceLabel != nullptr) {
+    Serial.println(bounceLabel);
+  }
+}
+
 void handleActiveTimelapseMode(unsigned long now) {
   if (timelapseMode == 0) {
     return;
@@ -690,12 +742,9 @@ void loop() {
     stopAllMotors();
   }
 
-  // Bounce 1: swing left, boom down
-  if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
-    bounce = 1;
-    Serial.println ("bounce 1");
-  }
+  updateBounceModeSelection();
 
+  // Bounce 1: swing left, boom down
   if (bounce == 1 && stage == 0) {
     if (!isSwingReversed) {
       digitalWrite(swingLeft, HIGH);
@@ -870,10 +919,6 @@ void loop() {
   }
 
   // Bounce 2: swing left, boom up
-  if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START))  {
-    bounce = 2;
-    Serial.println ("bounce 2");
-  }
   if (bounce == 2 && stage == 0) {
     if (!isSwingReversed) {
       digitalWrite(swingLeft, HIGH);
@@ -1048,11 +1093,6 @@ void loop() {
   }
 
   // Bounce 3: swing right, boom up
-  if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START)) {
-    bounce = 3; //swing right boom up
-    Serial.println ("bounce 3");
-  }
-
   if (bounce == 3 && stage == 0) {
 
     if (!isSwingReversed) {
@@ -1230,11 +1270,6 @@ void loop() {
   }
 
   // Bounce 4: swing right, boom down
-  if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
-    bounce = 4;
-    Serial.println ("bounce 4");
-  }
-
   if (bounce == 4 && stage == 0) {
 
     if (!isSwingReversed) {
@@ -1414,11 +1449,6 @@ void loop() {
   }
 
   // Bounce 5: swing left
-  if (bounce == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_START)) {
-    bounce = 5;// Swing left
-    Serial.println ("bounce 5");
-  }
-
   if (bounce == 5 && stage == 0) {
 
     if (!isSwingReversed) {
@@ -1520,10 +1550,6 @@ void loop() {
   }
 
   // Bounce 6: boom up
-  if (bounce == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_START))  {
-    bounce = 6;   // boom up
-    Serial.println ("bounce 6");
-  }
   if (bounce == 6 && stage == 0) {
 
     if (!isLiftReversed) {
@@ -1626,11 +1652,6 @@ void loop() {
   }
 
   // Bounce 7: swing right
-  if (bounce == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
-    bounce = 7;
-    Serial.println ("bounce 7");
-  }
-
   if (bounce == 7 && stage == 0) {
     if (!isSwingReversed) {
       digitalWrite(swingRight, HIGH);
@@ -1729,11 +1750,6 @@ void loop() {
   }
 
   // Bounce 8: boom down
-  if (bounce == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
-    bounce = 8;
-    Serial.println ("bounce 8");
-  }
-
   if (bounce == 8 && stage == 0) {
 
     if (!isLiftReversed) {
