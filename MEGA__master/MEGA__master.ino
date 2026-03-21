@@ -302,6 +302,36 @@ void handleLiftAndTilt(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftRe
                                 isTiltReversed, tiltNormalPin, tiltReversedPin, liftSoloMode, liftInMotion);
 }
 
+void activateTiltOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* label) {
+  Serial.println(label);
+  digitalWrite(tiltSpeedUpOnly, HIGH);
+  digitalWrite(tiltSpeedDownOnly, HIGH);
+  setDirectionalOutput(isTiltReversed, normalPin, reversedPin, HIGH);
+  tiltStop = 1;
+}
+
+void stopTiltOnlyMotionAtCenter() {
+  if (liftInMotion == 0 && tiltStop == 1 && rightStickYvalue == STICK_CENTER) {
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    digitalWrite(tiltSpeedUpOnly, LOW);
+    digitalWrite(tiltSpeedDownOnly, LOW);
+    tiltStop = 0;
+  }
+}
+
+void handleTiltAxis() {
+  if (liftInMotion == 0) {
+    if (rightStickYvalue == STICK_MAX) {
+      activateTiltOnlyMotion(tiltDown, tiltUp, "tiltDownOnly");
+    } else if (rightStickYvalue == STICK_MIN) {
+      activateTiltOnlyMotion(tiltUp, tiltDown, "tiltUpOnly");
+    }
+  }
+
+  stopTiltOnlyMotionAtCenter();
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -409,7 +439,6 @@ void loop() {
   handlePanAxis();
 
   // 3rd AXIS (BOOM LIFT)
-
   // lift UP (no tilt)
   handleLiftOnly(PSB_PAD_UP, liftUp, liftDown);
 
@@ -424,46 +453,8 @@ void loop() {
 
   handleTiltTrimAxis();
 
-  /////////////////////////////
-  //2nd AXIS (CAMERA tilt)
-  ////////////////////////////
-
-  if (liftInMotion == 0  && rightStickYvalue == 255) {
-    Serial.println("tiltdownonly");
-    //signal to nano to use top speed
-    digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
-    digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    tiltStop = 1;
-  }
-
-  if (liftInMotion == 0 && rightStickYvalue == 0) {
-    Serial.println("tiltuponly");
-
-    digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
-    digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
-    if (!isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    tiltStop = 1;
-  }
-
-  if (liftInMotion == 0 && tiltStop == 1 && rightStickYvalue == 128) {
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
-    digitalWrite(tiltSpeedUpOnly, LOW);
-    digitalWrite(tiltSpeedDownOnly, LOW);
-    tiltStop = 0;
-  }
+  // 4th AXIS (CAMERA TILT)
+  handleTiltAxis();
 
   /////////////////////////////
   //5th AXIS (Camera focus)
