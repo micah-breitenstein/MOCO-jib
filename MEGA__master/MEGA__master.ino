@@ -555,6 +555,103 @@ void updateBounceModeSelection() {
   }
 }
 
+void setBounceModeOutputs(int mode, bool towardEndpoint, uint8_t state) {
+  switch (mode) {
+    case 1:
+      setDirectionalOutput(isSwingReversed, towardEndpoint ? swingLeft : swingRight, towardEndpoint ? swingRight : swingLeft, state);
+      setDirectionalOutput(isPanReversed, towardEndpoint ? panRight : panLeft, towardEndpoint ? panLeft : panRight, state);
+      setDirectionalOutput(isLiftReversed, towardEndpoint ? liftDown : liftUp, towardEndpoint ? liftUp : liftDown, state);
+      setDirectionalOutput(isTiltReversed, towardEndpoint ? tiltUp : tiltDown, towardEndpoint ? tiltDown : tiltUp, state);
+      break;
+    case 2:
+      setDirectionalOutput(isSwingReversed, towardEndpoint ? swingLeft : swingRight, towardEndpoint ? swingRight : swingLeft, state);
+      setDirectionalOutput(isPanReversed, towardEndpoint ? panRight : panLeft, towardEndpoint ? panLeft : panRight, state);
+      setDirectionalOutput(isLiftReversed, towardEndpoint ? liftUp : liftDown, towardEndpoint ? liftDown : liftUp, state);
+      setDirectionalOutput(isTiltReversed, towardEndpoint ? tiltDown : tiltUp, towardEndpoint ? tiltUp : tiltDown, state);
+      break;
+    case 3:
+      setDirectionalOutput(isSwingReversed, towardEndpoint ? swingRight : swingLeft, towardEndpoint ? swingLeft : swingRight, state);
+      setDirectionalOutput(isPanReversed, towardEndpoint ? panLeft : panRight, towardEndpoint ? panRight : panLeft, state);
+      setDirectionalOutput(isLiftReversed, towardEndpoint ? liftUp : liftDown, towardEndpoint ? liftDown : liftUp, state);
+      setDirectionalOutput(isTiltReversed, towardEndpoint ? tiltDown : tiltUp, towardEndpoint ? tiltUp : tiltDown, state);
+      break;
+    case 4:
+      setDirectionalOutput(isSwingReversed, towardEndpoint ? swingRight : swingLeft, towardEndpoint ? swingLeft : swingRight, state);
+      setDirectionalOutput(isPanReversed, towardEndpoint ? panLeft : panRight, towardEndpoint ? panRight : panLeft, state);
+      setDirectionalOutput(isLiftReversed, towardEndpoint ? liftDown : liftUp, towardEndpoint ? liftUp : liftDown, state);
+      setDirectionalOutput(isTiltReversed, towardEndpoint ? tiltUp : tiltDown, towardEndpoint ? tiltDown : tiltUp, state);
+      break;
+    case 5:
+      setDirectionalOutput(isSwingReversed, towardEndpoint ? swingLeft : swingRight, towardEndpoint ? swingRight : swingLeft, state);
+      setDirectionalOutput(isPanReversed, towardEndpoint ? panRight : panLeft, towardEndpoint ? panLeft : panRight, state);
+      break;
+    case 6:
+      setDirectionalOutput(isLiftReversed, towardEndpoint ? liftUp : liftDown, towardEndpoint ? liftDown : liftUp, state);
+      setDirectionalOutput(isTiltReversed, towardEndpoint ? tiltDown : tiltUp, towardEndpoint ? tiltUp : tiltDown, state);
+      break;
+    case 7:
+      setDirectionalOutput(isSwingReversed, towardEndpoint ? swingRight : swingLeft, towardEndpoint ? swingLeft : swingRight, state);
+      setDirectionalOutput(isPanReversed, towardEndpoint ? panLeft : panRight, towardEndpoint ? panRight : panLeft, state);
+      break;
+    case 8:
+      setDirectionalOutput(isLiftReversed, towardEndpoint ? liftDown : liftUp, towardEndpoint ? liftUp : liftDown, state);
+      setDirectionalOutput(isTiltReversed, towardEndpoint ? tiltUp : tiltDown, towardEndpoint ? tiltDown : tiltUp, state);
+      break;
+  }
+}
+
+void stopBounceModeOutputs(int mode) {
+  switch (mode) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      digitalWrite(swingLeft, LOW);
+      digitalWrite(swingRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      break;
+    case 5:
+    case 7:
+      digitalWrite(swingLeft, LOW);
+      digitalWrite(swingRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(panRight, LOW);
+      break;
+    case 6:
+    case 8:
+      digitalWrite(liftUp, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      break;
+  }
+}
+
+void advanceBounceToStage1() {
+  stopBounceModeOutputs(bounce);
+  mocoDistance = count;
+  count = 0;
+  stage = 1;
+}
+
+void handleBounceStage0() {
+  if (bounce == 0 || stage != 0) {
+    return;
+  }
+
+  setBounceModeOutputs(bounce, true, HIGH);
+  count++;
+
+  if (ps2x.ButtonReleased(PSB_L3)) {
+    advanceBounceToStage1();
+  }
+}
+
 void handleActiveTimelapseMode(unsigned long now) {
   if (timelapseMode == 0) {
     return;
@@ -748,53 +845,9 @@ void loop() {
 
   updateBounceModeSelection();
 
+  handleBounceStage0();
+
   // Bounce 1: swing left, boom down
-  if (bounce == 1 && stage == 0) {
-    if (!isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-
-    if (!isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    count++;
-
-  }
-  if (bounce == 1 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
-
-    mocoDistance = count;
-    count = 0;
-    stage = 1;
-  }
-
   if (bounce == 1 && stage == 1) { //end point
     if (count <= mocoDistance) {
 
@@ -829,50 +882,6 @@ void loop() {
       //turn on motors
 
       if (!isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      count++;
-    }
-
-    if (count >= mocoDistance) {//starting point
-
-      if (!isSwingReversed) {
-        digitalWrite(swingRight, LOW);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingLeft, LOW);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panLeft, LOW);
-      }
-      if (isPanReversed) {
-        digitalWrite(panRight, LOW);
-      }
-
-      if (!isLiftReversed) {
         digitalWrite(liftUp, LOW);
       }
       if (isLiftReversed) {
@@ -1097,54 +1106,6 @@ void loop() {
   }
 
   // Bounce 3: swing right, boom up
-  if (bounce == 3 && stage == 0) {
-
-    if (!isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-
-    if (!isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-
-    count++;
-  }
-
-  if (bounce == 3 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
-
-    mocoDistance = count;
-    count = 0;
-    stage = 1;
-  }
-
   if (bounce == 3 && stage == 1) {
 
     if (count <= mocoDistance) {
@@ -1274,55 +1235,6 @@ void loop() {
   }
 
   // Bounce 4: swing right, boom down
-  if (bounce == 4 && stage == 0) {
-
-    if (!isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-
-    if (!isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-
-    count++;
-
-  }
-
-  if (bounce == 4 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
-    mocoDistance = count;
-    count = 0;
-    stage = 1;
-
-  }
-
   if (bounce == 4 && stage == 1) {
     if (count <= mocoDistance) {
 
@@ -1453,35 +1365,6 @@ void loop() {
   }
 
   // Bounce 5: swing left
-  if (bounce == 5 && stage == 0) {
-
-    if (!isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-    count++;
-
-  }
-  if (bounce == 5 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panLeft, LOW);
-
-    mocoDistance = count;
-    count = 0;
-    stage = 1;
-  }
-
   if (bounce == 5 && stage == 1) {
     if (count <= mocoDistance) {
 
@@ -1554,36 +1437,6 @@ void loop() {
   }
 
   // Bounce 6: boom up
-  if (bounce == 6 && stage == 0) {
-
-    if (!isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    count++;
-
-  }
-  if (bounce == 6 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltDown, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(tiltUp, LOW);
-
-    mocoDistance = count;
-    count = 0;
-    stage = 1;
-  }
-
   if (bounce == 6 && stage == 1) {
     if (count <= mocoDistance) {
 
@@ -1656,35 +1509,6 @@ void loop() {
   }
 
   // Bounce 7: swing right
-  if (bounce == 7 && stage == 0) {
-    if (!isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-
-    count++;
-  }
-
-  if (bounce == 7 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(panRight, LOW);
-
-    mocoDistance = count;
-    count = 0;
-    stage = 1;
-  }
-
   if (bounce == 7 && stage == 1) {
 
     if (count <= mocoDistance) {
@@ -1754,39 +1578,6 @@ void loop() {
   }
 
   // Bounce 8: boom down
-  if (bounce == 8 && stage == 0) {
-
-    if (!isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-
-    count++;
-
-  }
-
-  if (bounce == 8 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltDown, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(tiltUp, LOW);
-
-    mocoDistance = count;
-    count = 0;
-    stage = 1;
-
-  }
-
   if (bounce == 8 && stage == 1) {
     if (count <= mocoDistance) {
 
