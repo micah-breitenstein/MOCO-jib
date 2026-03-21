@@ -366,11 +366,9 @@ void loop() {
 
   stopPanOnlyMotionAtCenter();
 
-  /////////////////////////////
-  //3rd AXIS (BOOM LIFT)
-  ////////////////////////////
+  // 3rd AXIS (BOOM LIFT)
 
-  //lift UP (no tilt)
+  // lift UP (no tilt)
   if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP)) {
     if (!isLiftReversed) {
       digitalWrite(liftUp, HIGH);
@@ -387,7 +385,7 @@ void loop() {
     liftSoloMode = 0;
   }
 
-  //lift DOWN (no tilt)
+  // lift DOWN (no tilt)
   if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN)) {
     if (!isLiftReversed) {
       digitalWrite(liftDown, HIGH);
@@ -404,7 +402,7 @@ void loop() {
     liftSoloMode = 0;
   }
 
-  //lift UP tilt DOWN
+  // lift UP + tilt DOWN
   ///////////////////
 
   if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_UP)) {
@@ -432,7 +430,7 @@ void loop() {
     liftInMotion = 0;
   }
 
-  //lift DOWN tilt UP
+  // lift DOWN + tilt UP
   ///////////////////
   if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_DOWN)) {
     liftInMotion = 1;
@@ -460,7 +458,7 @@ void loop() {
     liftInMotion = 0;
   }
 
-  //should this all be in 1 liftInMotion if statement?
+  // TODO: Consider consolidating liftInMotion checks.
 
   if (liftInMotion == 1 && rightStickYvalue == 255) {
     Serial.println("tiltSpeedDownOnly");
@@ -473,7 +471,7 @@ void loop() {
     digitalWrite(tiltSpeedUpOnly, HIGH);
     tiltStop = 2;
   }
-  //should below also be a liftInMotion?
+  // TODO: Consider whether this should also check liftInMotion.
   if (tiltStop == 2 && rightStickYvalue == 128) {
     digitalWrite(tiltSpeedUpOnly, LOW);
     digitalWrite(tiltSpeedDownOnly, LOW);
