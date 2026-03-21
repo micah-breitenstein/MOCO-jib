@@ -278,6 +278,24 @@ void handleLiftOnly(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftRever
   handleSoloDirectionalMode(buttonCode, isLiftReversed, liftNormalPin, liftReversedPin, liftSoloMode);
 }
 
+void handleTiltTrimAxis() {
+  if (liftInMotion == 1 && rightStickYvalue == STICK_MAX) {
+    Serial.println("tiltSpeedDownOnly");
+    digitalWrite(tiltSpeedDownOnly, HIGH);
+    tiltStop = 2;
+  }
+  if (liftInMotion == 1 && rightStickYvalue == STICK_MIN) {
+    Serial.println("tiltSpeedUpOnly");
+    digitalWrite(tiltSpeedUpOnly, HIGH);
+    tiltStop = 2;
+  }
+  if (tiltStop == 2 && rightStickYvalue == STICK_CENTER) {
+    digitalWrite(tiltSpeedUpOnly, LOW);
+    digitalWrite(tiltSpeedDownOnly, LOW);
+    tiltStop = 0;
+  }
+}
+
 void handleLiftAndTilt(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftReversedPin,
                        uint8_t tiltNormalPin, uint8_t tiltReversedPin) {
   handleCombinedDirectionalMode(buttonCode, isLiftReversed, liftNormalPin, liftReversedPin,
@@ -404,25 +422,7 @@ void loop() {
   // lift DOWN + tilt UP
   handleLiftAndTilt(PSB_PAD_DOWN, liftDown, liftUp, tiltUp, tiltDown);
 
-  // TODO: Consider consolidating liftInMotion checks.
-
-  if (liftInMotion == 1 && rightStickYvalue == 255) {
-    Serial.println("tiltSpeedDownOnly");
-    digitalWrite(tiltSpeedDownOnly, HIGH);
-    tiltStop = 2;
-  }
-
-  if (liftInMotion == 1 && rightStickYvalue == 0) {
-    Serial.println("tiltspeedupnonly");
-    digitalWrite(tiltSpeedUpOnly, HIGH);
-    tiltStop = 2;
-  }
-  // TODO: Consider whether this should also check liftInMotion.
-  if (tiltStop == 2 && rightStickYvalue == 128) {
-    digitalWrite(tiltSpeedUpOnly, LOW);
-    digitalWrite(tiltSpeedDownOnly, LOW);
-    tiltStop = 0;
-  }
+  handleTiltTrimAxis();
 
   /////////////////////////////
   //2nd AXIS (CAMERA tilt)
