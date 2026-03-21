@@ -472,6 +472,13 @@ void resetTimelapseState() {
   stopAllMotors();
 }
 
+void resetBounceState() {
+  bounce = 0;
+  stage = 0;
+  count = 0;
+  stopAllMotors();
+}
+
 void updateTimelapseModeSelection() {
   if (timelapseMode != 0 || !ps2x.ButtonReleased(PSB_SELECT)) {
     return;
@@ -736,10 +743,7 @@ void loop() {
 
   // R3 (right stick click) cancels active bounce and stops all motors
   if (bounce != 0 && ps2x.ButtonReleased(PSB_R3)) {
-    bounce = 0;
-    stage = 0;
-    count = 0;
-    stopAllMotors();
+    resetBounceState();
   }
 
   updateBounceModeSelection();
