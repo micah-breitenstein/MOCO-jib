@@ -1,156 +1,127 @@
+// NANO Slave 2 — Camera Pan axis
+// Receives direction and speed commands from the Mega via digital pins.
+// Supports coarse speed stages, fine-tune adjustment, and a high-speed bypass mode.
 
-/////ARDUINO INPUTS
-int driverDIR = 2;
-int driverPUL = 4;
+///// PIN ASSIGNMENTS
+const int driverDIR    = 2;   // stepper driver direction pin
+const int driverPUL    = 4;   // stepper driver pulse pin
+const int upButton     = 7;   // HIGH = pan left command from Mega
+const int downButton   = 6;   // HIGH = pan right command from Mega
+const int speedUpPin   = 8;   // HIGH = increase speed stage
+const int speedDownPin = 9;   // HIGH = decrease speed stage
+const int speedAdjUp   = 11;  // fine-tune: decrease pulse delay (faster)
+const int speedAdjDown = 12;  // fine-tune: increase pulse delay (slower)
 
-int downbutton = 6;
-int upbutton  = 7;
-int downbuttonread;
-int upbuttonread;
+///// SPEED STAGE SETTINGS
+// Step pulse delay in microseconds per stage (0 = slowest, 4 = fastest).
+// Lower value = shorter delay between pulses = faster motor.
+const int STAGE_COUNT     = 5;
+const int STAGE_DELAYS[STAGE_COUNT] = {3000, 1700, 650, 300, 150};
+const int HIGH_SPEED_DELAY = 100;  // used when both adj pins are HIGH (solo axis trim)
+const int MIN_DELAY        = 100;  // floor for fine adjustment
 
-int speedupbutton = 8;
-int speeddownbutton = 9;
-int speedupbuttonread;
-int speeddownbuttonread;
-
-int speedupadj = 11;
-int speeddownadj = 12;
-int speedupadjread;
-int speeddownadjread;
-
-/////INTERNAL VARIABLES
-int pd;
-int count = 3000;
+///// STATE
 int stage = 0;
-int lastreadup = 0;
-int lastreaddown = 0;
+int count = STAGE_DELAYS[0];
+int pd;
+int lastSpeedUp   = 0;
+int lastSpeedDown = 0;
 
-int stage0count = 3000;
-int stage1count = 1700;
-int stage2count = 650;
-int stage3count = 300;
-int stage4count = 150;
+///// HELPERS
 
-
-void setup() {
-  //Serial.begin(57600);
-
-  pinMode (driverDIR, OUTPUT);
-  pinMode (driverPUL, OUTPUT);
-  pinMode(speeddownbutton, INPUT);
-  pinMode(speedupbutton, INPUT);
-  pinMode(upbutton, INPUT);
-  pinMode(downbutton, INPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode (speedupadj, INPUT);
-  pinMode (speeddownadj, INPUT);
+// Send one step pulse to the stepper driver in the given direction.
+// dirHigh=true moves one way; dirHigh=false moves the other.
+void stepMotor(bool dirHigh) {
+  digitalWrite(driverDIR, dirHigh ? HIGH : LOW);
+  digitalWrite(driverPUL, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delayMicroseconds(pd);
+  digitalWrite(driverPUL, HIGH);
+  delayMicroseconds(pd);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-void loop() {
-
- Serial.println(count);
-
-  digitalWrite(LED_BUILTIN, LOW);
-
-  upbuttonread = digitalRead(upbutton);
-  downbuttonread = digitalRead(downbutton);
-  speedupbuttonread = digitalRead(speedupbutton);
-  speeddownbuttonread = digitalRead(speeddownbutton);
-  speedupadjread = digitalRead(speedupadj);
-  speeddownadjread = digitalRead(speeddownadj);
-
-  //////////SPEED STAGE CHANGES
-if (lastreaddown == 0 && stage == 1 && speeddownbuttonread == 1) {
-    Serial.println("STAGE0");
-    stage = 0;
-    count = stage0count;
+// Handle speed stage transitions.
+// Note: stage 0 → 1 fires continuously while held; all other transitions
+// require a rising edge to prevent multiple increments per press.
+void updateSpeedStage(int speedUpRead, int speedDownRead) {
+  if (lastSpeedDown == 0 && speedDownRead == 1 && stage > 0) {
+    stage--;
+    count = STAGE_DELAYS[stage];
+    Serial.print("STAGE"); Serial.println(stage);
   }
-  if (lastreaddown == 0 && stage == 2 && speeddownbuttonread == 1) {
-    Serial.println("STAGE1");
+
+  if (stage == 0 && speedUpRead == 1) {
     stage = 1;
-    count = stage1count;
-  }
-  if (lastreaddown == 0 && stage == 3 && speeddownbuttonread == 1) {
-    Serial.println("STAGE2");
-    stage = 2;
-    count = stage2count;
-  }
-  if (lastreaddown == 0 && stage == 4 && speeddownbuttonread == 1) {
-    Serial.println("STAGE3");
-    stage = 3;
-    count = stage3count;
-  }
-  if (lastreadup == 0 && stage == 3 && speedupbuttonread == 1) {
-    Serial.println("STAGE4");
-    stage = 4;
-    count = stage4count;
-  }
-  if (lastreadup == 0 && stage == 2 && speedupbuttonread == 1) {
-    Serial.println("STAGE3");
-    stage = 3;
-    count = stage3count;
-  }
-  if (lastreadup == 0 && stage == 1 && speedupbuttonread == 1) {
-    Serial.println("STAGE2");
-    stage = 2;
-    count = stage2count;
-  }
-  if (stage == 0 && speedupbuttonread == 1 ) {
+    count = STAGE_DELAYS[1];
     Serial.println("STAGE1");
-    stage = 1;
-    count = stage1count;
+  } else if (lastSpeedUp == 0 && speedUpRead == 1 && stage < STAGE_COUNT - 1) {
+    stage++;
+    count = STAGE_DELAYS[stage];
+    Serial.print("STAGE"); Serial.println(stage);
   }
 
-  lastreadup = speedupbuttonread;
-  lastreaddown = speeddownbuttonread;
+  lastSpeedUp   = speedUpRead;
+  lastSpeedDown = speedDownRead;
+}
 
-
-  //////////SPEED ADJUSTMENTS
-  if (speedupadjread == 1 && speeddownadjread == 0) {
+// Handle fine speed adjustment and high-speed bypass mode.
+// Both adj pins HIGH → override pd with HIGH_SPEED_DELAY (used for solo axis trim).
+// Only adjUp HIGH → decrease delay (faster). Only adjDown HIGH → increase delay (slower).
+// Returns the pulse delay to use this tick.
+int applySpeedAdjust(int adjUpRead, int adjDownRead) {
+  if (adjUpRead == 1 && adjDownRead == 1) {
+    Serial.println("HIGH SPEED MODE");
+    return HIGH_SPEED_DELAY;
+  }
+  if (adjUpRead == 1 && adjDownRead == 0) {
     Serial.println("SPEED UP ADJUST");
     count--;
-    if (count < 100) {
-      count = 100;
-    }
+    if (count < MIN_DELAY) count = MIN_DELAY;
   }
-
-  if (speeddownadjread == 1 && speedupadjread == 0) {
+  if (adjDownRead == 1 && adjUpRead == 0) {
     Serial.println("SPEED DOWN ADJUST");
     count++;
   }
+  return count;
+}
 
+void setup() {
+  // Serial.begin(57600);
+  pinMode(driverDIR,    OUTPUT);
+  pinMode(driverPUL,    OUTPUT);
+  pinMode(speedUpPin,   INPUT);
+  pinMode(speedDownPin, INPUT);
+  pinMode(upButton,     INPUT);
+  pinMode(downButton,   INPUT);
+  pinMode(LED_BUILTIN,  OUTPUT);
+  pinMode(speedAdjUp,   INPUT);
+  pinMode(speedAdjDown, INPUT);
+}
 
-  //////////HIGH SPEED MODE (used for solo axis adjustment)
-  if (speedupadjread == 1 && speeddownadjread == 1) {
-    Serial.println("HIGH SPEED MODE");
-    pd = 100;
-  }
+void loop() {
+  digitalWrite(LED_BUILTIN, LOW);
 
-  else {
-    pd = count;
-  }
+  int upRead    = digitalRead(upButton);
+  int downRead  = digitalRead(downButton);
+  int speedUp   = digitalRead(speedUpPin);
+  int speedDown = digitalRead(speedDownPin);
+  int adjUp     = digitalRead(speedAdjUp);
+  int adjDown   = digitalRead(speedAdjDown);
 
+  ///// SPEED STAGE CHANGES
+  updateSpeedStage(speedUp, speedDown);
 
-  //////////MOTOR MOVEMENTS
-  if (upbuttonread == HIGH) {
+  ///// SPEED ADJUSTMENTS + HIGH SPEED MODE
+  pd = applySpeedAdjust(adjUp, adjDown);
+
+  ///// MOTOR MOVEMENTS
+  if (upRead == HIGH) {
     Serial.println("PAN LEFT");
-    digitalWrite(driverDIR, HIGH);
-    digitalWrite(driverPUL, LOW);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delayMicroseconds(pd);
-    digitalWrite(driverPUL, HIGH);
-    delayMicroseconds(pd);
+    stepMotor(true);
   }
 
-  if (downbuttonread == HIGH) {
+  if (downRead == HIGH) {
     Serial.println("PAN RIGHT");
-    digitalWrite(driverDIR, LOW);
-    digitalWrite(driverPUL, LOW);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delayMicroseconds(pd);
-    digitalWrite(driverPUL, HIGH);
-    delayMicroseconds(pd);
+    stepMotor(false);
   }
-
 }
