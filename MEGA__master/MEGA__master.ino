@@ -16,8 +16,8 @@ byte vibrate = 0;
 // Button Settings
 int swingLeft = 24;
 int swingRight = 25;
-int swingspeedup = 26;
-int swingspeeddown = 27;
+int swingSpeedUp = 26;
+int swingSpeedDown = 27;
 int swingsolo = 0;
 
 int panleft = 46;
@@ -92,8 +92,8 @@ void setup() {
 
   pinMode (swingLeft, OUTPUT);
   pinMode (swingRight, OUTPUT);
-  pinMode (swingspeedup, OUTPUT);
-  pinMode (swingspeeddown, OUTPUT);
+  pinMode (swingSpeedUp, OUTPUT);
+  pinMode (swingSpeedDown, OUTPUT);
   pinMode (liftdown, OUTPUT);
   pinMode (liftup, OUTPUT);
   pinMode (liftspeedup, OUTPUT);
@@ -225,20 +225,20 @@ void loop() {
     ///////////L1 ad L2 Buttons
     if (ps2x.Button(PSB_L1)) {
       digitalWrite(panspeedup, HIGH);
-      digitalWrite(swingspeedup, HIGH);
+      digitalWrite(swingSpeedUp, HIGH);
     }
     if (ps2x.ButtonReleased(PSB_L1)) {
       digitalWrite(panspeedup, LOW);
-      digitalWrite(swingspeedup, LOW);
+      digitalWrite(swingSpeedUp, LOW);
     }
 
     if (ps2x.Button(PSB_L2)) {
       digitalWrite(panspeeddown, HIGH);
-      digitalWrite(swingspeeddown, HIGH);
+      digitalWrite(swingSpeedDown, HIGH);
     }
     if (ps2x.ButtonReleased(PSB_L2)) {
       digitalWrite(panspeeddown, LOW);
-      digitalWrite(swingspeeddown, LOW);
+      digitalWrite(swingSpeedDown, LOW);
     }
 
     /////////////////////////////
