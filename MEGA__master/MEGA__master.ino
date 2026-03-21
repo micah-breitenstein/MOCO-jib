@@ -199,1165 +199,876 @@ void loop() {
 
   ps2x.read_gamepad(false, vibrate); //uneccessary vibration
 
-    isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
-    isPanReversed = (digitalRead(DIP_SWITCH_2) == HIGH);
-    isLiftReversed = (digitalRead(DIP_SWITCH_3) == HIGH);
-    isTiltReversed = (digitalRead(DIP_SWITCH_4) == HIGH);
-    isFocusReversed = (digitalRead(DIP_SWITCH_5) == HIGH);
+  isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
+  isPanReversed = (digitalRead(DIP_SWITCH_2) == HIGH);
+  isLiftReversed = (digitalRead(DIP_SWITCH_3) == HIGH);
+  isTiltReversed = (digitalRead(DIP_SWITCH_4) == HIGH);
+  isFocusReversed = (digitalRead(DIP_SWITCH_5) == HIGH);
 
-    rightStickYvalue = ps2x.Analog(PSS_RY);
-    rightStickXvalue = ps2x.Analog(PSS_RX);
-    leftStickYvalue  = ps2x.Analog(PSS_LY);
-    leftStickXvalue  = ps2x.Analog(PSS_LX);
+  rightStickYvalue = ps2x.Analog(PSS_RY);
+  rightStickXvalue = ps2x.Analog(PSS_RX);
+  leftStickYvalue  = ps2x.Analog(PSS_LY);
+  leftStickXvalue  = ps2x.Analog(PSS_LX);
 
 
-    //////////////R1 and R2 Buttons
-    if (ps2x.Button(PSB_R1)) {
-      digitalWrite(liftSpeedUp, HIGH);
-      digitalWrite(tiltSpeedUp, HIGH);
+  //////////////R1 and R2 Buttons
+  if (ps2x.Button(PSB_R1)) {
+    digitalWrite(liftSpeedUp, HIGH);
+    digitalWrite(tiltSpeedUp, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_R1)) {
+    digitalWrite(liftSpeedUp, LOW);
+    digitalWrite(tiltSpeedUp, LOW);
+  }
+
+  if (ps2x.Button(PSB_R2)) {
+    digitalWrite(liftSpeedDown, HIGH);
+    digitalWrite(tiltSpeedDown, HIGH);
+  }
+
+  if (ps2x.ButtonReleased(PSB_R2)) {
+    digitalWrite(liftSpeedDown, LOW);
+    digitalWrite(tiltSpeedDown, LOW);
+  }
+
+  ///////////L1 ad L2 Buttons
+  if (ps2x.Button(PSB_L1)) {
+    digitalWrite(panSpeedUp, HIGH);
+    digitalWrite(swingSpeedUp, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_L1)) {
+    digitalWrite(panSpeedUp, LOW);
+    digitalWrite(swingSpeedUp, LOW);
+  }
+
+  if (ps2x.Button(PSB_L2)) {
+    digitalWrite(panSpeedDown, HIGH);
+    digitalWrite(swingSpeedDown, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_L2)) {
+    digitalWrite(panSpeedDown, LOW);
+    digitalWrite(swingSpeedDown, LOW);
+  }
+
+  /////////////////////////////
+  //1st AXIS (BOOM SWING)
+  ////////////////////////////
+
+  ///////////swingLeft (no pan)
+  /////////////////////////////////
+  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT)) {
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
     }
-    if (ps2x.ButtonReleased(PSB_R1)) {
-      digitalWrite(liftSpeedUp, LOW);
-      digitalWrite(tiltSpeedUp, LOW);
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
     }
+    swingSoloMode = 1;
+  }
 
-    if (ps2x.Button(PSB_R2)) {
-      digitalWrite(liftSpeedDown, HIGH);
-      digitalWrite(tiltSpeedDown, HIGH);
+  if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    swingSoloMode = 0;
+  }
+
+  ///////////swingRight (no pan)
+  /////////////////////////////////
+  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT)) {
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
     }
-
-    if (ps2x.ButtonReleased(PSB_R2)) {
-      digitalWrite(liftSpeedDown, LOW);
-      digitalWrite(tiltSpeedDown, LOW);
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
     }
+    swingSoloMode = 1;
 
-    ///////////L1 ad L2 Buttons
-    if (ps2x.Button(PSB_L1)) {
-      digitalWrite(panSpeedUp, HIGH);
-      digitalWrite(swingSpeedUp, HIGH);
+  }
+  if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
+    digitalWrite(swingRight, LOW);
+    digitalWrite(swingLeft, LOW);
+    swingSoloMode = 0;
+  }
+
+  ///////////swingLeft panRight
+  /////////////////////////////////
+  if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_LEFT)) {
+    swingInMotion = 1;
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
     }
-    if (ps2x.ButtonReleased(PSB_L1)) {
-      digitalWrite(panSpeedUp, LOW);
-      digitalWrite(swingSpeedUp, LOW);
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
     }
-
-    if (ps2x.Button(PSB_L2)) {
-      digitalWrite(panSpeedDown, HIGH);
-      digitalWrite(swingSpeedDown, HIGH);
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
-    if (ps2x.ButtonReleased(PSB_L2)) {
-      digitalWrite(panSpeedDown, LOW);
-      digitalWrite(swingSpeedDown, LOW);
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
+  }
 
-    /////////////////////////////
-    //1st AXIS (BOOM SWING)
-    ////////////////////////////
+  if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panLeft, LOW);
+    swingInMotion = 0;
+  }
 
-    ///////////swingLeft (no pan)
-    /////////////////////////////////
-    if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT)) {
-      if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      swingSoloMode = 1;
+
+  ///////////swingRight panLeft
+  //////////////////////////////
+  if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
+    swingInMotion = 1;
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
     }
-
-    if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      swingSoloMode = 0;
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
     }
-
-    ///////////swingRight (no pan)
-    /////////////////////////////////
-    if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT)) {
-      if (!isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      swingSoloMode = 1;
-
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
-    if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
-      digitalWrite(swingRight, LOW);
-      digitalWrite(swingLeft, LOW);
-      swingSoloMode = 0;
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
+  }
 
-    ///////////swingLeft panRight
-    /////////////////////////////////
-    if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_LEFT)) {
-      swingInMotion = 1;
-      if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
+  if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(panRight, LOW);
+    swingInMotion = 0;
+  }
+
+  //should all these below be within 1 if statement for swingmotion?
+  if (swingInMotion == 1 && rightStickXvalue == 0) {
+    digitalWrite(panSpeedDownOnly, HIGH);
+    Serial.println("panSpeedDownOnly");
+    panStop = 2;
+  }
+
+  if (swingInMotion == 1 && rightStickXvalue == 255) {
+    digitalWrite(panSpeedUpOnly, HIGH);
+    Serial.println("panSpeedUpOnly");
+    panStop = 2;
+  }
+
+  if (panStop == 2 && rightStickXvalue == 128) {
+    digitalWrite(panSpeedUpOnly, LOW);
+    digitalWrite(panSpeedDownOnly, LOW);
+    panStop = 0;
+  }
+
+  /////////////////////////////
+  //2nd AXIS (CAMERA PAN)
+  ////////////////////////////
+
+  if (swingInMotion == 0 &&  rightStickXvalue == 0) {
+    Serial.println("panleftnonly with top speed");
+
+    digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
+    digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
+
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
-
-    if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panLeft, LOW);
-      swingInMotion = 0;
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
+    panStop = 1;
+  }
 
+  if (swingInMotion == 0 && rightStickXvalue == 255) {
+    Serial.println("panrightonly with top speed");
+    digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
+    digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
 
-    ///////////swingRight panLeft
-    //////////////////////////////
-    if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
-      swingInMotion = 1;
-      if (!isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
-
-    if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(panRight, LOW);
-      swingInMotion = 0;
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
+    panStop = 1;
+  }
 
-    //should all these below be within 1 if statement for swingmotion?
-    if (swingInMotion == 1 && rightStickXvalue == 0) {
-      digitalWrite(panSpeedDownOnly, HIGH);
-      Serial.println("panSpeedDownOnly");
-      panStop = 2;
+  if (swingInMotion == 0 && panStop == 1 && rightStickXvalue == 128) {
+    digitalWrite(panLeft, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panSpeedUpOnly, LOW);
+    digitalWrite(panSpeedDownOnly, LOW);
+    panStop = 0;
+  }
+
+
+  /////////////////////////////
+  //3rd AXIS (BOOM LIFT)
+  ////////////////////////////
+
+  //lift UP (no tilt)
+  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP)) {
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
     }
-
-    if (swingInMotion == 1 && rightStickXvalue == 255) {
-      digitalWrite(panSpeedUpOnly, HIGH);
-      Serial.println("panSpeedUpOnly");
-      panStop = 2;
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
     }
+    liftSoloMode = 1;
+  }
 
-    if (panStop == 2 && rightStickXvalue == 128) {
-      digitalWrite(panSpeedUpOnly, LOW);
-      digitalWrite(panSpeedDownOnly, LOW);
-      panStop = 0;
+  if (liftSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_UP)) {
+    digitalWrite(liftUp, LOW);
+    digitalWrite(liftDown, LOW);
+    liftSoloMode = 0;
+  }
+
+  //lift DOWN (no tilt)
+  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN)) {
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
     }
-
-    /////////////////////////////
-    //2nd AXIS (CAMERA PAN)
-    ////////////////////////////
-
-    if (swingInMotion == 0 &&  rightStickXvalue == 0) {
-      Serial.println("panleftnonly with top speed");
-
-      digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
-      digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
-
-      if (!isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-      panStop = 1;
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
     }
+    liftSoloMode = 1;
+  }
 
-    if (swingInMotion == 0 && rightStickXvalue == 255) {
-      Serial.println("panrightonly with top speed");
-      digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
-      digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
+  if (liftSoloMode == 1  && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    liftSoloMode = 0;
+  }
 
-      if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-      panStop = 1;
+
+  //lift UP tilt DOWN
+  ///////////////////
+
+  if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_UP)) {
+    liftInMotion = 1;
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
     }
-
-    if (swingInMotion == 0 && panStop == 1 && rightStickXvalue == 128) {
-      digitalWrite(panLeft, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panSpeedUpOnly, LOW);
-      digitalWrite(panSpeedDownOnly, LOW);
-      panStop = 0;
-    }
-
-
-    /////////////////////////////
-    //3rd AXIS (BOOM LIFT)
-    ////////////////////////////
-
-    //lift UP (no tilt)
-    if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP)) {
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-      liftSoloMode = 1;
-    }
-
-    if (liftSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_UP)) {
-      digitalWrite(liftUp, LOW);
-      digitalWrite(liftDown, LOW);
-      liftSoloMode = 0;
-    }
-
-    //lift DOWN (no tilt)
-    if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN)) {
-      if (!isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      liftSoloMode = 1;
-    }
-
-    if (liftSoloMode == 1  && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      liftSoloMode = 0;
-    }
-
-
-    //lift UP tilt DOWN
-    ///////////////////
-
-    if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_UP)) {
-      liftInMotion = 1;
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
     }
 
-    if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_UP)) {
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltDown, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(tiltUp, LOW);
-      liftInMotion = 0;
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+  }
+
+  if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_UP)) {
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(tiltUp, LOW);
+    liftInMotion = 0;
+  }
+
+  //lift DOWN tilt UP
+  ///////////////////
+  if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_DOWN)) {
+    liftInMotion = 1;
+
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
     }
 
-    //lift DOWN tilt UP
-    ///////////////////
-    if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_DOWN)) {
-      liftInMotion = 1;
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+  }
 
-      if (!isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
+  if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(tiltUp, LOW);
+    liftInMotion = 0;
+  }
 
-      if (!isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
+  //should this all be inn 1 liftInMotion if statement?
+
+  if (liftInMotion == 1 && rightStickYvalue == 255) {
+    Serial.println("tiltSpeedDownOnly");
+    digitalWrite(tiltSpeedDownOnly, HIGH);
+    tiltStop = 2;
+  }
+
+  if (liftInMotion == 1 && rightStickYvalue == 0) {
+    Serial.println("tiltspeedupnonly");
+    digitalWrite(tiltSpeedUpOnly, HIGH);
+    tiltStop = 2;
+  }
+  //should below also be a liftInMotion?
+  if (tiltStop == 2 && rightStickYvalue == 128) {
+    digitalWrite(tiltSpeedUpOnly, LOW);
+    digitalWrite(tiltSpeedDownOnly, LOW);
+    tiltStop = 0;
+  }
+
+  /////////////////////////////
+  //2nd AXIS (CAMERA tilt)
+  ////////////////////////////
+
+  if (liftInMotion == 0  && rightStickYvalue == 255) {
+    Serial.println("tiltdownonly");
+    //signal to nano to use top speed
+    digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
+    digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
+
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    tiltStop = 1;
+  }
+
+  if (liftInMotion == 0 && rightStickYvalue == 0) {
+    Serial.println("tiltuponly");
+
+    digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
+    digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+    tiltStop = 1;
+  }
+
+  if (liftInMotion == 0 && tiltStop == 1 && rightStickYvalue == 128) {
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    digitalWrite(tiltSpeedUpOnly, LOW);
+    digitalWrite(tiltSpeedDownOnly, LOW);
+    tiltStop = 0;
+  }
+
+
+  /////////////////////////////
+  //5th AXIS (Camera focus)
+  ////////////////////////////
+
+  if (ps2x.Button(PSB_TRIANGLE)) {
+    if (!isFocusReversed) {
+      digitalWrite(focusLeft, HIGH);
+    }
+    if (isFocusReversed) {
+      digitalWrite(focusRight, HIGH);
     }
 
-    if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltDown, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(tiltUp, LOW);
-      liftInMotion = 0;
+  }
+  if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
+    digitalWrite(focusLeft, LOW);
+    digitalWrite(focusRight, LOW);
+  }
+
+  if (ps2x.Button(PSB_CROSS)) {
+    if (!isFocusReversed) {
+      digitalWrite(focusRight, HIGH);
+    }
+    if (isFocusReversed) {
+      digitalWrite(focusLeft, HIGH);
+    }
+  }
+
+  if (ps2x.ButtonReleased(PSB_CROSS)) {
+    digitalWrite(focusRight, LOW);
+    digitalWrite(focusLeft, LOW);
+  }
+
+
+  if (ps2x.Button(PSB_SQUARE)) {
+    digitalWrite(focusSpeedDown, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_SQUARE)) {
+    digitalWrite(focusSpeedDown, LOW);
+  }
+
+  if (ps2x.Button(PSB_CIRCLE)) {
+    digitalWrite(focusSpeedUp, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_CIRCLE)) {
+    digitalWrite(focusSpeedUp, LOW);
+  }
+
+
+
+  ////////////////////////////////////////////////////
+  /////////////////////Timelapse/////////////////////
+  //////////////////////////////////////////////////
+
+
+  ///////swing left boom down
+  ///////////////////////////////////
+
+  if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 1; //swing left boom down
+  }
+
+  if (timelapseMode == 1) {
+    Serial.println("timelapse mode 1");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
+
+    Serial.println("turning on timelapse 1 now");
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
 
-    //should this all be inn 1 liftInMotion if statement?
-
-    if (liftInMotion == 1 && rightStickYvalue == 255) {
-      Serial.println("tiltSpeedDownOnly");
-      digitalWrite(tiltSpeedDownOnly, HIGH);
-      tiltStop = 2;
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
     }
 
-    if (liftInMotion == 1 && rightStickYvalue == 0) {
-      Serial.println("tiltspeedupnonly");
-      digitalWrite(tiltSpeedUpOnly, HIGH);
-      tiltStop = 2;
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
     }
-    //should below also be a liftInMotion?
-    if (tiltStop == 2 && rightStickYvalue == 128) {
-      digitalWrite(tiltSpeedUpOnly, LOW);
-      digitalWrite(tiltSpeedDownOnly, LOW);
-      tiltStop = 0;
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
     }
 
-    /////////////////////////////
-    //2nd AXIS (CAMERA tilt)
-    ////////////////////////////
+    delay(stepDist);
 
-    if (liftInMotion == 0  && rightStickYvalue == 255) {
-      Serial.println("tiltdownonly");
-      //signal to nano to use top speed
-      digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
-      digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
+    Serial.println("turning off timelapse 1 now");
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+  }
 
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      tiltStop = 1;
+  ///////swing LEFT and lift UP
+  ///////////////////////////////////
+  if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 2; //swing left boom up
+  }
+
+  if (timelapseMode == 2) {
+    Serial.println("timelapse mode 2");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
+
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
 
-    if (liftInMotion == 0 && rightStickYvalue == 0) {
-      Serial.println("tiltuponly");
-
-      digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
-      digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
-      if (!isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      tiltStop = 1;
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
     }
 
-    if (liftInMotion == 0 && tiltStop == 1 && rightStickYvalue == 128) {
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
-      digitalWrite(tiltSpeedUpOnly, LOW);
-      digitalWrite(tiltSpeedDownOnly, LOW);
-      tiltStop = 0;
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
     }
-
-
-    /////////////////////////////
-    //5th AXIS (Camera focus)
-    ////////////////////////////
-
-    if (ps2x.Button(PSB_TRIANGLE)) {
-      if (!isFocusReversed) {
-        digitalWrite(focusLeft, HIGH);
-      }
-      if (isFocusReversed) {
-        digitalWrite(focusRight, HIGH);
-      }
-
-    }
-    if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
-      digitalWrite(focusLeft, LOW);
-      digitalWrite(focusRight, LOW);
-    }
-
-    if (ps2x.Button(PSB_CROSS)) {
-      if (!isFocusReversed) {
-        digitalWrite(focusRight, HIGH);
-      }
-      if (isFocusReversed) {
-        digitalWrite(focusLeft, HIGH);
-      }
-    }
-
-    if (ps2x.ButtonReleased(PSB_CROSS)) {
-      digitalWrite(focusRight, LOW);
-      digitalWrite(focusLeft, LOW);
-    }
-
-
-    if (ps2x.Button(PSB_SQUARE)) {
-      digitalWrite(focusSpeedDown, HIGH);
-    }
-    if (ps2x.ButtonReleased(PSB_SQUARE)) {
-      digitalWrite(focusSpeedDown, LOW);
-    }
-
-    if (ps2x.Button(PSB_CIRCLE)) {
-      digitalWrite(focusSpeedUp, HIGH);
-    }
-    if (ps2x.ButtonReleased(PSB_CIRCLE)) {
-      digitalWrite(focusSpeedUp, LOW);
-    }
-
-
-
-    ////////////////////////////////////////////////////
-    /////////////////////Timelapse/////////////////////
-    //////////////////////////////////////////////////
-
-
-    ///////swing left boom down
-    ///////////////////////////////////
-
-    if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 1; //swing left boom down
-    }
-
-    if (timelapseMode == 1) {
-      Serial.println("timelapse mode 1");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
-
-      Serial.println("turning on timelapse 1 now");
-      if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-
-      if (!isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-
-      delay(stepDist);
-
-      Serial.println("turning off timelapse 1 now");
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
-    }
-
-    ///////swing LEFT and lift UP
-    ///////////////////////////////////
-    if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 2; //swing left boom up
-    }
-
-    if (timelapseMode == 2) {
-      Serial.println("timelapse mode 2");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
-
-      if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-
-
-      delay(stepDist);
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
-    }
-
-    ///////swing right and boomup
-    ///////////////////////////////////
-    if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 3;  //swing right and boom up
-    }
-
-    if (timelapseMode == 3) {
-      Serial.println("timelapse mode 3");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
-
-
-      if (!isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-
-
-
-      delay(stepDist);
-
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
     }
 
 
-    ///////swing right and boomdown
-    ///////////////////////////////////
-    if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 4; //swing right and boomdown
+    delay(stepDist);
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+  }
+
+  ///////swing right and boomup
+  ///////////////////////////////////
+  if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 3;  //swing right and boom up
+  }
+
+  if (timelapseMode == 3) {
+    Serial.println("timelapse mode 3");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
+
+
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
 
-    if (timelapseMode == 4) {
-      Serial.println("timelapse mode 4");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
-
-
-
-      if (!isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-
-      if (!isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-
-
-      delay(stepDist);
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
     }
 
-    ///////swing left
-    ///////////////////////////////////
-
-    if (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 5; //swing left
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
     }
-
-    if (timelapseMode == 5) {
-      Serial.println("timelapse mode 5");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
-
-      if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-
-      delay(stepDist);
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
     }
 
 
-    ///////lift up
-    ///////////////////////////////////
-    if (timelapseMode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 6; // boom up
+
+    delay(stepDist);
+
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+  }
+
+
+  ///////swing right and boomdown
+  ///////////////////////////////////
+  if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 4; //swing right and boomdown
+  }
+
+  if (timelapseMode == 4) {
+    Serial.println("timelapse mode 4");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
+
+
+
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
 
-    if (timelapseMode == 6) {
-      Serial.println("timelapse mode 6");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
-
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-
-      delay(stepDist);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
     }
 
-
-    ///////swing right
-    ///////////////////////////////////
-    if (timelapseMode == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 7;  //swing right
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
     }
-
-    if (timelapseMode == 7) {
-      Serial.println("timelapse mode 7");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
-
-      if (!isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-
-      delay(stepDist);
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
     }
 
 
-    /////lift DOWN
-    ///////////////
-    if (timelapseMode == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapseMode = 8;
+    delay(stepDist);
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+  }
+
+  ///////swing left
+  ///////////////////////////////////
+
+  if (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 5; //swing left
+  }
+
+  if (timelapseMode == 5) {
+    Serial.println("timelapse mode 5");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
+
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
 
-    if (timelapseMode == 8) {
-      Serial.println("timelapse mode 8");
-      digitalWrite(trigger, LOW);
-      delay(interval / 2);
-      digitalWrite(trigger, HIGH);
-      delay(interval / 2);
+    delay(stepDist);
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+
+  }
 
 
-      if (!isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
+  ///////lift up
+  ///////////////////////////////////
+  if (timelapseMode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 6; // boom up
+  }
 
-      if (!isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
+  if (timelapseMode == 6) {
+    Serial.println("timelapse mode 6");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
 
-      delay(stepDist);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    /////////MOCO moves
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+
+    delay(stepDist);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+  }
+
+
+  ///////swing right
+  ///////////////////////////////////
+  if (timelapseMode == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 7;  //swing right
+  }
+
+  if (timelapseMode == 7) {
+    Serial.println("timelapse mode 7");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
+
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+
+    delay(stepDist);
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+
+  }
+
+
+  /////lift DOWN
+  ///////////////
+  if (timelapseMode == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
+    timelapseMode = 8;
+  }
+
+  if (timelapseMode == 8) {
+    Serial.println("timelapse mode 8");
+    digitalWrite(trigger, LOW);
+    delay(interval / 2);
+    digitalWrite(trigger, HIGH);
+    delay(interval / 2);
+
+
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+
+    delay(stepDist);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////MOCO moves
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 //turn off bounce?
 
 
-    /////Bounce 1
-    ////////swing LEFT boom DOWN
-    ///////////////////////////
+  /////Bounce 1
+  ////////swing LEFT boom DOWN
+  ///////////////////////////
 
-    if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
-      bounce = 1;
-      Serial.println ("bounce 1");
+  if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
+    bounce = 1;
+    Serial.println ("bounce 1");
+  }
+
+  if (bounce == 1 && stage == 0) {
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
     }
 
-    if (bounce == 1 && stage == 0) {
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+    count++;
+
+  }
+  if (bounce == 1 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+  }
+
+  if (bounce == 1 && stage == 1) { //end point
+    if (count <= mocoDistance) {
+
+      //turn off motors
       if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
+        digitalWrite(swingLeft, LOW);
       }
       if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
+        digitalWrite(swingRight, LOW);
       }
       if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
+        digitalWrite(panRight, LOW);
       }
       if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
+        digitalWrite(panLeft, LOW);
       }
 
       if (!isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
+        digitalWrite(liftDown, LOW);
       }
       if (isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
+        digitalWrite(liftUp, LOW);
       }
 
       if (!isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
+        digitalWrite(tiltUp, LOW);
       }
       if (isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      count++;
-
-    }
-    if (bounce == 1 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
-
-      mocoDistance = count;
-      count = 0;
-      stage = 1;
-    }
-
-    if (bounce == 1 && stage == 1) { //end point
-      if (count <= mocoDistance) {
-
-        //turn off motors
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-
-
-        //turn on motors
-
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        count++;
+        digitalWrite(tiltDown, LOW);
       }
 
-      if (count >= mocoDistance) {//starting point
 
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-
-        //turn motors on
-
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        count++;
-      }
-
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
-    }
-
-
-
-    /////Bounce2
-    ///////swing LEFT Boom UP
-    /////////////////////////
-
-    if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START))  {
-      bounce = 2;
-      Serial.println ("bounce 2");
-    }
-    if (bounce == 2 && stage == 0) {
-      if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
-      }
-      if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
-      }
-      if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
-      }
-      if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
-      }
-
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      count++;
-
-    }
-    if (bounce == 2 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
-
-      mocoDistance = count;
-      count = 0;
-      stage = 1;
-    }
-
-    if (bounce == 2 && stage == 1) {
-      if (count <= mocoDistance) {
-
-        //turn motors off
-
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-
-
-        //turn motors on
-
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        count++;
-      }
-
-      if (count >= mocoDistance) {
-
-        //turn motors off
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-
-        //turn motors on
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        count++;
-      }
-
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
-    }
-
-
-    /////Bounce3
-    ///////swing RIGHT Boom UP
-    /////////////////////////
-    if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START)) {
-      bounce = 3; //swing right boom up
-      Serial.println ("bounce 3");
-    }
-
-    if (bounce == 3 && stage == 0) {
+      //turn on motors
 
       if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
@@ -1385,165 +1096,594 @@ void loop() {
       if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
+      count++;
+    }
+
+    if (count >= mocoDistance) {//starting point
+
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+
+      //turn motors on
+
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      count++;
+    }
+
+    if (count >= mocoDistance * 2) {
+      count = 0;
+    }
+  }
+
+
+
+  /////Bounce2
+  ///////swing LEFT Boom UP
+  /////////////////////////
+
+  if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START))  {
+    bounce = 2;
+    Serial.println ("bounce 2");
+  }
+  if (bounce == 2 && stage == 0) {
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    count++;
+
+  }
+  if (bounce == 2 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+  }
+
+  if (bounce == 2 && stage == 1) {
+    if (count <= mocoDistance) {
+
+      //turn motors off
+
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+
+
+      //turn motors on
+
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      count++;
+    }
+
+    if (count >= mocoDistance) {
+
+      //turn motors off
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+
+      //turn motors on
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      count++;
+    }
+
+    if (count >= mocoDistance * 2) {
+      count = 0;
+    }
+  }
+
+
+  /////Bounce3
+  ///////swing RIGHT Boom UP
+  /////////////////////////
+  if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_START)) {
+    bounce = 3; //swing right boom up
+    Serial.println ("bounce 3");
+  }
+
+  if (bounce == 3 && stage == 0) {
+
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+
+    count++;
+  }
+
+  if (bounce == 3 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+  }
+
+  if (bounce == 3 && stage == 1) {
+
+    if (count <= mocoDistance) {
+
+      // motor off
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+
+
+      //motor on
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
 
       count++;
     }
 
-    if (bounce == 3 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+    if (count >= mocoDistance) {
 
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
+      //motor off
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
 
-      mocoDistance = count;
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+
+      //motor on
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+
+      count++;
+    }
+    if (count >= mocoDistance * 2) {
       count = 0;
-      stage = 1;
+    }
+  }
+
+  //Bounce 4
+  /////swing RIGHT and boom DOWN
+  /////////////////////////////
+  if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
+    bounce = 4;
+    Serial.println ("bounce 4");
+  }
+
+  if (bounce == 4 && stage == 0) {
+
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
 
-    if (bounce == 3 && stage == 1) {
-
-      if (count <= mocoDistance) {
-
-        // motor off
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-
-
-        //motor on
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-
-        count++;
-      }
-
-      if (count >= mocoDistance) {
-
-        //motor off
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-
-        //motor on
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-
-        count++;
-      }
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
     }
 
-    //Bounce 4
-    /////swing RIGHT and boom DOWN
-    /////////////////////////////
-    if (bounce == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
-      bounce = 4;
-      Serial.println ("bounce 4");
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
     }
 
-    if (bounce == 4 && stage == 0) {
+    count++;
 
+  }
+
+  if (bounce == 4 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+
+  }
+
+  if (bounce == 4 && stage == 1) {
+    if (count <= mocoDistance) {
+
+      //motor off
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+
+      //motor on
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+
+      count++;
+    }
+
+    if (count >= mocoDistance) {
+
+      //motor OFF
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+
+      //motor ON
       if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
@@ -1572,391 +1712,72 @@ void loop() {
       }
 
       count++;
-
     }
 
-    if (bounce == 4 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltUp, LOW);
-      digitalWrite(tiltDown, LOW);
-      mocoDistance = count;
+    if (count >= mocoDistance * 2) {
       count = 0;
-      stage = 1;
-
     }
 
-    if (bounce == 4 && stage == 1) {
-      if (count <= mocoDistance) {
+  }
 
-        //motor off
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
 
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
 
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
 
-        //motor on
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
+  //Bounce 5
+  //////////swing LEFT
+  ////////////////////////////////////
 
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
+  if (bounce == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_START)) {
+    bounce = 5;// Swing left
+    Serial.println ("bounce 5");
+  }
 
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
+  if (bounce == 5 && stage == 0) {
 
-        count++;
-      }
-
-      if (count >= mocoDistance) {
-
-        //motor OFF
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-
-        //motor ON
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-
-        count++;
-      }
-
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
-
+    if (!isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
     }
-
-
-
-
-    //Bounce 5
-    //////////swing LEFT
-    ////////////////////////////////////
-
-    if (bounce == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_START)) {
-      bounce = 5;// Swing left
-      Serial.println ("bounce 5");
+    if (isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
     }
+    if (!isPanReversed) {
+      digitalWrite(panRight, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+    count++;
 
-    if (bounce == 5 && stage == 0) {
+  }
+  if (bounce == 5 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
 
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panLeft, LOW);
+
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+  }
+
+  if (bounce == 5 && stage == 1) {
+    if (count <= mocoDistance) {
+
+      //motor OFF
       if (!isSwingReversed) {
-        digitalWrite(swingLeft, HIGH);
+        digitalWrite(swingLeft, LOW);
       }
       if (isSwingReversed) {
-        digitalWrite(swingRight, HIGH);
+        digitalWrite(swingRight, LOW);
       }
       if (!isPanReversed) {
-        digitalWrite(panRight, HIGH);
+        digitalWrite(panRight, LOW);
       }
       if (isPanReversed) {
-        digitalWrite(panLeft, HIGH);
+        digitalWrite(panLeft, LOW);
       }
-      count++;
-
-    }
-    if (bounce == 5 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(panRight, LOW);
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panLeft, LOW);
-
-      mocoDistance = count;
-      count = 0;
-      stage = 1;
-    }
-
-    if (bounce == 5 && stage == 1) {
-      if (count <= mocoDistance) {
-
-        //motor OFF
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-        //motor ON
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-
-        count++;
-      }
-
-      if (count >= mocoDistance) {
-
-        //motor OFF
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-
-        //motor ON
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-
-        count++;
-      }
-
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
-    }
-
-
-    //Bounce 6
-    /////lift UP
-    /////////////////
-    if (bounce == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_START))  {
-      bounce = 6;   // boom up
-      Serial.println ("bounce 6");
-    }
-    if (bounce == 6 && stage == 0) {
-
-      if (!isLiftReversed) {
-        digitalWrite(liftUp, HIGH);
-      }
-      if (isLiftReversed) {
-        digitalWrite(liftDown, HIGH);
-      }
-
-      if (!isTiltReversed) {
-        digitalWrite(tiltDown, HIGH);
-      }
-      if (isTiltReversed) {
-        digitalWrite(tiltUp, HIGH);
-      }
-      count++;
-
-    }
-    if (bounce == 6 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
-
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltDown, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(tiltUp, LOW);
-
-      mocoDistance = count;
-      count = 0;
-      stage = 1;
-    }
-
-    if (bounce == 6 && stage == 1) {
-      if (count <= mocoDistance) {
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-
-        count++;
-      }
-
-      if (count >= mocoDistance) {
-
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        count++;
-      }
-
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
-    }
-
-
-
-
-
-    ///Bounce 7
-    ///////////swing RIGHT
-    ///////////////////////
-
-    if (bounce == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
-      bounce = 7;
-      Serial.println ("bounce 7");
-    }
-
-    if (bounce == 7 && stage == 0) {
+      //motor ON
       if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
@@ -1973,103 +1794,99 @@ void loop() {
       count++;
     }
 
-    if (bounce == 7 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+    if (count >= mocoDistance) {
 
-      digitalWrite(swingRight, LOW);
-      digitalWrite(panLeft, LOW);
-      digitalWrite(swingLeft, LOW);
-      digitalWrite(panRight, LOW);
+      //motor OFF
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
 
+      //motor ON
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
 
-      mocoDistance = count;
+      count++;
+    }
+
+    if (count >= mocoDistance * 2) {
       count = 0;
-      stage = 1;
+    }
+  }
+
+
+  //Bounce 6
+  /////lift UP
+  /////////////////
+  if (bounce == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_START))  {
+    bounce = 6;   // boom up
+    Serial.println ("bounce 6");
+  }
+  if (bounce == 6 && stage == 0) {
+
+    if (!isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
     }
 
-    if (bounce == 7 && stage == 1) {
-
-      if (count <= mocoDistance) {
-
-
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-
-
-
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-
-        count++;
-      }
-
-      if (count >= mocoDistance) {
-
-        if (!isSwingReversed) {
-          digitalWrite(swingLeft, LOW);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingRight, LOW);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panRight, LOW);
-        }
-        if (isPanReversed) {
-          digitalWrite(panLeft, LOW);
-        }
-
-
-        if (!isSwingReversed) {
-          digitalWrite(swingRight, HIGH);
-        }
-        if (isSwingReversed) {
-          digitalWrite(swingLeft, HIGH);
-        }
-        if (!isPanReversed) {
-          digitalWrite(panLeft, HIGH);
-        }
-        if (isPanReversed) {
-          digitalWrite(panRight, HIGH);
-        }
-
-
-        count++;
-      }
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
+    if (!isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
     }
-
-
-
-    /////Bounce 8
-    /////////////Lift DOWN
-    //////////////////////
-    if (bounce == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
-      bounce = 8;
-      Serial.println ("bounce 8");
+    if (isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
     }
+    count++;
 
-    if (bounce == 8 && stage == 0) {
+  }
+  if (bounce == 6 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(tiltUp, LOW);
+
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+  }
+
+  if (bounce == 6 && stage == 1) {
+    if (count <= mocoDistance) {
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+
 
       if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
@@ -2086,90 +1903,273 @@ void loop() {
       }
 
       count++;
-
     }
 
-    if (bounce == 8 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+    if (count >= mocoDistance) {
 
-      digitalWrite(liftUp, LOW);
-      digitalWrite(tiltDown, LOW);
-      digitalWrite(liftDown, LOW);
-      digitalWrite(tiltUp, LOW);
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
 
-      mocoDistance = count;
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      count++;
+    }
+
+    if (count >= mocoDistance * 2) {
       count = 0;
-      stage = 1;
+    }
+  }
 
+
+
+
+
+  ///Bounce 7
+  ///////////swing RIGHT
+  ///////////////////////
+
+  if (bounce == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
+    bounce = 7;
+    Serial.println ("bounce 7");
+  }
+
+  if (bounce == 7 && stage == 0) {
+    if (!isSwingReversed) {
+      digitalWrite(swingRight, HIGH);
+    }
+    if (isSwingReversed) {
+      digitalWrite(swingLeft, HIGH);
+    }
+    if (!isPanReversed) {
+      digitalWrite(panLeft, HIGH);
+    }
+    if (isPanReversed) {
+      digitalWrite(panRight, HIGH);
     }
 
-    if (bounce == 8 && stage == 1) {
-      if (count <= mocoDistance) {
+    count++;
+  }
 
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
+  if (bounce == 7 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
 
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
+    digitalWrite(swingRight, LOW);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(panRight, LOW);
 
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
 
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        count++;
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+  }
+
+  if (bounce == 7 && stage == 1) {
+
+    if (count <= mocoDistance) {
+
+
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, LOW);
       }
 
-      if (count >= mocoDistance) {
-
-        if (!isLiftReversed) {
-          digitalWrite(liftUp, LOW);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftDown, LOW);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltDown, LOW);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltUp, LOW);
-        }
 
 
-        if (!isLiftReversed) {
-          digitalWrite(liftDown, HIGH);
-        }
-        if (isLiftReversed) {
-          digitalWrite(liftUp, HIGH);
-        }
-
-        if (!isTiltReversed) {
-          digitalWrite(tiltUp, HIGH);
-        }
-        if (isTiltReversed) {
-          digitalWrite(tiltDown, HIGH);
-        }
-        count++;
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, HIGH);
       }
 
-      if (count >= mocoDistance * 2) {
-        count = 0;
-      }
+      count++;
     }
+
+    if (count >= mocoDistance) {
+
+      if (!isSwingReversed) {
+        digitalWrite(swingLeft, LOW);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingRight, LOW);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panRight, LOW);
+      }
+      if (isPanReversed) {
+        digitalWrite(panLeft, LOW);
+      }
+
+
+      if (!isSwingReversed) {
+        digitalWrite(swingRight, HIGH);
+      }
+      if (isSwingReversed) {
+        digitalWrite(swingLeft, HIGH);
+      }
+      if (!isPanReversed) {
+        digitalWrite(panLeft, HIGH);
+      }
+      if (isPanReversed) {
+        digitalWrite(panRight, HIGH);
+      }
+
+
+      count++;
+    }
+    if (count >= mocoDistance * 2) {
+      count = 0;
+    }
+  }
+
+
+
+  /////Bounce 8
+  /////////////Lift DOWN
+  //////////////////////
+  if (bounce == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_START)) {
+    bounce = 8;
+    Serial.println ("bounce 8");
+  }
+
+  if (bounce == 8 && stage == 0) {
+
+    if (!isLiftReversed) {
+      digitalWrite(liftDown, HIGH);
+    }
+    if (isLiftReversed) {
+      digitalWrite(liftUp, HIGH);
+    }
+
+    if (!isTiltReversed) {
+      digitalWrite(tiltUp, HIGH);
+    }
+    if (isTiltReversed) {
+      digitalWrite(tiltDown, HIGH);
+    }
+
+    count++;
+
+  }
+
+  if (bounce == 8 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
+
+    digitalWrite(liftUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    digitalWrite(liftDown, LOW);
+    digitalWrite(tiltUp, LOW);
+
+    mocoDistance = count;
+    count = 0;
+    stage = 1;
+
+  }
+
+  if (bounce == 8 && stage == 1) {
+    if (count <= mocoDistance) {
+
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      count++;
+    }
+
+    if (count >= mocoDistance) {
+
+      if (!isLiftReversed) {
+        digitalWrite(liftUp, LOW);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftDown, LOW);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltDown, LOW);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltUp, LOW);
+      }
+
+
+      if (!isLiftReversed) {
+        digitalWrite(liftDown, HIGH);
+      }
+      if (isLiftReversed) {
+        digitalWrite(liftUp, HIGH);
+      }
+
+      if (!isTiltReversed) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (isTiltReversed) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      count++;
+    }
+
+    if (count >= mocoDistance * 2) {
+      count = 0;
+    }
+  }
 }
