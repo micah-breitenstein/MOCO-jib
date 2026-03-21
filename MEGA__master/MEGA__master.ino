@@ -83,6 +83,9 @@ constexpr int STICK_MAX = 255;
 constexpr int PAN_STOP_NONE = 0;
 constexpr int PAN_STOP_ACTIVE = 1;
 constexpr int PAN_STOP_TRIM = 2;
+constexpr int TILT_STOP_NONE = 0;
+constexpr int TILT_STOP_ACTIVE = 1;
+constexpr int TILT_STOP_TRIM = 2;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -282,17 +285,17 @@ void handleTiltTrimAxis() {
   if (liftInMotion == 1 && rightStickYvalue == STICK_MAX) {
     Serial.println("tiltSpeedDownOnly");
     digitalWrite(tiltSpeedDownOnly, HIGH);
-    tiltStop = 2;
+    tiltStop = TILT_STOP_TRIM;
   }
   if (liftInMotion == 1 && rightStickYvalue == STICK_MIN) {
     Serial.println("tiltSpeedUpOnly");
     digitalWrite(tiltSpeedUpOnly, HIGH);
-    tiltStop = 2;
+    tiltStop = TILT_STOP_TRIM;
   }
-  if (tiltStop == 2 && rightStickYvalue == STICK_CENTER) {
+  if (tiltStop == TILT_STOP_TRIM && rightStickYvalue == STICK_CENTER) {
     digitalWrite(tiltSpeedUpOnly, LOW);
     digitalWrite(tiltSpeedDownOnly, LOW);
-    tiltStop = 0;
+    tiltStop = TILT_STOP_NONE;
   }
 }
 
@@ -307,16 +310,16 @@ void activateTiltOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* 
   digitalWrite(tiltSpeedUpOnly, HIGH);
   digitalWrite(tiltSpeedDownOnly, HIGH);
   setDirectionalOutput(isTiltReversed, normalPin, reversedPin, HIGH);
-  tiltStop = 1;
+  tiltStop = TILT_STOP_ACTIVE;
 }
 
 void stopTiltOnlyMotionAtCenter() {
-  if (liftInMotion == 0 && tiltStop == 1 && rightStickYvalue == STICK_CENTER) {
+  if (liftInMotion == 0 && tiltStop == TILT_STOP_ACTIVE && rightStickYvalue == STICK_CENTER) {
     digitalWrite(tiltUp, LOW);
     digitalWrite(tiltDown, LOW);
     digitalWrite(tiltSpeedUpOnly, LOW);
     digitalWrite(tiltSpeedDownOnly, LOW);
-    tiltStop = 0;
+    tiltStop = TILT_STOP_NONE;
   }
 }
 
