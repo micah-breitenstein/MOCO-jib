@@ -6,7 +6,7 @@ constexpr uint8_t PS2_SEL = 8;
 constexpr uint8_t PS2_CLK = 11;
 
 constexpr bool PRESSURES = false;
-constexpr bool RUMBLE = false;
+constexpr bool RUMBLE = true;
 constexpr bool DEBUG_EDGE_EVENTS = true;
 
 PS2X ps2x;
@@ -61,7 +61,7 @@ int rightStickYvalue;
 // Timelapse Variables
 int timelapseMode = 0;
 int intervalSeconds = 15;
-int interval;
+unsigned long interval;
 int stepDist = 100;
 const uint8_t trigger = 28;
 
@@ -74,6 +74,18 @@ enum TimelapsePhase {
 
 TimelapsePhase timelapsePhase = TIMELAPSE_PHASE_IDLE;
 unsigned long timelapsePhaseStartMs = 0;
+
+enum IntervalRumblePhase {
+  INTERVAL_RUMBLE_IDLE,
+  INTERVAL_RUMBLE_LONG_ACTIVE,
+  INTERVAL_RUMBLE_SHORT_ACTIVE,
+  INTERVAL_RUMBLE_SHORT_PAUSE
+};
+
+IntervalRumblePhase intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
+unsigned long intervalRumblePhaseStartMs = 0;
+uint8_t intervalRumbleLongsRemaining = 0;
+uint8_t intervalRumbleShortsRemaining = 0;
 
 // Motion Control Variables
 int bounce = 0;
@@ -98,12 +110,20 @@ constexpr int PAN_STOP_TRIM = 2;
 constexpr int TILT_STOP_NONE = 0;
 constexpr int TILT_STOP_ACTIVE = 1;
 constexpr int TILT_STOP_TRIM = 2;
+constexpr int TIMELAPSE_INTERVAL_MIN_SECONDS = 1;
+constexpr int TIMELAPSE_INTERVAL_MAX_SECONDS = 99;
+constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
+constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 10000;
+constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 200;
+constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 1000;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
 bool isLiftReversed = false;
 bool isTiltReversed = false;
 bool isFocusReversed = false;
+bool lastIntervalAdjustUpComboActive = false;
+bool lastIntervalAdjustDownComboActive = false;
 
 void configureController() {
 
@@ -378,6 +398,124 @@ void stopAllMotors() {
   digitalWrite(tiltDown, LOW);
   digitalWrite(tiltSpeedUpOnly, LOW);
   digitalWrite(tiltSpeedDownOnly, LOW);
+}
+
+void updateIntervalMs() {
+  interval = static_cast<unsigned long>(intervalSeconds) * 1000UL;
+}
+
+void stopIntervalRumbleFeedback() {
+  intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
+  intervalRumblePhaseStartMs = 0;
+  intervalRumbleLongsRemaining = 0;
+  intervalRumbleShortsRemaining = 0;
+  vibrate = 0;
+}
+
+void startIntervalRumbleFeedback() {
+  intervalRumbleLongsRemaining = intervalSeconds / 10;
+  intervalRumbleShortsRemaining = intervalSeconds % 10;
+
+  if (intervalRumbleLongsRemaining > 0) {
+    intervalRumblePhase = INTERVAL_RUMBLE_LONG_ACTIVE;
+  } else if (intervalRumbleShortsRemaining > 0) {
+    intervalRumblePhase = INTERVAL_RUMBLE_SHORT_ACTIVE;
+  } else {
+    stopIntervalRumbleFeedback();
+    return;
+  }
+
+  intervalRumblePhaseStartMs = millis();
+  vibrate = RUMBLE_ACTIVE_INTENSITY;
+}
+
+void handleIntervalRumbleFeedback(unsigned long now) {
+  switch (intervalRumblePhase) {
+    case INTERVAL_RUMBLE_IDLE:
+      vibrate = 0;
+      break;
+    case INTERVAL_RUMBLE_LONG_ACTIVE:
+      vibrate = RUMBLE_ACTIVE_INTENSITY;
+      if (now - intervalRumblePhaseStartMs >= INTERVAL_RUMBLE_LONG_MS) {
+        intervalRumbleLongsRemaining--;
+        if (intervalRumbleLongsRemaining > 0) {
+          intervalRumblePhaseStartMs = now;
+        } else if (intervalRumbleShortsRemaining > 0) {
+          intervalRumblePhase = INTERVAL_RUMBLE_SHORT_ACTIVE;
+          intervalRumblePhaseStartMs = now;
+        } else {
+          stopIntervalRumbleFeedback();
+        }
+      }
+      break;
+    case INTERVAL_RUMBLE_SHORT_ACTIVE:
+      vibrate = RUMBLE_ACTIVE_INTENSITY;
+      if (now - intervalRumblePhaseStartMs >= INTERVAL_RUMBLE_SHORT_ON_MS) {
+        intervalRumblePhase = INTERVAL_RUMBLE_SHORT_PAUSE;
+        intervalRumblePhaseStartMs = now;
+        vibrate = 0;
+      }
+      break;
+    case INTERVAL_RUMBLE_SHORT_PAUSE:
+      vibrate = 0;
+      if (now - intervalRumblePhaseStartMs >= (INTERVAL_RUMBLE_SHORT_TOTAL_MS - INTERVAL_RUMBLE_SHORT_ON_MS)) {
+        intervalRumbleShortsRemaining--;
+        if (intervalRumbleShortsRemaining > 0) {
+          intervalRumblePhase = INTERVAL_RUMBLE_SHORT_ACTIVE;
+          intervalRumblePhaseStartMs = now;
+        } else {
+          stopIntervalRumbleFeedback();
+        }
+      }
+      break;
+  }
+}
+
+void adjustIntervalSeconds(int delta) {
+  int newIntervalSeconds = intervalSeconds + delta;
+  if (newIntervalSeconds < TIMELAPSE_INTERVAL_MIN_SECONDS) {
+    newIntervalSeconds = TIMELAPSE_INTERVAL_MIN_SECONDS;
+  }
+  if (newIntervalSeconds > TIMELAPSE_INTERVAL_MAX_SECONDS) {
+    newIntervalSeconds = TIMELAPSE_INTERVAL_MAX_SECONDS;
+  }
+  if (newIntervalSeconds == intervalSeconds) {
+    return;
+  }
+
+  intervalSeconds = newIntervalSeconds;
+  updateIntervalMs();
+  Serial.print("Timelapse intervalSeconds = ");
+  Serial.println(intervalSeconds);
+  startIntervalRumbleFeedback();
+}
+
+// START + PAD_UP increases intervalSeconds.
+// START + PAD_DOWN decreases intervalSeconds.
+// This is only active while no auto mode is running so it does not conflict
+// with active timelapse or bounce motion.
+bool handleTimelapseIntervalAdjustment() {
+  bool adjustmentAllowed = (timelapseMode == 0 && bounce == 0);
+  bool intervalAdjustUpComboActive = adjustmentAllowed && ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_UP);
+  bool intervalAdjustDownComboActive = adjustmentAllowed && ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_DOWN);
+
+  if (intervalAdjustUpComboActive && !lastIntervalAdjustUpComboActive) {
+    adjustIntervalSeconds(1);
+  }
+
+  if (intervalAdjustDownComboActive && !lastIntervalAdjustDownComboActive) {
+    adjustIntervalSeconds(-1);
+  }
+
+  lastIntervalAdjustUpComboActive = intervalAdjustUpComboActive;
+  lastIntervalAdjustDownComboActive = intervalAdjustDownComboActive;
+
+  if (intervalAdjustUpComboActive || intervalAdjustDownComboActive) {
+    stopAllMotors();
+    return true;
+  }
+
+  return false;
 }
 
 const char* getTimelapseModeLabel(int mode) {
@@ -762,7 +900,7 @@ void handleActiveTimelapseMode(unsigned long now) {
 
 void setup() {
 
-  interval = intervalSeconds * 1000;
+  updateIntervalMs();
 
   const uint8_t outputPins[] = {
     swingLeft,
@@ -813,6 +951,7 @@ void setup() {
   delay(CONTROLLER_STARTUP_DELAY_MS);
   configureController();
   detectControllerType();
+  Serial.println("START + PAD_UP/DOWN adjusts timelapse intervalSeconds.");
 }
 
 void loop() {
@@ -827,7 +966,10 @@ void loop() {
   if (!isDualShockType) // skip unsupported controller types
     return;
 
-  ps2x.read_gamepad(false, vibrate); // vibration disabled
+  handleIntervalRumbleFeedback(millis());
+  ps2x.read_gamepad(false, vibrate); // rumble intensity comes from the interval feedback state machine
+
+  unsigned long now = millis();
 
   // Read DIP-switch reversal settings
   isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
@@ -841,6 +983,10 @@ void loop() {
   rightStickXvalue = ps2x.Analog(PSS_RX);
   leftStickYvalue  = ps2x.Analog(PSS_LY);
   leftStickXvalue  = ps2x.Analog(PSS_LX);
+
+  if (handleTimelapseIntervalAdjustment()) {
+    return;
+  }
 
   // Lift and Tilt speed control (R1/R2 buttons)
   handleAxisSpeedControl(PSB_R1, liftSpeedUp, tiltSpeedUp);
@@ -897,7 +1043,7 @@ void loop() {
   }
 
   updateTimelapseModeSelection();
-  handleActiveTimelapseMode(millis());
+  handleActiveTimelapseMode(now);
 
   // MOCO Moves (bounce)
 
@@ -908,7 +1054,7 @@ void loop() {
 
   updateBounceModeSelection();
 
-  handleBounceStage0(millis());
+  handleBounceStage0(now);
 
-  handleBounceStage1(millis());
+  handleBounceStage1(now);
 }
