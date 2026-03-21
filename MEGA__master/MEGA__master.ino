@@ -257,6 +257,18 @@ void stopPanOnlyMotionAtCenter() {
   }
 }
 
+void handlePanAxis() {
+  if (swingInMotion == 0) {
+    if (rightStickXvalue == STICK_MIN) {
+      activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
+    } else if (rightStickXvalue == STICK_MAX) {
+      activatePanOnlyMotion(panRight, panLeft, "panrightonly with top speed");
+    }
+  }
+
+  stopPanOnlyMotionAtCenter();
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -364,15 +376,7 @@ void loop() {
 
   // 2nd AXIS (CAMERA PAN)
 
-  if (swingInMotion == 0) {
-    if (rightStickXvalue == STICK_MIN) {
-      activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
-    } else if (rightStickXvalue == STICK_MAX) {
-      activatePanOnlyMotion(panRight, panLeft, "panrightonly with top speed");
-    }
-  }
-
-  stopPanOnlyMotionAtCenter();
+  handlePanAxis();
 
   // 3rd AXIS (BOOM LIFT)
 
