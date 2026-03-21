@@ -50,8 +50,8 @@ const uint8_t focusRight = 49;
 const uint8_t focusSpeedUp = 51;
 const uint8_t focusSpeedDown = 53;
 
-int swingInMotion = 0;
-int liftInMotion = 0;
+bool swingInMotion = false;
+bool liftInMotion = false;
 
 int leftStickXvalue;
 int leftStickYvalue;
@@ -185,13 +185,13 @@ void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t norm
 
 void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8_t axis1Normal, uint8_t axis1Rev,
                                     bool axis2Reversed, uint8_t axis2Normal, uint8_t axis2Rev,
-                                    int& soloState, int& motionState) {
+                                    int& soloState, bool& motionState) {
   if (soloState == 0 && ps2x.Button(buttonCode)) {
     if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
       Serial.print("COMBINED press: ");
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
-    motionState = 1;
+    motionState = true;
     setDirectionalOutput(axis1Reversed, axis1Normal, axis1Rev, HIGH);
     setDirectionalOutput(axis2Reversed, axis2Normal, axis2Rev, HIGH);
   }
@@ -204,7 +204,7 @@ void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8
     digitalWrite(axis1Rev, LOW);
     digitalWrite(axis2Normal, LOW);
     digitalWrite(axis2Rev, LOW);
-    motionState = 0;
+    motionState = false;
   }
 }
 
@@ -225,7 +225,7 @@ void activatePanTrim(uint8_t pin, const char* label) {
 }
 
 void applyPanTrimDuringSwing() {
-  if (swingInMotion == 1) {
+  if (swingInMotion) {
     if (rightStickXvalue == STICK_MIN) {
       activatePanTrim(panSpeedDownOnly, "panSpeedDownOnly");
     } else if (rightStickXvalue == STICK_MAX) {
@@ -256,7 +256,7 @@ void activatePanOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* l
 }
 
 void stopPanOnlyMotionAtCenter() {
-  if (swingInMotion == 0 && panStop == PAN_STOP_ACTIVE && rightStickXvalue == STICK_CENTER) {
+  if (!swingInMotion && panStop == PAN_STOP_ACTIVE && rightStickXvalue == STICK_CENTER) {
     digitalWrite(panLeft, LOW);
     digitalWrite(panRight, LOW);
     digitalWrite(panSpeedUpOnly, LOW);
@@ -266,7 +266,7 @@ void stopPanOnlyMotionAtCenter() {
 }
 
 void handlePanAxis() {
-  if (swingInMotion == 0) {
+  if (!swingInMotion) {
     if (rightStickXvalue == STICK_MIN) {
       activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
     } else if (rightStickXvalue == STICK_MAX) {
@@ -282,12 +282,12 @@ void handleLiftOnly(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftRever
 }
 
 void handleTiltTrimAxis() {
-  if (liftInMotion == 1 && rightStickYvalue == STICK_MAX) {
+  if (liftInMotion && rightStickYvalue == STICK_MAX) {
     Serial.println("tiltSpeedDownOnly");
     digitalWrite(tiltSpeedDownOnly, HIGH);
     tiltStop = TILT_STOP_TRIM;
   }
-  if (liftInMotion == 1 && rightStickYvalue == STICK_MIN) {
+  if (liftInMotion && rightStickYvalue == STICK_MIN) {
     Serial.println("tiltSpeedUpOnly");
     digitalWrite(tiltSpeedUpOnly, HIGH);
     tiltStop = TILT_STOP_TRIM;
@@ -314,7 +314,7 @@ void activateTiltOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* 
 }
 
 void stopTiltOnlyMotionAtCenter() {
-  if (liftInMotion == 0 && tiltStop == TILT_STOP_ACTIVE && rightStickYvalue == STICK_CENTER) {
+  if (!liftInMotion && tiltStop == TILT_STOP_ACTIVE && rightStickYvalue == STICK_CENTER) {
     digitalWrite(tiltUp, LOW);
     digitalWrite(tiltDown, LOW);
     digitalWrite(tiltSpeedUpOnly, LOW);
@@ -324,7 +324,7 @@ void stopTiltOnlyMotionAtCenter() {
 }
 
 void handleTiltAxis() {
-  if (liftInMotion == 0) {
+  if (!liftInMotion) {
     if (rightStickYvalue == STICK_MAX) {
       activateTiltOnlyMotion(tiltDown, tiltUp, "tiltDownOnly");
     } else if (rightStickYvalue == STICK_MIN) {
