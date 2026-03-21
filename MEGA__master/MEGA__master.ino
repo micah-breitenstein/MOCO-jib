@@ -353,6 +353,21 @@ void handleFocusAxis() {
   handleAxisSpeedControl(PSB_CIRCLE, focusSpeedUp, focusSpeedUp);
 }
 
+void stopAllMotors() {
+  digitalWrite(swingLeft, LOW);
+  digitalWrite(swingRight, LOW);
+  digitalWrite(panLeft, LOW);
+  digitalWrite(panRight, LOW);
+  digitalWrite(panSpeedUpOnly, LOW);
+  digitalWrite(panSpeedDownOnly, LOW);
+  digitalWrite(liftUp, LOW);
+  digitalWrite(liftDown, LOW);
+  digitalWrite(tiltUp, LOW);
+  digitalWrite(tiltDown, LOW);
+  digitalWrite(tiltSpeedUpOnly, LOW);
+  digitalWrite(tiltSpeedDownOnly, LOW);
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -819,6 +834,14 @@ void loop() {
   }
 
   // MOCO Moves (bounce)
+
+  // R3 (right stick click) cancels active bounce and stops all motors
+  if (bounce != 0 && ps2x.ButtonReleased(PSB_R3)) {
+    bounce = 0;
+    stage = 0;
+    count = 0;
+    stopAllMotors();
+  }
 
   // Bounce 1: swing left, boom down
   if (bounce == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_START)) {
