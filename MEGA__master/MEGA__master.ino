@@ -5,8 +5,8 @@
 #define PS2_SEL 8
 #define PS2_CLK 11
 
-#define pressures false
-#define rumble false
+constexpr bool PRESSURES = false;
+constexpr bool RUMBLE = false;
 
 PS2X ps2x;
 int error = 0;
@@ -25,7 +25,6 @@ int panRight = 48;
 int panSpeedUp = 50;
 int panSpeedDown = 52;
 int panStop = 0;
-int speedStop = 0;
 
 int panSpeedUpOnly = 29; //lower
 int panSpeedDownOnly = 45; //higher
@@ -62,7 +61,6 @@ int rightStickYvalue;
 int timelapseMode = 0;
 int intervalSeconds = 15;
 int interval;
-int intervalDelay;
 int stepDist = 100;
 int trigger = 28;
 
@@ -84,20 +82,19 @@ bool isPanReversed = false;
 bool isLiftReversed = false;
 bool isTiltReversed = false;
 bool isFocusReversed = false;
-int delayTime;
 
 void configureController() {
-  error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, pressures, rumble);
+  error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, PRESSURES, RUMBLE);
 
   if (error == 0) {
     Serial.print("Found Controller, configured successful ");
     Serial.print("pressures = ");
-    if (pressures)
+    if (PRESSURES)
       Serial.println("true ");
     else
       Serial.println("false");
     Serial.print("rumble = ");
-    if (rumble)
+    if (RUMBLE)
       Serial.println("true)");
     else
       Serial.println("false");
