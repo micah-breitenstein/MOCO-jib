@@ -407,27 +407,35 @@ void handleActiveTimelapseMode() {
   }
 
   switch (timelapseMode) {
+    // Mode 1: swing left, boom down
     case 1:
       Serial.println("Timelapse Mode 1: Swing left, boom down");
       break;
+    // Mode 2: swing left, boom up
     case 2:
       Serial.println("Timelapse Mode 2: Swing left, boom up");
       break;
+    // Mode 3: swing right, boom up
     case 3:
       Serial.println("Timelapse Mode 3: Swing right, boom up");
       break;
+    // Mode 4: swing right, boom down
     case 4:
       Serial.println("Timelapse Mode 4: Swing right, boom down");
       break;
+    // Mode 5: swing left
     case 5:
       Serial.println("Timelapse Mode 5: Swing left");
       break;
+    // Mode 6: boom up
     case 6:
       Serial.println("Timelapse Mode 6: Boom up");
       break;
+    // Mode 7: swing right
     case 7:
       Serial.println("Timelapse Mode 7: Swing right");
       break;
+    // Mode 8: boom down
     case 8:
       Serial.println("Timelapse Mode 8: Boom down");
       break;
@@ -438,42 +446,50 @@ void handleActiveTimelapseMode() {
   pulseTimelapseTrigger();
 
   switch (timelapseMode) {
+    // Mode 1: swing left, boom down
     case 1:
       setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
       setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
       setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
       setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
       break;
+    // Mode 2: swing left, boom up
     case 2:
       setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
       setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
       setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
       setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
       break;
+    // Mode 3: swing right, boom up
     case 3:
       setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
       setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
       setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
       setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
       break;
+    // Mode 4: swing right, boom down
     case 4:
       setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
       setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
       setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
       setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
       break;
+    // Mode 5: swing left
     case 5:
       setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
       setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
       break;
+    // Mode 6: boom up
     case 6:
       setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
       setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
       break;
+    // Mode 7: swing right
     case 7:
       setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
       setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
       break;
+    // Mode 8: boom down
     case 8:
       setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
       setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
