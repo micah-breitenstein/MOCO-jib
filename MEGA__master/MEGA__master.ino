@@ -418,7 +418,7 @@ void loop() {
   if (!isDualShockType) // skip unsupported controller types
     return;
 
-  ps2x.read_gamepad(false, vibrate); // unnecessary vibration
+  ps2x.read_gamepad(false, vibrate); // vibration disabled
 
   // Read DIP-switch reversal settings
   isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
