@@ -187,11 +187,17 @@ void setup() {
 
 void loop() {
 
-  if (error != 0 || controllerType == 2) //skip loop on controller config error or Guitar Hero controller
+  if (error != 0) //skip loop on controller config error
     return;
 
-  else { //DualShock Controller
-    ps2x.read_gamepad(false, vibrate); //uneccessary vibration
+  if (controllerType == 2) //skip Guitar Hero controller
+    return;
+
+  const bool isDualShockType = (controllerType == 1 || controllerType == 3);
+  if (!isDualShockType) //skip unsupported controller types
+    return;
+
+  ps2x.read_gamepad(false, vibrate); //uneccessary vibration
 
     isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
     isPanReversed = (digitalRead(DIP_SWITCH_2) == HIGH);
@@ -2166,5 +2172,4 @@ void loop() {
         count = 0;
       }
     }
-  }
 }
