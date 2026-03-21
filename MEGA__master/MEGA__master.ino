@@ -77,6 +77,12 @@ constexpr uint8_t DIP_SWITCH_3 = 37;
 constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
+constexpr int STICK_MIN = 0;
+constexpr int STICK_CENTER = 128;
+constexpr int STICK_MAX = 255;
+constexpr int PAN_STOP_NONE = 0;
+constexpr int PAN_STOP_ACTIVE = 1;
+constexpr int PAN_STOP_TRIM = 2;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -199,6 +205,30 @@ void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8
   }
 }
 
+void activatePanTrim(uint8_t pin, const char* label) {
+  digitalWrite(pin, HIGH);
+  Serial.println(label);
+  panStop = PAN_STOP_TRIM;
+}
+
+void applyPanTrimDuringSwing() {
+  if (swingInMotion == 1) {
+    if (rightStickXvalue == STICK_MIN) {
+      activatePanTrim(panSpeedDownOnly, "panSpeedDownOnly");
+    } else if (rightStickXvalue == STICK_MAX) {
+      activatePanTrim(panSpeedUpOnly, "panSpeedUpOnly");
+    }
+  }
+}
+
+void resetPanTrimAtCenter() {
+  if (panStop == PAN_STOP_TRIM && rightStickXvalue == STICK_CENTER) {
+    digitalWrite(panSpeedUpOnly, LOW);
+    digitalWrite(panSpeedDownOnly, LOW);
+    panStop = PAN_STOP_NONE;
+  }
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -303,30 +333,14 @@ void loop() {
   handleCombinedDirectionalMode(PSB_PAD_RIGHT, isSwingReversed, swingRight, swingLeft,
                                  isPanReversed, panLeft, panRight, swingSoloMode, swingInMotion);
 
-  //should all these below be within 1 if statement for swingmotion?
-  if (swingInMotion == 1 && rightStickXvalue == 0) {
-    digitalWrite(panSpeedDownOnly, HIGH);
-    Serial.println("panSpeedDownOnly");
-    panStop = 2;
-  }
-
-  if (swingInMotion == 1 && rightStickXvalue == 255) {
-    digitalWrite(panSpeedUpOnly, HIGH);
-    Serial.println("panSpeedUpOnly");
-    panStop = 2;
-  }
-
-  if (panStop == 2 && rightStickXvalue == 128) {
-    digitalWrite(panSpeedUpOnly, LOW);
-    digitalWrite(panSpeedDownOnly, LOW);
-    panStop = 0;
-  }
+  applyPanTrimDuringSwing();
+  resetPanTrimAtCenter();
 
   /////////////////////////////
   //2nd AXIS (CAMERA PAN)
   ////////////////////////////
 
-  if (swingInMotion == 0 &&  rightStickXvalue == 0) {
+  if (swingInMotion == 0 && rightStickXvalue == STICK_MIN) {
     Serial.println("panleftnonly with top speed");
 
     digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
@@ -338,10 +352,10 @@ void loop() {
     if (isPanReversed) {
       digitalWrite(panRight, HIGH);
     }
-    panStop = 1;
+    panStop = PAN_STOP_ACTIVE;
   }
 
-  if (swingInMotion == 0 && rightStickXvalue == 255) {
+  if (swingInMotion == 0 && rightStickXvalue == STICK_MAX) {
     Serial.println("panrightonly with top speed");
     digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
     digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
@@ -352,15 +366,15 @@ void loop() {
     if (isPanReversed) {
       digitalWrite(panLeft, HIGH);
     }
-    panStop = 1;
+    panStop = PAN_STOP_ACTIVE;
   }
 
-  if (swingInMotion == 0 && panStop == 1 && rightStickXvalue == 128) {
+  if (swingInMotion == 0 && panStop == PAN_STOP_ACTIVE && rightStickXvalue == STICK_CENTER) {
     digitalWrite(panLeft, LOW);
     digitalWrite(panRight, LOW);
     digitalWrite(panSpeedUpOnly, LOW);
     digitalWrite(panSpeedDownOnly, LOW);
-    panStop = 0;
+    panStop = PAN_STOP_NONE;
   }
 
   /////////////////////////////
