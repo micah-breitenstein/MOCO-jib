@@ -65,6 +65,16 @@ int interval;
 int stepDist = 100;
 const uint8_t trigger = 28;
 
+enum TimelapsePhase {
+  TIMELAPSE_PHASE_IDLE,
+  TIMELAPSE_PHASE_TRIGGER_LOW,
+  TIMELAPSE_PHASE_TRIGGER_HIGH,
+  TIMELAPSE_PHASE_MOVE_ACTIVE
+};
+
+TimelapsePhase timelapsePhase = TIMELAPSE_PHASE_IDLE;
+unsigned long timelapsePhaseStartMs = 0;
+
 // Motion Control Variables
 int bounce = 0;
 int count = 0;
@@ -370,11 +380,96 @@ void stopAllMotors() {
   digitalWrite(tiltSpeedDownOnly, LOW);
 }
 
-void pulseTimelapseTrigger() {
-  digitalWrite(trigger, LOW);
-  delay(interval / 2);
+const char* getTimelapseModeLabel(int mode) {
+  switch (mode) {
+    // Mode 1: swing left, boom down
+    case 1:
+      return "Timelapse Mode 1: Swing left, boom down";
+    // Mode 2: swing left, boom up
+    case 2:
+      return "Timelapse Mode 2: Swing left, boom up";
+    // Mode 3: swing right, boom up
+    case 3:
+      return "Timelapse Mode 3: Swing right, boom up";
+    // Mode 4: swing right, boom down
+    case 4:
+      return "Timelapse Mode 4: Swing right, boom down";
+    // Mode 5: swing left
+    case 5:
+      return "Timelapse Mode 5: Swing left";
+    // Mode 6: boom up
+    case 6:
+      return "Timelapse Mode 6: Boom up";
+    // Mode 7: swing right
+    case 7:
+      return "Timelapse Mode 7: Swing right";
+    // Mode 8: boom down
+    case 8:
+      return "Timelapse Mode 8: Boom down";
+    default:
+      return nullptr;
+  }
+}
+
+void applyTimelapseModeOutputs(int mode) {
+  switch (mode) {
+    // Mode 1: swing left, boom down
+    case 1:
+      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      break;
+    // Mode 2: swing left, boom up
+    case 2:
+      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      break;
+    // Mode 3: swing right, boom up
+    case 3:
+      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      break;
+    // Mode 4: swing right, boom down
+    case 4:
+      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      break;
+    // Mode 5: swing left
+    case 5:
+      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      break;
+    // Mode 6: boom up
+    case 6:
+      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      break;
+    // Mode 7: swing right
+    case 7:
+      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      break;
+    // Mode 8: boom down
+    case 8:
+      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      break;
+  }
+}
+
+void resetTimelapseState() {
+  timelapseMode = 0;
+  timelapsePhase = TIMELAPSE_PHASE_IDLE;
+  timelapsePhaseStartMs = 0;
   digitalWrite(trigger, HIGH);
-  delay(interval / 2);
+  stopAllMotors();
 }
 
 void updateTimelapseModeSelection() {
@@ -401,105 +496,49 @@ void updateTimelapseModeSelection() {
   }
 }
 
-void handleActiveTimelapseMode() {
+void handleActiveTimelapseMode(unsigned long now) {
   if (timelapseMode == 0) {
     return;
   }
 
-  switch (timelapseMode) {
-    // Mode 1: swing left, boom down
-    case 1:
-      Serial.println("Timelapse Mode 1: Swing left, boom down");
-      break;
-    // Mode 2: swing left, boom up
-    case 2:
-      Serial.println("Timelapse Mode 2: Swing left, boom up");
-      break;
-    // Mode 3: swing right, boom up
-    case 3:
-      Serial.println("Timelapse Mode 3: Swing right, boom up");
-      break;
-    // Mode 4: swing right, boom down
-    case 4:
-      Serial.println("Timelapse Mode 4: Swing right, boom down");
-      break;
-    // Mode 5: swing left
-    case 5:
-      Serial.println("Timelapse Mode 5: Swing left");
-      break;
-    // Mode 6: boom up
-    case 6:
-      Serial.println("Timelapse Mode 6: Boom up");
-      break;
-    // Mode 7: swing right
-    case 7:
-      Serial.println("Timelapse Mode 7: Swing right");
-      break;
-    // Mode 8: boom down
-    case 8:
-      Serial.println("Timelapse Mode 8: Boom down");
-      break;
-    default:
-      return;
+  const char* modeLabel = getTimelapseModeLabel(timelapseMode);
+  if (modeLabel == nullptr) {
+    resetTimelapseState();
+    return;
   }
 
-  pulseTimelapseTrigger();
-
-  switch (timelapseMode) {
-    // Mode 1: swing left, boom down
-    case 1:
-      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
-      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+  switch (timelapsePhase) {
+    case TIMELAPSE_PHASE_IDLE:
+      Serial.println(modeLabel);
+      digitalWrite(trigger, LOW);
+      timelapsePhase = TIMELAPSE_PHASE_TRIGGER_LOW;
+      timelapsePhaseStartMs = now;
       break;
-    // Mode 2: swing left, boom up
-    case 2:
-      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
-      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+    case TIMELAPSE_PHASE_TRIGGER_LOW:
+      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(interval / 2)) {
+        digitalWrite(trigger, HIGH);
+        timelapsePhase = TIMELAPSE_PHASE_TRIGGER_HIGH;
+        timelapsePhaseStartMs = now;
+      }
       break;
-    // Mode 3: swing right, boom up
-    case 3:
-      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
-      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+    case TIMELAPSE_PHASE_TRIGGER_HIGH:
+      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(interval / 2)) {
+        applyTimelapseModeOutputs(timelapseMode);
+        timelapsePhase = TIMELAPSE_PHASE_MOVE_ACTIVE;
+        timelapsePhaseStartMs = now;
+      }
       break;
-    // Mode 4: swing right, boom down
-    case 4:
-      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
-      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
-      break;
-    // Mode 5: swing left
-    case 5:
-      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
-      break;
-    // Mode 6: boom up
-    case 6:
-      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
-      break;
-    // Mode 7: swing right
-    case 7:
-      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
-      break;
-    // Mode 8: boom down
-    case 8:
-      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+    case TIMELAPSE_PHASE_MOVE_ACTIVE:
+      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(stepDist)) {
+        stopAllMotors();
+        timelapsePhase = TIMELAPSE_PHASE_IDLE;
+        timelapsePhaseStartMs = now;
+      }
       break;
     default:
+      resetTimelapseState();
       return;
   }
-
-  delay(stepDist);
-  stopAllMotors();
 }
 
 void setup() {
@@ -549,6 +588,8 @@ void setup() {
   for (size_t i = 0; i < sizeof(dipSwitchPins) / sizeof(dipSwitchPins[0]); ++i) {
     pinMode(dipSwitchPins[i], INPUT_PULLUP);
   }
+
+  resetTimelapseState();
 
   delay(CONTROLLER_STARTUP_DELAY_MS);
   configureController();
@@ -633,12 +674,11 @@ void loop() {
 
   // R3 (right stick click) cancels active timelapse and stops all motors
   if (timelapseMode != 0 && ps2x.ButtonReleased(PSB_R3)) {
-    timelapseMode = 0;
-    stopAllMotors();
+    resetTimelapseState();
   }
 
   updateTimelapseModeSelection();
-  handleActiveTimelapseMode();
+  handleActiveTimelapseMode(millis());
 
   // MOCO Moves (bounce)
 
