@@ -77,6 +77,7 @@ constexpr uint8_t DIP_SWITCH_2 = 43;
 constexpr uint8_t DIP_SWITCH_3 = 37;
 constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
+constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -135,7 +136,8 @@ void detectControllerType() {
 }
 
 void setup() {
-  //Serial.begin(57600);
+
+  interval = intervalSeconds * 1000;
 
   const int outputPins[] = {
     swingLeft,
@@ -181,10 +183,8 @@ void setup() {
     pinMode(dipSwitchPins[i], INPUT_PULLUP);
   }
 
-  interval = intervalSeconds * 1000;
-  delay(300);
+  delay(CONTROLLER_STARTUP_DELAY_MS);
   configureController();
-
   detectControllerType();
 }
 
@@ -2171,11 +2171,5 @@ void loop() {
         count = 0;
       }
     }
-
-
-
   }
-}
-
-void loop() {
 }
