@@ -509,7 +509,7 @@ void loop() {
   }
 
   if (timelapseMode == 1) {
-    Serial.println("timelapse mode 1");
+    Serial.println("Timelapse Mode 1: Swing left, boom down");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
@@ -530,7 +530,7 @@ void loop() {
   }
 
   if (timelapseMode == 2) {
-    Serial.println("timelapse mode 2");
+    Serial.println("Timelapse Mode 2: Swing left, boom up");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
@@ -551,7 +551,7 @@ void loop() {
   }
 
   if (timelapseMode == 3) {
-    Serial.println("timelapse mode 3");
+    Serial.println("Timelapse Mode 3: Swing right, boom up");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
@@ -572,7 +572,7 @@ void loop() {
   }
 
   if (timelapseMode == 4) {
-    Serial.println("timelapse mode 4");
+    Serial.println("Timelapse Mode 4: Swing right, boom down");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
@@ -593,7 +593,7 @@ void loop() {
   }
 
   if (timelapseMode == 5) {
-    Serial.println("timelapse mode 5");
+    Serial.println("Timelapse Mode 5: Swing left");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
@@ -612,7 +612,7 @@ void loop() {
   }
 
   if (timelapseMode == 6) {
-    Serial.println("timelapse mode 6");
+    Serial.println("Timelapse Mode 6: Boom up");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
@@ -631,7 +631,7 @@ void loop() {
   }
 
   if (timelapseMode == 7) {
-    Serial.println("timelapse mode 7");
+    Serial.println("Timelapse Mode 7: Swing right");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
@@ -650,7 +650,7 @@ void loop() {
   }
 
   if (timelapseMode == 8) {
-    Serial.println("timelapse mode 8");
+    Serial.println("Timelapse Mode 8: Boom down");
     digitalWrite(trigger, LOW);
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
