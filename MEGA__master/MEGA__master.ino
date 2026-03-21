@@ -205,6 +205,16 @@ void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8
   }
 }
 
+void handleSwingOnly(uint8_t buttonCode, uint8_t swingNormalPin, uint8_t swingReversedPin) {
+  handleSoloDirectionalMode(buttonCode, isSwingReversed, swingNormalPin, swingReversedPin, swingSoloMode);
+}
+
+void handleSwingAndPan(uint8_t buttonCode, uint8_t swingNormalPin, uint8_t swingReversedPin,
+                        uint8_t panNormalPin, uint8_t panReversedPin) {
+  handleCombinedDirectionalMode(buttonCode, isSwingReversed, swingNormalPin, swingReversedPin,
+                                 isPanReversed, panNormalPin, panReversedPin, swingSoloMode, swingInMotion);
+}
+
 void activatePanTrim(uint8_t pin, const char* label) {
   digitalWrite(pin, HIGH);
   Serial.println(label);
@@ -338,30 +348,28 @@ void loop() {
   // 1st AXIS (BOOM SWING)
 
   // swingLeft (no pan)
-  handleSoloDirectionalMode(PSB_PAD_LEFT, isSwingReversed, swingLeft, swingRight, swingSoloMode);
+  handleSwingOnly(PSB_PAD_LEFT, swingLeft, swingRight);
 
   // swingRight (no pan)
-  handleSoloDirectionalMode(PSB_PAD_RIGHT, isSwingReversed, swingRight, swingLeft, swingSoloMode);
+  handleSwingOnly(PSB_PAD_RIGHT, swingRight, swingLeft);
 
   // swingLeft + panRight
-  handleCombinedDirectionalMode(PSB_PAD_LEFT, isSwingReversed, swingLeft, swingRight,
-                                 isPanReversed, panRight, panLeft, swingSoloMode, swingInMotion);
+  handleSwingAndPan(PSB_PAD_LEFT, swingLeft, swingRight, panRight, panLeft);
 
   // swingRight + panLeft
-  handleCombinedDirectionalMode(PSB_PAD_RIGHT, isSwingReversed, swingRight, swingLeft,
-                                 isPanReversed, panLeft, panRight, swingSoloMode, swingInMotion);
+  handleSwingAndPan(PSB_PAD_RIGHT, swingRight, swingLeft, panLeft, panRight);
 
   applyPanTrimDuringSwing();
   resetPanTrimAtCenter();
 
   // 2nd AXIS (CAMERA PAN)
 
-  if (swingInMotion == 0 && rightStickXvalue == STICK_MIN) {
-    activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
-  }
-
-  if (swingInMotion == 0 && rightStickXvalue == STICK_MAX) {
-    activatePanOnlyMotion(panRight, panLeft, "panrightonly with top speed");
+  if (swingInMotion == 0) {
+    if (rightStickXvalue == STICK_MIN) {
+      activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
+    } else if (rightStickXvalue == STICK_MAX) {
+      activatePanOnlyMotion(panRight, panLeft, "panrightonly with top speed");
+    }
   }
 
   stopPanOnlyMotionAtCenter();
