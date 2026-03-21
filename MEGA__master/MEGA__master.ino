@@ -247,10 +247,10 @@ void loop() {
     ///////////swingLeft (no pan)
     /////////////////////////////////
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT)) {
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
       swingSoloMode = 1;
@@ -265,10 +265,10 @@ void loop() {
     ///////////swingRight (no pan)
     /////////////////////////////////
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT)) {
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
       swingSoloMode = 1;
@@ -284,16 +284,16 @@ void loop() {
     /////////////////////////////////
     if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_LEFT)) {
       swingInMotion = 1;
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
     }
@@ -311,16 +311,16 @@ void loop() {
     //////////////////////////////
     if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
       swingInMotion = 1;
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
     }
@@ -362,10 +362,10 @@ void loop() {
       digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
       digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
 
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
       panStop = 1;
@@ -376,10 +376,10 @@ void loop() {
       digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
       digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
 
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
       panStop = 1;
@@ -400,10 +400,10 @@ void loop() {
 
     //lift UP (no tilt)
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP)) {
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
       liftSoloMode = 1;
@@ -417,10 +417,10 @@ void loop() {
 
     //lift DOWN (no tilt)
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN)) {
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
       liftSoloMode = 1;
@@ -438,17 +438,17 @@ void loop() {
 
     if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_UP)) {
       liftInMotion = 1;
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
     }
@@ -466,17 +466,17 @@ void loop() {
     if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_DOWN)) {
       liftInMotion = 1;
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
     }
@@ -519,10 +519,10 @@ void loop() {
       digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
       digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
       tiltStop = 1;
@@ -533,10 +533,10 @@ void loop() {
 
       digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
       digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
       tiltStop = 1;
@@ -556,10 +556,10 @@ void loop() {
     ////////////////////////////
 
     if (ps2x.Button(PSB_TRIANGLE)) {
-      if (isFocusReversed == 0) {
+      if (!isFocusReversed) {
         digitalWrite(focusLeft, HIGH);
       }
-      if (isFocusReversed == 1) {
+      if (isFocusReversed) {
         digitalWrite(focusRight, HIGH);
       }
 
@@ -570,10 +570,10 @@ void loop() {
     }
 
     if (ps2x.Button(PSB_CROSS)) {
-      if (isFocusReversed == 0) {
+      if (!isFocusReversed) {
         digitalWrite(focusRight, HIGH);
       }
-      if (isFocusReversed == 1) {
+      if (isFocusReversed) {
         digitalWrite(focusLeft, HIGH);
       }
     }
@@ -620,30 +620,30 @@ void loop() {
       delay (interval / 2);
 
       Serial.println("turning on timelapse 1 now");
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
 
@@ -673,30 +673,30 @@ void loop() {
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
 
@@ -726,30 +726,30 @@ void loop() {
       delay (interval / 2);
 
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
 
@@ -783,30 +783,30 @@ void loop() {
 
 
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
 
@@ -836,16 +836,16 @@ void loop() {
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
 
@@ -871,17 +871,17 @@ void loop() {
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
 
@@ -906,16 +906,16 @@ void loop() {
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
 
@@ -942,17 +942,17 @@ void loop() {
       delay (interval / 2);
 
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
 
@@ -981,30 +981,30 @@ void loop() {
     }
 
     if (bounce == 1 && stage == 0) {
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
       count++;
@@ -1030,60 +1030,60 @@ void loop() {
       if (count <= mocoDistance) {
 
         //turn off motors
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
 
 
         //turn on motors
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
         count++;
@@ -1091,59 +1091,59 @@ void loop() {
 
       if (count >= mocoDistance) {//starting point
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
 
         //turn motors on
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
         count++;
@@ -1165,30 +1165,30 @@ void loop() {
       Serial.println ("bounce 2");
     }
     if (bounce == 2 && stage == 0) {
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
       count++;
@@ -1214,60 +1214,60 @@ void loop() {
 
         //turn motors off
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
 
 
         //turn motors on
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
         count++;
@@ -1276,58 +1276,58 @@ void loop() {
       if (count >= mocoDistance) {
 
         //turn motors off
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
 
         //turn motors on
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
         count++;
@@ -1349,30 +1349,30 @@ void loop() {
 
     if (bounce == 3 && stage == 0) {
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
 
@@ -1400,59 +1400,59 @@ void loop() {
       if (count <= mocoDistance) {
 
         // motor off
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
 
 
         //motor on
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
 
@@ -1462,58 +1462,58 @@ void loop() {
       if (count >= mocoDistance) {
 
         //motor off
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
 
         //motor on
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
 
@@ -1534,30 +1534,30 @@ void loop() {
 
     if (bounce == 4 && stage == 0) {
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
 
@@ -1585,58 +1585,58 @@ void loop() {
       if (count <= mocoDistance) {
 
         //motor off
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
 
         //motor on
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
 
@@ -1646,58 +1646,58 @@ void loop() {
       if (count >= mocoDistance) {
 
         //motor OFF
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
 
         //motor ON
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
 
@@ -1724,16 +1724,16 @@ void loop() {
 
     if (bounce == 5 && stage == 0) {
 
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
       count++;
@@ -1755,29 +1755,29 @@ void loop() {
       if (count <= mocoDistance) {
 
         //motor OFF
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
         //motor ON
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
 
@@ -1787,30 +1787,30 @@ void loop() {
       if (count >= mocoDistance) {
 
         //motor OFF
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, LOW);
         }
 
         //motor ON
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
 
@@ -1832,17 +1832,17 @@ void loop() {
     }
     if (bounce == 6 && stage == 0) {
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
       count++;
@@ -1863,32 +1863,32 @@ void loop() {
     if (bounce == 6 && stage == 1) {
       if (count <= mocoDistance) {
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
 
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
 
@@ -1897,32 +1897,32 @@ void loop() {
 
       if (count >= mocoDistance) {
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
 
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
         count++;
@@ -1947,16 +1947,16 @@ void loop() {
     }
 
     if (bounce == 7 && stage == 0) {
-      if (isSwingReversed == 0) {
+      if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
-      if (isSwingReversed == 1) {
+      if (isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (isPanReversed == 0) {
+      if (!isPanReversed) {
         digitalWrite(panLeft, HIGH);
       }
-      if (isPanReversed == 1) {
+      if (isPanReversed) {
         digitalWrite(panRight, HIGH);
       }
 
@@ -1981,31 +1981,31 @@ void loop() {
       if (count <= mocoDistance) {
 
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, LOW);
         }
 
 
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
 
@@ -2014,30 +2014,30 @@ void loop() {
 
       if (count >= mocoDistance) {
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingLeft, LOW);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingRight, LOW);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panRight, LOW);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panLeft, LOW);
         }
 
 
-        if (isSwingReversed == 0) {
+        if (!isSwingReversed) {
           digitalWrite(swingRight, HIGH);
         }
-        if (isSwingReversed == 1) {
+        if (isSwingReversed) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (isPanReversed == 0) {
+        if (!isPanReversed) {
           digitalWrite(panLeft, HIGH);
         }
-        if (isPanReversed == 1) {
+        if (isPanReversed) {
           digitalWrite(panRight, HIGH);
         }
 
@@ -2061,17 +2061,17 @@ void loop() {
 
     if (bounce == 8 && stage == 0) {
 
-      if (isLiftReversed == 0) {
+      if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
-      if (isLiftReversed == 1) {
+      if (isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
 
-      if (isTiltReversed == 0) {
+      if (!isTiltReversed) {
         digitalWrite(tiltUp, HIGH);
       }
-      if (isTiltReversed == 1) {
+      if (isTiltReversed) {
         digitalWrite(tiltDown, HIGH);
       }
 
@@ -2095,31 +2095,31 @@ void loop() {
     if (bounce == 8 && stage == 1) {
       if (count <= mocoDistance) {
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
         count++;
@@ -2127,32 +2127,32 @@ void loop() {
 
       if (count >= mocoDistance) {
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftUp, LOW);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftDown, LOW);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltDown, LOW);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltUp, LOW);
         }
 
 
-        if (isLiftReversed == 0) {
+        if (!isLiftReversed) {
           digitalWrite(liftDown, HIGH);
         }
-        if (isLiftReversed == 1) {
+        if (isLiftReversed) {
           digitalWrite(liftUp, HIGH);
         }
 
-        if (isTiltReversed == 0) {
+        if (!isTiltReversed) {
           digitalWrite(tiltUp, HIGH);
         }
-        if (isTiltReversed == 1) {
+        if (isTiltReversed) {
           digitalWrite(tiltDown, HIGH);
         }
         count++;
