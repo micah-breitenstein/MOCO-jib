@@ -370,6 +370,13 @@ void stopAllMotors() {
   digitalWrite(tiltSpeedDownOnly, LOW);
 }
 
+void pulseTimelapseTrigger() {
+  digitalWrite(trigger, LOW);
+  delay(interval / 2);
+  digitalWrite(trigger, HIGH);
+  delay(interval / 2);
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -512,10 +519,7 @@ void loop() {
 
   if (timelapseMode == 1) {
     Serial.println("Timelapse Mode 1: Swing left, boom down");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
     setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
@@ -533,10 +537,7 @@ void loop() {
 
   if (timelapseMode == 2) {
     Serial.println("Timelapse Mode 2: Swing left, boom up");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
     setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
@@ -554,10 +555,7 @@ void loop() {
 
   if (timelapseMode == 3) {
     Serial.println("Timelapse Mode 3: Swing right, boom up");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
     setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
@@ -575,10 +573,7 @@ void loop() {
 
   if (timelapseMode == 4) {
     Serial.println("Timelapse Mode 4: Swing right, boom down");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
     setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
@@ -596,10 +591,7 @@ void loop() {
 
   if (timelapseMode == 5) {
     Serial.println("Timelapse Mode 5: Swing left");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
     setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
@@ -615,10 +607,7 @@ void loop() {
 
   if (timelapseMode == 6) {
     Serial.println("Timelapse Mode 6: Boom up");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
     setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
@@ -634,10 +623,7 @@ void loop() {
 
   if (timelapseMode == 7) {
     Serial.println("Timelapse Mode 7: Swing right");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
     setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
@@ -653,10 +639,7 @@ void loop() {
 
   if (timelapseMode == 8) {
     Serial.println("Timelapse Mode 8: Boom down");
-    digitalWrite(trigger, LOW);
-    delay(interval / 2);
-    digitalWrite(trigger, HIGH);
-    delay(interval / 2);
+    pulseTimelapseTrigger();
 
     setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
     setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
