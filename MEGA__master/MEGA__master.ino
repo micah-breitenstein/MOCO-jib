@@ -86,7 +86,6 @@ bool isFocusReversed = false;
 int delayTime;
 
 void setup() {
-
   //Serial.begin(57600);
 
   const int outputPins[] = {
@@ -134,9 +133,6 @@ void setup() {
   }
 
   interval = intervalSeconds * 1000;
-
-
-
   delay(300);
 
   error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, pressures, rumble);
@@ -2175,13 +2171,8 @@ void loop() {
 
 
 
-
-
-
-
-
-
-
   }
-  delay(10);
+}
+
+void loop() {
 }
