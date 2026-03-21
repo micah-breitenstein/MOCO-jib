@@ -7,6 +7,7 @@ constexpr uint8_t PS2_CLK = 11;
 
 constexpr bool PRESSURES = false;
 constexpr bool RUMBLE = false;
+constexpr bool DEBUG_EDGE_EVENTS = true;
 
 PS2X ps2x;
 int error = 0;
@@ -155,10 +156,18 @@ void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPi
 
 void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, int& modeState) {
   if (ps2x.Button(PSB_SELECT) && ps2x.Button(buttonCode)) {
+    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+      Serial.print("SOLO press: ");
+      Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
+    }
     setDirectionalOutput(isReversed, normalPin, reversedPin, HIGH);
     modeState = 1;
   }
   if (modeState == 1 && ps2x.ButtonReleased(buttonCode)) {
+    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+      Serial.print("SOLO release: ");
+      Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
+    }
     digitalWrite(normalPin, LOW);
     digitalWrite(reversedPin, LOW);
     modeState = 0;
@@ -169,11 +178,19 @@ void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8
                                     bool axis2Reversed, uint8_t axis2Normal, uint8_t axis2Rev,
                                     int& soloState, int& motionState) {
   if (soloState == 0 && ps2x.Button(buttonCode)) {
+    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+      Serial.print("COMBINED press: ");
+      Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
+    }
     motionState = 1;
     setDirectionalOutput(axis1Reversed, axis1Normal, axis1Rev, HIGH);
     setDirectionalOutput(axis2Reversed, axis2Normal, axis2Rev, HIGH);
   }
   if (soloState == 0 && ps2x.ButtonReleased(buttonCode)) {
+    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+      Serial.print("COMBINED release: ");
+      Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
+    }
     digitalWrite(axis1Normal, LOW);
     digitalWrite(axis1Rev, LOW);
     digitalWrite(axis2Normal, LOW);
