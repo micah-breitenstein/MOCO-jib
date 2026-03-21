@@ -210,7 +210,6 @@ void loop() {
   leftStickYvalue  = ps2x.Analog(PSS_LY);
   leftStickXvalue  = ps2x.Analog(PSS_LX);
 
-
   //////////////R1 and R2 Buttons
   if (ps2x.Button(PSB_R1)) {
     digitalWrite(liftSpeedUp, HIGH);
@@ -316,7 +315,6 @@ void loop() {
     swingInMotion = 0;
   }
 
-
   ///////////swingRight panLeft
   //////////////////////////////
   if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
@@ -403,7 +401,6 @@ void loop() {
     panStop = 0;
   }
 
-
   /////////////////////////////
   //3rd AXIS (BOOM LIFT)
   ////////////////////////////
@@ -441,7 +438,6 @@ void loop() {
     digitalWrite(liftUp, LOW);
     liftSoloMode = 0;
   }
-
 
   //lift UP tilt DOWN
   ///////////////////
@@ -560,7 +556,6 @@ void loop() {
     tiltStop = 0;
   }
 
-
   /////////////////////////////
   //5th AXIS (Camera focus)
   ////////////////////////////
@@ -593,7 +588,6 @@ void loop() {
     digitalWrite(focusLeft, LOW);
   }
 
-
   if (ps2x.Button(PSB_SQUARE)) {
     digitalWrite(focusSpeedDown, HIGH);
   }
@@ -608,12 +602,9 @@ void loop() {
     digitalWrite(focusSpeedUp, LOW);
   }
 
-
-
   ////////////////////////////////////////////////////
   /////////////////////Timelapse/////////////////////
   //////////////////////////////////////////////////
-
 
   ///////swing left boom down
   ///////////////////////////////////
@@ -710,7 +701,6 @@ void loop() {
       digitalWrite(tiltUp, HIGH);
     }
 
-
     delay(stepDist);
     digitalWrite(swingLeft, LOW);
     digitalWrite(swingRight, LOW);
@@ -735,7 +725,6 @@ void loop() {
     digitalWrite(trigger, HIGH);
     delay(interval / 2);
 
-
     if (!isSwingReversed) {
       digitalWrite(swingRight, HIGH);
     }
@@ -763,8 +752,6 @@ void loop() {
       digitalWrite(tiltUp, HIGH);
     }
 
-
-
     delay(stepDist);
 
     digitalWrite(swingLeft, LOW);
@@ -776,7 +763,6 @@ void loop() {
     digitalWrite(tiltUp, LOW);
     digitalWrite(tiltDown, LOW);
   }
-
 
   ///////swing right and boomdown
   ///////////////////////////////////
@@ -791,8 +777,6 @@ void loop() {
     digitalWrite(trigger, HIGH);
     delay(interval / 2);
 
-
-
     if (!isSwingReversed) {
       digitalWrite(swingRight, HIGH);
     }
@@ -819,7 +803,6 @@ void loop() {
     if (isTiltReversed) {
       digitalWrite(tiltDown, HIGH);
     }
-
 
     delay(stepDist);
     digitalWrite(swingLeft, LOW);
@@ -867,7 +850,6 @@ void loop() {
 
   }
 
-
   ///////lift up
   ///////////////////////////////////
   if (timelapseMode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
@@ -901,7 +883,6 @@ void loop() {
     digitalWrite(tiltUp, LOW);
     digitalWrite(tiltDown, LOW);
   }
-
 
   ///////swing right
   ///////////////////////////////////
@@ -937,7 +918,6 @@ void loop() {
 
   }
 
-
   /////lift DOWN
   ///////////////
   if (timelapseMode == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
@@ -950,7 +930,6 @@ void loop() {
     delay(interval / 2);
     digitalWrite(trigger, HIGH);
     delay(interval / 2);
-
 
     if (!isLiftReversed) {
       digitalWrite(liftDown, HIGH);
@@ -977,9 +956,7 @@ void loop() {
   /////////MOCO moves
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 //turn off bounce?
-
 
   /////Bounce 1
   ////////swing LEFT boom DOWN
@@ -1066,7 +1043,6 @@ void loop() {
       if (isTiltReversed) {
         digitalWrite(tiltDown, LOW);
       }
-
 
       //turn on motors
 
@@ -1164,8 +1140,6 @@ void loop() {
     }
   }
 
-
-
   /////Bounce2
   ///////swing LEFT Boom UP
   /////////////////////////
@@ -1250,7 +1224,6 @@ void loop() {
       if (isTiltReversed) {
         digitalWrite(tiltUp, LOW);
       }
-
 
       //turn motors on
 
@@ -1348,7 +1321,6 @@ void loop() {
     }
   }
 
-
   /////Bounce3
   ///////swing RIGHT Boom UP
   /////////////////////////
@@ -1436,7 +1408,6 @@ void loop() {
       if (isTiltReversed) {
         digitalWrite(tiltUp, LOW);
       }
-
 
       //motor on
       if (!isSwingReversed) {
@@ -1720,9 +1691,6 @@ void loop() {
 
   }
 
-
-
-
   //Bounce 5
   //////////swing LEFT
   ////////////////////////////////////
@@ -1832,7 +1800,6 @@ void loop() {
     }
   }
 
-
   //Bounce 6
   /////lift UP
   /////////////////
@@ -1887,7 +1854,6 @@ void loop() {
         digitalWrite(tiltUp, LOW);
       }
 
-
       if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
       }
@@ -1921,7 +1887,6 @@ void loop() {
         digitalWrite(tiltDown, LOW);
       }
 
-
       if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
       }
@@ -1942,10 +1907,6 @@ void loop() {
       count = 0;
     }
   }
-
-
-
-
 
   ///Bounce 7
   ///////////swing RIGHT
@@ -1980,7 +1941,6 @@ void loop() {
     digitalWrite(swingLeft, LOW);
     digitalWrite(panRight, LOW);
 
-
     mocoDistance = count;
     count = 0;
     stage = 1;
@@ -1989,7 +1949,6 @@ void loop() {
   if (bounce == 7 && stage == 1) {
 
     if (count <= mocoDistance) {
-
 
       if (!isSwingReversed) {
         digitalWrite(swingRight, LOW);
@@ -2003,8 +1962,6 @@ void loop() {
       if (isPanReversed) {
         digitalWrite(panRight, LOW);
       }
-
-
 
       if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
@@ -2037,7 +1994,6 @@ void loop() {
         digitalWrite(panLeft, LOW);
       }
 
-
       if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
       }
@@ -2051,15 +2007,12 @@ void loop() {
         digitalWrite(panRight, HIGH);
       }
 
-
       count++;
     }
     if (count >= mocoDistance * 2) {
       count = 0;
     }
   }
-
-
 
   /////Bounce 8
   /////////////Lift DOWN
@@ -2150,7 +2103,6 @@ void loop() {
       if (isTiltReversed) {
         digitalWrite(tiltUp, LOW);
       }
-
 
       if (!isLiftReversed) {
         digitalWrite(liftDown, HIGH);
