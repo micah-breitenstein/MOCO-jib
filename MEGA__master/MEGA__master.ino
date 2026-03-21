@@ -248,12 +248,7 @@ void loop() {
   ///////////swingLeft (no pan)
   /////////////////////////////////
   if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT)) {
-    if (!isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
+    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
     swingSoloMode = 1;
   }
 
@@ -266,12 +261,7 @@ void loop() {
   ///////////swingRight (no pan)
   /////////////////////////////////
   if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT)) {
-    if (!isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
+    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
     swingSoloMode = 1;
 
   }
