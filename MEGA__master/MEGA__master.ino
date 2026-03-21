@@ -287,25 +287,19 @@ void loop() {
   handleAxisSpeedControl(PSB_L1, panSpeedUp, swingSpeedUp);
   handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown);
 
-  /////////////////////////////
-  //1st AXIS (BOOM SWING)
-  ////////////////////////////
+  // 1st AXIS (BOOM SWING)
 
-  ///////////swingLeft (no pan)
-  /////////////////////////////////
+  // swingLeft (no pan)
   handleSoloDirectionalMode(PSB_PAD_LEFT, isSwingReversed, swingLeft, swingRight, swingSoloMode);
 
-  ///////////swingRight (no pan)
-  /////////////////////////////////
+  // swingRight (no pan)
   handleSoloDirectionalMode(PSB_PAD_RIGHT, isSwingReversed, swingRight, swingLeft, swingSoloMode);
 
-  ///////////swingLeft panRight
-  /////////////////////////////////
+  // swingLeft + panRight
   handleCombinedDirectionalMode(PSB_PAD_LEFT, isSwingReversed, swingLeft, swingRight,
                                  isPanReversed, panRight, panLeft, swingSoloMode, swingInMotion);
 
-  ///////////swingRight panLeft
-  //////////////////////////////
+  // swingRight + panLeft
   handleCombinedDirectionalMode(PSB_PAD_RIGHT, isSwingReversed, swingRight, swingLeft,
                                  isPanReversed, panLeft, panRight, swingSoloMode, swingInMotion);
 
