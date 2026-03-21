@@ -332,23 +332,20 @@ void handleTiltAxis() {
   stopTiltOnlyMotionAtCenter();
 }
 
+void handleButtonDirection(uint8_t buttonCode, bool isReversed,
+                           uint8_t normalPin, uint8_t reversedPin) {
+  if (ps2x.Button(buttonCode)) {
+    setDirectionalOutput(isReversed, normalPin, reversedPin, HIGH);
+  }
+  if (ps2x.ButtonReleased(buttonCode)) {
+    digitalWrite(normalPin, LOW);
+    digitalWrite(reversedPin, LOW);
+  }
+}
+
 void handleFocusAxis() {
-  if (ps2x.Button(PSB_TRIANGLE)) {
-    setDirectionalOutput(isFocusReversed, focusLeft, focusRight, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
-    digitalWrite(focusLeft, LOW);
-    digitalWrite(focusRight, LOW);
-  }
-
-  if (ps2x.Button(PSB_CROSS)) {
-    setDirectionalOutput(isFocusReversed, focusRight, focusLeft, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_CROSS)) {
-    digitalWrite(focusRight, LOW);
-    digitalWrite(focusLeft, LOW);
-  }
-
+  handleButtonDirection(PSB_TRIANGLE, isFocusReversed, focusLeft, focusRight);
+  handleButtonDirection(PSB_CROSS, isFocusReversed, focusRight, focusLeft);
   handleAxisSpeedControl(PSB_SQUARE, focusSpeedDown, focusSpeedDown);
   handleAxisSpeedControl(PSB_CIRCLE, focusSpeedUp, focusSpeedUp);
 }
