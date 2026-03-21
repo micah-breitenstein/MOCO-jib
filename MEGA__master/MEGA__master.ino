@@ -13,7 +13,7 @@ int error = 0;
 byte controllerType = 0;
 byte vibrate = 0;
 
-// Button Settings
+// Output pins and control state
 int swingLeft = 24;
 int swingRight = 25;
 int swingSpeedUp = 26;
@@ -84,6 +84,7 @@ bool isTiltReversed = false;
 bool isFocusReversed = false;
 
 void configureController() {
+
   error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, PRESSURES, RUMBLE);
 
   if (error == 0) {
@@ -115,6 +116,7 @@ void configureController() {
 }
 
 void detectControllerType() {
+  
   controllerType = ps2x.readType();
   switch (controllerType) {
     case 0:
@@ -187,24 +189,26 @@ void setup() {
 
 void loop() {
 
-  if (error != 0) //skip loop on controller config error
+  if (error != 0) // skip loop on controller config error
     return;
 
-  if (controllerType == 2) //skip Guitar Hero controller
+  if (controllerType == 2) // skip Guitar Hero controller
     return;
 
   const bool isDualShockType = (controllerType == 1 || controllerType == 3);
-  if (!isDualShockType) //skip unsupported controller types
+  if (!isDualShockType) // skip unsupported controller types
     return;
 
-  ps2x.read_gamepad(false, vibrate); //uneccessary vibration
+  ps2x.read_gamepad(false, vibrate); // unnecessary vibration
 
+  // Read DIP-switch reversal settings
   isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
   isPanReversed = (digitalRead(DIP_SWITCH_2) == HIGH);
   isLiftReversed = (digitalRead(DIP_SWITCH_3) == HIGH);
   isTiltReversed = (digitalRead(DIP_SWITCH_4) == HIGH);
   isFocusReversed = (digitalRead(DIP_SWITCH_5) == HIGH);
 
+  // Read analog stick values
   rightStickYvalue = ps2x.Analog(PSS_RY);
   rightStickXvalue = ps2x.Analog(PSS_RX);
   leftStickYvalue  = ps2x.Analog(PSS_LY);
@@ -230,7 +234,7 @@ void loop() {
     digitalWrite(tiltSpeedDown, LOW);
   }
 
-  ///////////L1 ad L2 Buttons
+  ///////////L1 and L2 Buttons
   if (ps2x.Button(PSB_L1)) {
     digitalWrite(panSpeedUp, HIGH);
     digitalWrite(swingSpeedUp, HIGH);
@@ -495,7 +499,7 @@ void loop() {
     liftInMotion = 0;
   }
 
-  //should this all be inn 1 liftInMotion if statement?
+  //should this all be in 1 liftInMotion if statement?
 
   if (liftInMotion == 1 && rightStickYvalue == 255) {
     Serial.println("tiltSpeedDownOnly");
