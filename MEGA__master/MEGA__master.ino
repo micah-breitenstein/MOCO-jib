@@ -85,6 +85,55 @@ bool isTiltReversed = false;
 bool isFocusReversed = false;
 int delayTime;
 
+void configureController() {
+  error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, pressures, rumble);
+
+  if (error == 0) {
+    Serial.print("Found Controller, configured successful ");
+    Serial.print("pressures = ");
+    if (pressures)
+      Serial.println("true ");
+    else
+      Serial.println("false");
+    Serial.print("rumble = ");
+    if (rumble)
+      Serial.println("true)");
+    else
+      Serial.println("false");
+    Serial.println("Try out all the buttons, X will vibrate the controller, faster as you press harder;");
+    Serial.println("holding L1 or R1 will print out the analog stick values.");
+    Serial.println("Note: Go to www.billporter.info for updates and to report bugs.");
+  }
+  else if (error == 1)
+    Serial.println("No controller found, check wiring, see readme.txt to enable debug. visit www.billporter.info for troubleshooting tips");
+
+  else if (error == 2)
+    Serial.println("Controller found but not accepting commands. see readme.txt to enable debug. Visit www.billporter.info for troubleshooting tips");
+
+  else if (error == 3)
+    Serial.println("Controller refusing to enter Pressures mode, may not support it. ");
+
+  //  Serial.print(ps2x.Analog(1), HEX);
+}
+
+void detectControllerType() {
+  type = ps2x.readType();
+  switch (type) {
+    case 0:
+      Serial.print("Unknown Controller type found ");
+      break;
+    case 1:
+      Serial.print("DualShock Controller found ");
+      break;
+    case 2:
+      Serial.print("GuitarHero Controller found ");
+      break;
+    case 3:
+      Serial.print("Wireless Sony DualShock Controller found ");
+      break;
+  }
+}
+
 void setup() {
   //Serial.begin(57600);
 
@@ -134,56 +183,10 @@ void setup() {
 
   interval = intervalSeconds * 1000;
   delay(300);
+  configureController();
 
-  error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, pressures, rumble);
-
-  if (error == 0) {
-    Serial.print("Found Controller, configured successful ");
-    Serial.print("pressures = ");
-    if (pressures)
-      Serial.println("true ");
-    else
-      Serial.println("false");
-    Serial.print("rumble = ");
-    if (rumble)
-      Serial.println("true)");
-    else
-      Serial.println("false");
-    Serial.println("Try out all the buttons, X will vibrate the controller, faster as you press harder;");
-    Serial.println("holding L1 or R1 will print out the analog stick values.");
-    Serial.println("Note: Go to www.billporter.info for updates and to report bugs.");
-  }
-  else if (error == 1)
-    Serial.println("No controller found, check wiring, see readme.txt to enable debug. visit www.billporter.info for troubleshooting tips");
-
-  else if (error == 2)
-    Serial.println("Controller found but not accepting commands. see readme.txt to enable debug. Visit www.billporter.info for troubleshooting tips");
-
-  else if (error == 3)
-    Serial.println("Controller refusing to enter Pressures mode, may not support it. ");
-
-  //  Serial.print(ps2x.Analog(1), HEX);
-
-  type = ps2x.readType();
-  switch (type) {
-    case 0:
-      Serial.print("Unknown Controller type found ");
-      break;
-    case 1:
-      Serial.print("DualShock Controller found ");
-      break;
-    case 2:
-      Serial.print("GuitarHero Controller found ");
-      break;
-    case 3:
-      Serial.print("Wireless Sony DualShock Controller found ");
-      break;
-  }
+  detectControllerType();
 }
-
-
-
-
 
 void loop() {
 
@@ -306,9 +309,9 @@ void loop() {
 
     if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
       digitalWrite(swingLeft, LOW);
-      digitalWrite (panRight, LOW);
+      digitalWrite(panRight, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite (panLeft, LOW);
+      digitalWrite(panLeft, LOW);
       swingInMotion = 0;
     }
 
@@ -333,9 +336,9 @@ void loop() {
 
     if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
       digitalWrite(swingRight, LOW);
-      digitalWrite (panLeft, LOW);
+      digitalWrite(panLeft, LOW);
       digitalWrite(swingLeft, LOW);
-      digitalWrite (panRight, LOW);
+      digitalWrite(panRight, LOW);
       swingInMotion = 0;
     }
 
@@ -352,7 +355,7 @@ void loop() {
       panStop = 2;
     }
 
-    if (panStop == 2 && rightStickXvalue == 128  ) {
+    if (panStop == 2 && rightStickXvalue == 128) {
       digitalWrite(panSpeedUpOnly, LOW);
       digitalWrite(panSpeedDownOnly, LOW);
       panStop = 0;
@@ -509,7 +512,7 @@ void loop() {
       tiltStop = 2;
     }
     //should below also be a liftInMotion?
-    if (tiltStop == 2 && rightStickYvalue == 128  ) {
+    if (tiltStop == 2 && rightStickYvalue == 128) {
       digitalWrite(tiltSpeedUpOnly, LOW);
       digitalWrite(tiltSpeedDownOnly, LOW);
       tiltStop = 0;
@@ -614,16 +617,16 @@ void loop() {
     ///////swing left boom down
     ///////////////////////////////////
 
-    if  (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
+    if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
       timelapseMode = 1; //swing left boom down
     }
 
     if (timelapseMode == 1) {
       Serial.println("timelapse mode 1");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
       Serial.println("turning on timelapse 1 now");
       if (!isSwingReversed) {
@@ -675,9 +678,9 @@ void loop() {
     if (timelapseMode == 2) {
       Serial.println("timelapse mode 2");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
       if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
@@ -727,9 +730,9 @@ void loop() {
     if (timelapseMode == 3) {
       Serial.println("timelapse mode 3");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
 
       if (!isSwingReversed) {
@@ -783,9 +786,9 @@ void loop() {
     if (timelapseMode == 4) {
       Serial.println("timelapse mode 4");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
 
 
@@ -831,16 +834,16 @@ void loop() {
     ///////swing left
     ///////////////////////////////////
 
-    if  (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
+    if (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
       timelapseMode = 5; //swing left
     }
 
     if (timelapseMode == 5) {
       Serial.println("timelapse mode 5");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
       if (!isSwingReversed) {
         digitalWrite(swingLeft, HIGH);
@@ -873,9 +876,9 @@ void loop() {
     if (timelapseMode == 6) {
       Serial.println("timelapse mode 6");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
       if (!isLiftReversed) {
         digitalWrite(liftUp, HIGH);
@@ -908,9 +911,9 @@ void loop() {
     if (timelapseMode == 7) {
       Serial.println("timelapse mode 7");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
       if (!isSwingReversed) {
         digitalWrite(swingRight, HIGH);
@@ -943,9 +946,9 @@ void loop() {
     if (timelapseMode == 8) {
       Serial.println("timelapse mode 8");
       digitalWrite(trigger, LOW);
-      delay (interval / 2);
+      delay(interval / 2);
       digitalWrite(trigger, HIGH);
-      delay (interval / 2);
+      delay(interval / 2);
 
 
       if (!isLiftReversed) {
