@@ -332,6 +332,27 @@ void handleTiltAxis() {
   stopTiltOnlyMotionAtCenter();
 }
 
+void handleFocusAxis() {
+  if (ps2x.Button(PSB_TRIANGLE)) {
+    setDirectionalOutput(isFocusReversed, focusLeft, focusRight, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
+    digitalWrite(focusLeft, LOW);
+    digitalWrite(focusRight, LOW);
+  }
+
+  if (ps2x.Button(PSB_CROSS)) {
+    setDirectionalOutput(isFocusReversed, focusRight, focusLeft, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_CROSS)) {
+    digitalWrite(focusRight, LOW);
+    digitalWrite(focusLeft, LOW);
+  }
+
+  handleAxisSpeedControl(PSB_SQUARE, focusSpeedDown, focusSpeedDown);
+  handleAxisSpeedControl(PSB_CIRCLE, focusSpeedUp, focusSpeedUp);
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -456,51 +477,8 @@ void loop() {
   // 4th AXIS (CAMERA TILT)
   handleTiltAxis();
 
-  /////////////////////////////
-  //5th AXIS (Camera focus)
-  ////////////////////////////
-
-  if (ps2x.Button(PSB_TRIANGLE)) {
-    if (!isFocusReversed) {
-      digitalWrite(focusLeft, HIGH);
-    }
-    if (isFocusReversed) {
-      digitalWrite(focusRight, HIGH);
-    }
-
-  }
-  if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
-    digitalWrite(focusLeft, LOW);
-    digitalWrite(focusRight, LOW);
-  }
-
-  if (ps2x.Button(PSB_CROSS)) {
-    if (!isFocusReversed) {
-      digitalWrite(focusRight, HIGH);
-    }
-    if (isFocusReversed) {
-      digitalWrite(focusLeft, HIGH);
-    }
-  }
-
-  if (ps2x.ButtonReleased(PSB_CROSS)) {
-    digitalWrite(focusRight, LOW);
-    digitalWrite(focusLeft, LOW);
-  }
-
-  if (ps2x.Button(PSB_SQUARE)) {
-    digitalWrite(focusSpeedDown, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_SQUARE)) {
-    digitalWrite(focusSpeedDown, LOW);
-  }
-
-  if (ps2x.Button(PSB_CIRCLE)) {
-    digitalWrite(focusSpeedUp, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_CIRCLE)) {
-    digitalWrite(focusSpeedUp, LOW);
-  }
+  // 5th AXIS (CAMERA FOCUS)
+  handleFocusAxis();
 
   ////////////////////////////////////////////////////
   /////////////////////Timelapse/////////////////////
