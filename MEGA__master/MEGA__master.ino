@@ -354,9 +354,7 @@ void loop() {
   applyPanTrimDuringSwing();
   resetPanTrimAtCenter();
 
-  /////////////////////////////
-  //2nd AXIS (CAMERA PAN)
-  ////////////////////////////
+  // 2nd AXIS (CAMERA PAN)
 
   if (swingInMotion == 0 && rightStickXvalue == STICK_MIN) {
     activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
