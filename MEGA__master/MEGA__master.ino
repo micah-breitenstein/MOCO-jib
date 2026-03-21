@@ -1,9 +1,9 @@
 #include <PS2X_lib.h>  //for v1.6
 
-#define PS2_DAT 10
-#define PS2_CMD 9
-#define PS2_SEL 8
-#define PS2_CLK 11
+constexpr uint8_t PS2_DAT = 10;
+constexpr uint8_t PS2_CMD = 9;
+constexpr uint8_t PS2_SEL = 8;
+constexpr uint8_t PS2_CLK = 11;
 
 constexpr bool PRESSURES = false;
 constexpr bool RUMBLE = false;
@@ -14,40 +14,40 @@ byte controllerType = 0;
 byte vibrate = 0;
 
 // Output pins and control state
-int swingLeft = 24;
-int swingRight = 25;
-int swingSpeedUp = 26;
-int swingSpeedDown = 27;
+const uint8_t swingLeft = 24;
+const uint8_t swingRight = 25;
+const uint8_t swingSpeedUp = 26;
+const uint8_t swingSpeedDown = 27;
 int swingSoloMode = 0;
 
-int panLeft = 46;
-int panRight = 48;
-int panSpeedUp = 50;
-int panSpeedDown = 52;
+const uint8_t panLeft = 46;
+const uint8_t panRight = 48;
+const uint8_t panSpeedUp = 50;
+const uint8_t panSpeedDown = 52;
 int panStop = 0;
 
-int panSpeedUpOnly = 29; //lower
-int panSpeedDownOnly = 45; //higher
+const uint8_t panSpeedUpOnly = 29; //lower
+const uint8_t panSpeedDownOnly = 45; //higher
 
-int liftDown = 30;
-int liftUp = 31;
-int liftSpeedUp = 32;
-int liftSpeedDown = 33;
+const uint8_t liftDown = 30;
+const uint8_t liftUp = 31;
+const uint8_t liftSpeedUp = 32;
+const uint8_t liftSpeedDown = 33;
 int liftSoloMode = 0;
 
-int tiltSpeedUpOnly = 42; //lower val
-int tiltSpeedDownOnly = 44; //higher val
+const uint8_t tiltSpeedUpOnly = 42; //lower val
+const uint8_t tiltSpeedDownOnly = 44; //higher val
 
-int tiltDown = 34;
-int tiltUp = 36;
-int tiltSpeedUp = 38;
-int tiltSpeedDown = 40;
+const uint8_t tiltDown = 34;
+const uint8_t tiltUp = 36;
+const uint8_t tiltSpeedUp = 38;
+const uint8_t tiltSpeedDown = 40;
 int tiltStop = 0;
 
-int focusLeft = 47;
-int focusRight = 49;
-int focusSpeedUp = 51;
-int focusSpeedDown = 53;
+const uint8_t focusLeft = 47;
+const uint8_t focusRight = 49;
+const uint8_t focusSpeedUp = 51;
+const uint8_t focusSpeedDown = 53;
 
 int swingInMotion = 0;
 int liftInMotion = 0;
@@ -62,7 +62,7 @@ int timelapseMode = 0;
 int intervalSeconds = 15;
 int interval;
 int stepDist = 100;
-int trigger = 28;
+const uint8_t trigger = 28;
 
 // Motion Control Variables
 int bounce = 0;
@@ -116,7 +116,7 @@ void configureController() {
 }
 
 void detectControllerType() {
-  
+
   controllerType = ps2x.readType();
   switch (controllerType) {
     case 0:
@@ -134,11 +134,22 @@ void detectControllerType() {
   }
 }
 
+void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin) {
+  if (ps2x.Button(buttonCode)) {
+    digitalWrite(axis1Pin, HIGH);
+    digitalWrite(axis2Pin, HIGH);
+  }
+  if (ps2x.ButtonReleased(buttonCode)) {
+    digitalWrite(axis1Pin, LOW);
+    digitalWrite(axis2Pin, LOW);
+  }
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
 
-  const int outputPins[] = {
+  const uint8_t outputPins[] = {
     swingLeft,
     swingRight,
     swingSpeedUp,
@@ -214,44 +225,13 @@ void loop() {
   leftStickYvalue  = ps2x.Analog(PSS_LY);
   leftStickXvalue  = ps2x.Analog(PSS_LX);
 
-  //////////////R1 and R2 Buttons
-  if (ps2x.Button(PSB_R1)) {
-    digitalWrite(liftSpeedUp, HIGH);
-    digitalWrite(tiltSpeedUp, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_R1)) {
-    digitalWrite(liftSpeedUp, LOW);
-    digitalWrite(tiltSpeedUp, LOW);
-  }
+  // Lift and Tilt speed control (R1/R2 buttons)
+  handleAxisSpeedControl(PSB_R1, liftSpeedUp, tiltSpeedUp);
+  handleAxisSpeedControl(PSB_R2, liftSpeedDown, tiltSpeedDown);
 
-  if (ps2x.Button(PSB_R2)) {
-    digitalWrite(liftSpeedDown, HIGH);
-    digitalWrite(tiltSpeedDown, HIGH);
-  }
-
-  if (ps2x.ButtonReleased(PSB_R2)) {
-    digitalWrite(liftSpeedDown, LOW);
-    digitalWrite(tiltSpeedDown, LOW);
-  }
-
-  ///////////L1 and L2 Buttons
-  if (ps2x.Button(PSB_L1)) {
-    digitalWrite(panSpeedUp, HIGH);
-    digitalWrite(swingSpeedUp, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_L1)) {
-    digitalWrite(panSpeedUp, LOW);
-    digitalWrite(swingSpeedUp, LOW);
-  }
-
-  if (ps2x.Button(PSB_L2)) {
-    digitalWrite(panSpeedDown, HIGH);
-    digitalWrite(swingSpeedDown, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_L2)) {
-    digitalWrite(panSpeedDown, LOW);
-    digitalWrite(swingSpeedDown, LOW);
-  }
+  // Pan and Swing speed control (L1/L2 buttons)
+  handleAxisSpeedControl(PSB_L1, panSpeedUp, swingSpeedUp);
+  handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown);
 
   /////////////////////////////
   //1st AXIS (BOOM SWING)
