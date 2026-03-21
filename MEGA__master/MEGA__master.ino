@@ -18,7 +18,7 @@ int swingLeft = 24;
 int swingRight = 25;
 int swingSpeedUp = 26;
 int swingSpeedDown = 27;
-int swingsolo = 0;
+int swingSoloMode = 0;
 
 int panleft = 46;
 int panright = 48;
@@ -50,7 +50,7 @@ int focusright = 49;
 int focusspeedup = 51;
 int focusspeeddown = 53;
 
-int swinginmotion = 0;
+int swingInMotion = 0;
 int liftinmotion = 0;
 
 int leftStickXvalue;
@@ -79,7 +79,7 @@ int DIPSWITCH3 = 37;
 int DIPSWITCH4 = 39;
 int DIPSWITCH5 = 41;
 
-int swingswitch = 0;
+int swingSwitch = 0;
 int panswitch = 0;
 int liftswitch = 0;
 int tiltswitch = 0;
@@ -190,7 +190,7 @@ void loop() {
   else { //DualShock Controller
     ps2x.read_gamepad(false, vibrate); //uneccessary vibration
 
-    swingswitch = digitalRead(DIPSWITCH1);
+    swingSwitch = digitalRead(DIPSWITCH1);
     panswitch = digitalRead(DIPSWITCH2);
     liftswitch = digitalRead(DIPSWITCH3);
     tiltswitch = digitalRead(DIPSWITCH4);
@@ -248,47 +248,47 @@ void loop() {
     ///////////swingLeft (no pan)
     /////////////////////////////////
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT)) {
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      swingsolo = 1;
+      swingSoloMode = 1;
     }
 
-    if (swingsolo == 1 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
+    if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      swingsolo = 0;
+      swingSoloMode = 0;
     }
 
     ///////////swingRight (no pan)
     /////////////////////////////////
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT)) {
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      swingsolo = 1;
+      swingSoloMode = 1;
 
     }
-    if (swingsolo == 1 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
+    if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
       digitalWrite(swingRight, LOW);
       digitalWrite(swingLeft, LOW);
-      swingsolo = 0;
+      swingSoloMode = 0;
     }
 
     ///////////swingLeft panright
     /////////////////////////////////
-    if (swingsolo == 0 && ps2x.Button(PSB_PAD_LEFT)) {
-      swinginmotion = 1;
-      if (swingswitch == 0) {
+    if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_LEFT)) {
+      swingInMotion = 1;
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
       if (panswitch == 0) {
@@ -299,23 +299,23 @@ void loop() {
       }
     }
 
-    if (swingsolo == 0 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
+    if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
       digitalWrite(swingLeft, LOW);
       digitalWrite (panright, LOW);
       digitalWrite(swingRight, LOW);
       digitalWrite (panleft, LOW);
-      swinginmotion = 0;
+      swingInMotion = 0;
     }
 
 
     ///////////swingRight panleft
     //////////////////////////////
-    if (swingsolo == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
-      swinginmotion = 1;
-      if (swingswitch == 0) {
+    if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
+      swingInMotion = 1;
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
       if (panswitch == 0) {
@@ -326,22 +326,22 @@ void loop() {
       }
     }
 
-    if (swingsolo == 0 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
+    if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
       digitalWrite(swingRight, LOW);
       digitalWrite (panleft, LOW);
       digitalWrite(swingLeft, LOW);
       digitalWrite (panright, LOW);
-      swinginmotion = 0;
+      swingInMotion = 0;
     }
 
     //should all these below be within 1 if statement for swingmotion?
-    if (swinginmotion == 1 && rightStickXvalue == 0) {
+    if (swingInMotion == 1 && rightStickXvalue == 0) {
       digitalWrite(panspeeddownonly, HIGH);
       Serial.println("panspeeddownonly");
       panstop = 2;
     }
 
-    if (swinginmotion == 1 && rightStickXvalue == 255) {
+    if (swingInMotion == 1 && rightStickXvalue == 255) {
       digitalWrite(panspeeduponly, HIGH);
       Serial.println("panspeeduponly");
       panstop = 2;
@@ -357,7 +357,7 @@ void loop() {
     //2nd AXIS (CAMERA PAN)
     ////////////////////////////
 
-    if (swinginmotion == 0 &&  rightStickXvalue == 0) {
+    if (swingInMotion == 0 &&  rightStickXvalue == 0) {
       Serial.println("panleftnonly with top speed");
 
       digitalWrite(panspeeduponly, HIGH); //signal to nano to use top speed
@@ -372,7 +372,7 @@ void loop() {
       panstop = 1;
     }
 
-    if (swinginmotion == 0 && rightStickXvalue == 255) {
+    if (swingInMotion == 0 && rightStickXvalue == 255) {
       Serial.println("panrightonly with top speed");
       digitalWrite(panspeeduponly, HIGH); //signal to nano to use top speed
       digitalWrite(panspeeddownonly, HIGH);//signal to nano to use top speed
@@ -386,7 +386,7 @@ void loop() {
       panstop = 1;
     }
 
-    if (swinginmotion == 0 && panstop == 1 && rightStickXvalue == 128) {
+    if (swingInMotion == 0 && panstop == 1 && rightStickXvalue == 128) {
       digitalWrite(panleft, LOW);
       digitalWrite(panright, LOW);
       digitalWrite(panspeeduponly, LOW);
@@ -621,10 +621,10 @@ void loop() {
       delay (interval / 2);
 
       Serial.println("turning on timelapse 1 now");
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
       if (panswitch == 0) {
@@ -674,10 +674,10 @@ void loop() {
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
       if (panswitch == 0) {
@@ -727,10 +727,10 @@ void loop() {
       delay (interval / 2);
 
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
       if (panswitch == 0) {
@@ -784,10 +784,10 @@ void loop() {
 
 
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
       if (panswitch == 0) {
@@ -837,10 +837,10 @@ void loop() {
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
       if (panswitch == 0) {
@@ -907,10 +907,10 @@ void loop() {
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
       if (panswitch == 0) {
@@ -982,10 +982,10 @@ void loop() {
     }
 
     if (bounce == 1 && stage == 0) {
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
       if (panswitch == 0) {
@@ -1031,10 +1031,10 @@ void loop() {
       if (count <= mocodistance) {
 
         //turn off motors
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
         if (panswitch == 0) {
@@ -1061,10 +1061,10 @@ void loop() {
 
         //turn on motors
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
         if (panswitch == 0) {
@@ -1092,10 +1092,10 @@ void loop() {
 
       if (count >= mocodistance) {//starting point
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
         if (panswitch == 0) {
@@ -1121,10 +1121,10 @@ void loop() {
 
         //turn motors on
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
         if (panswitch == 0) {
@@ -1166,10 +1166,10 @@ void loop() {
       Serial.println ("bounce 2");
     }
     if (bounce == 2 && stage == 0) {
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
       if (panswitch == 0) {
@@ -1215,10 +1215,10 @@ void loop() {
 
         //turn motors off
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
         if (panswitch == 0) {
@@ -1245,10 +1245,10 @@ void loop() {
 
         //turn motors on
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
         if (panswitch == 0) {
@@ -1277,10 +1277,10 @@ void loop() {
       if (count >= mocodistance) {
 
         //turn motors off
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
         if (panswitch == 0) {
@@ -1305,10 +1305,10 @@ void loop() {
         }
 
         //turn motors on
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
         if (panswitch == 0) {
@@ -1350,10 +1350,10 @@ void loop() {
 
     if (bounce == 3 && stage == 0) {
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
       if (panswitch == 0) {
@@ -1401,10 +1401,10 @@ void loop() {
       if (count <= mocodistance) {
 
         // motor off
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
         if (panswitch == 0) {
@@ -1430,10 +1430,10 @@ void loop() {
 
 
         //motor on
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
         if (panswitch == 0) {
@@ -1463,10 +1463,10 @@ void loop() {
       if (count >= mocodistance) {
 
         //motor off
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
         if (panswitch == 0) {
@@ -1491,10 +1491,10 @@ void loop() {
         }
 
         //motor on
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
         if (panswitch == 0) {
@@ -1535,10 +1535,10 @@ void loop() {
 
     if (bounce == 4 && stage == 0) {
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
       if (panswitch == 0) {
@@ -1586,10 +1586,10 @@ void loop() {
       if (count <= mocodistance) {
 
         //motor off
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
         if (panswitch == 0) {
@@ -1614,10 +1614,10 @@ void loop() {
         }
 
         //motor on
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
         if (panswitch == 0) {
@@ -1647,10 +1647,10 @@ void loop() {
       if (count >= mocodistance) {
 
         //motor OFF
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
         if (panswitch == 0) {
@@ -1675,10 +1675,10 @@ void loop() {
         }
 
         //motor ON
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
         if (panswitch == 0) {
@@ -1725,10 +1725,10 @@ void loop() {
 
     if (bounce == 5 && stage == 0) {
 
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
       if (panswitch == 0) {
@@ -1756,10 +1756,10 @@ void loop() {
       if (count <= mocodistance) {
 
         //motor OFF
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
         if (panswitch == 0) {
@@ -1769,10 +1769,10 @@ void loop() {
           digitalWrite(panleft, LOW);
         }
         //motor ON
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
         if (panswitch == 0) {
@@ -1788,10 +1788,10 @@ void loop() {
       if (count >= mocodistance) {
 
         //motor OFF
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
         if (panswitch == 0) {
@@ -1802,10 +1802,10 @@ void loop() {
         }
 
         //motor ON
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
         if (panswitch == 0) {
@@ -1948,10 +1948,10 @@ void loop() {
     }
 
     if (bounce == 7 && stage == 0) {
-      if (swingswitch == 0) {
+      if (swingSwitch == 0) {
         digitalWrite(swingRight, HIGH);
       }
-      if (swingswitch == 1) {
+      if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
       if (panswitch == 0) {
@@ -1982,10 +1982,10 @@ void loop() {
       if (count <= mocodistance) {
 
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
         if (panswitch == 0) {
@@ -1997,10 +1997,10 @@ void loop() {
 
 
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
         if (panswitch == 0) {
@@ -2015,10 +2015,10 @@ void loop() {
 
       if (count >= mocodistance) {
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingLeft, LOW);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
         if (panswitch == 0) {
@@ -2029,10 +2029,10 @@ void loop() {
         }
 
 
-        if (swingswitch == 0) {
+        if (swingSwitch == 0) {
           digitalWrite(swingRight, HIGH);
         }
-        if (swingswitch == 1) {
+        if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
         if (panswitch == 0) {
