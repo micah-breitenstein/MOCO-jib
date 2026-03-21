@@ -89,41 +89,51 @@ void setup() {
 
   //Serial.begin(57600);
 
-  pinMode (swingLeft, OUTPUT);
-  pinMode (swingRight, OUTPUT);
-  pinMode (swingSpeedUp, OUTPUT);
-  pinMode (swingSpeedDown, OUTPUT);
-  pinMode (liftDown, OUTPUT);
-  pinMode (liftUp, OUTPUT);
-  pinMode (liftSpeedUp, OUTPUT);
-  pinMode (liftSpeedDown, OUTPUT);
-  pinMode (panLeft, OUTPUT);
-  pinMode (panRight, OUTPUT);
-  pinMode (panSpeedUp, OUTPUT);
-  pinMode (panSpeedDown, OUTPUT);
-  pinMode (tiltDown, OUTPUT);
-  pinMode (tiltUp, OUTPUT);
-  pinMode (tiltSpeedUp, OUTPUT);
-  pinMode (tiltSpeedDown, OUTPUT);
-  pinMode (focusLeft, OUTPUT);
-  pinMode (focusRight, OUTPUT);
-  pinMode (focusSpeedUp, OUTPUT);
-  pinMode (focusSpeedDown, OUTPUT);
+  const int outputPins[] = {
+    swingLeft,
+    swingRight,
+    swingSpeedUp,
+    swingSpeedDown,
+    liftDown,
+    liftUp,
+    liftSpeedUp,
+    liftSpeedDown,
+    panLeft,
+    panRight,
+    panSpeedUp,
+    panSpeedDown,
+    tiltDown,
+    tiltUp,
+    tiltSpeedUp,
+    tiltSpeedDown,
+    focusLeft,
+    focusRight,
+    focusSpeedUp,
+    focusSpeedDown,
+    tiltSpeedUpOnly,
+    tiltSpeedDownOnly,
+    panSpeedUpOnly,
+    panSpeedDownOnly,
+    trigger
+  };
 
-  pinMode(trigger, OUTPUT);
+  const uint8_t dipSwitchPins[] = {
+    DIP_SWITCH_1,
+    DIP_SWITCH_2,
+    DIP_SWITCH_3,
+    DIP_SWITCH_4,
+    DIP_SWITCH_5
+  };
+
+  for (size_t i = 0; i < sizeof(outputPins) / sizeof(outputPins[0]); ++i) {
+    pinMode(outputPins[i], OUTPUT);
+  }
+
+  for (size_t i = 0; i < sizeof(dipSwitchPins) / sizeof(dipSwitchPins[0]); ++i) {
+    pinMode(dipSwitchPins[i], INPUT_PULLUP);
+  }
+
   interval = intervalSeconds * 1000;
-
-  pinMode (DIP_SWITCH_1, INPUT_PULLUP);
-  pinMode (DIP_SWITCH_2, INPUT_PULLUP);
-  pinMode (DIP_SWITCH_3, INPUT_PULLUP);
-  pinMode (DIP_SWITCH_4, INPUT_PULLUP);
-  pinMode (DIP_SWITCH_5, INPUT_PULLUP);
-
-  pinMode (tiltSpeedUpOnly, OUTPUT);
-  pinMode (tiltSpeedDownOnly, OUTPUT);
-
-  pinMode (panSpeedUpOnly, OUTPUT);
-  pinMode (panSpeedDownOnly, OUTPUT);
 
 
 
