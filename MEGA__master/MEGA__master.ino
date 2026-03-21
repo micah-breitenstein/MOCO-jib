@@ -80,6 +80,8 @@ constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr int STICK_MIN = 0;
 constexpr int STICK_CENTER = 128;
 constexpr int STICK_MAX = 255;
+constexpr int TIMELAPSE_STICK_LOW_THRESHOLD = 123;
+constexpr int TIMELAPSE_STICK_HIGH_THRESHOLD = 133;
 constexpr int PAN_STOP_NONE = 0;
 constexpr int PAN_STOP_ACTIVE = 1;
 constexpr int PAN_STOP_TRIM = 2;
@@ -504,7 +506,7 @@ void loop() {
   }
 
   // Mode 1: swing left, boom down
-  if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 1;
   }
 
@@ -525,7 +527,7 @@ void loop() {
   }
 
   // Mode 2: swing left, boom up
-  if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 2;
   }
 
@@ -546,7 +548,7 @@ void loop() {
   }
 
   // Mode 3: swing right, boom up
-  if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 3;
   }
 
@@ -567,7 +569,7 @@ void loop() {
   }
 
   // Mode 4: swing right, boom down
-  if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 4;
   }
 
@@ -588,7 +590,7 @@ void loop() {
   }
 
   // Mode 5: swing left
-  if (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickXvalue == STICK_MIN && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 5;
   }
 
@@ -607,7 +609,7 @@ void loop() {
   }
 
   // Mode 6: boom up
-  if (timelapseMode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickYvalue == STICK_MIN && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 6;
   }
 
@@ -626,7 +628,7 @@ void loop() {
   }
 
   // Mode 7: swing right
-  if (timelapseMode == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickXvalue == STICK_MAX && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 7;
   }
 
@@ -645,7 +647,7 @@ void loop() {
   }
 
   // Mode 8: boom down
-  if (timelapseMode == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
+  if (timelapseMode == 0 && leftStickYvalue == STICK_MAX && ps2x.ButtonReleased(PSB_SELECT)) {
     timelapseMode = 8;
   }
 
