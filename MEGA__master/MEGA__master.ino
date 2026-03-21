@@ -633,12 +633,16 @@ void setBounceModeOutputs(int mode, bool towardEndpoint, uint8_t state) {
   }
 }
 
+// Stops only the motors used by the given bounce mode.
+// Called at the turnaround point between stage 0 and stage 1,
+// and during direction switches inside stage 1.
+// Modes 1-4 use all four axes; modes 5/7 use swing only; modes 6/8 use lift only.
 void stopBounceModeOutputs(int mode) {
   switch (mode) {
-    case 1:
-    case 2:
-    case 3:
-    case 4:
+    case 1: // swing left + boom down
+    case 2: // swing left + boom up
+    case 3: // swing right + boom up
+    case 4: // swing right + boom down
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
       digitalWrite(panLeft, LOW);
@@ -648,15 +652,15 @@ void stopBounceModeOutputs(int mode) {
       digitalWrite(tiltUp, LOW);
       digitalWrite(tiltDown, LOW);
       break;
-    case 5:
-    case 7:
+    case 5: // swing left only
+    case 7: // swing right only
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
       digitalWrite(panLeft, LOW);
       digitalWrite(panRight, LOW);
       break;
-    case 6:
-    case 8:
+    case 6: // boom up only
+    case 8: // boom down only
       digitalWrite(liftUp, LOW);
       digitalWrite(liftDown, LOW);
       digitalWrite(tiltUp, LOW);
