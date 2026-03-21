@@ -401,6 +401,91 @@ void updateTimelapseModeSelection() {
   }
 }
 
+void handleActiveTimelapseMode() {
+  if (timelapseMode == 0) {
+    return;
+  }
+
+  switch (timelapseMode) {
+    case 1:
+      Serial.println("Timelapse Mode 1: Swing left, boom down");
+      break;
+    case 2:
+      Serial.println("Timelapse Mode 2: Swing left, boom up");
+      break;
+    case 3:
+      Serial.println("Timelapse Mode 3: Swing right, boom up");
+      break;
+    case 4:
+      Serial.println("Timelapse Mode 4: Swing right, boom down");
+      break;
+    case 5:
+      Serial.println("Timelapse Mode 5: Swing left");
+      break;
+    case 6:
+      Serial.println("Timelapse Mode 6: Boom up");
+      break;
+    case 7:
+      Serial.println("Timelapse Mode 7: Swing right");
+      break;
+    case 8:
+      Serial.println("Timelapse Mode 8: Boom down");
+      break;
+    default:
+      return;
+  }
+
+  pulseTimelapseTrigger();
+
+  switch (timelapseMode) {
+    case 1:
+      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      break;
+    case 2:
+      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      break;
+    case 3:
+      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      break;
+    case 4:
+      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      break;
+    case 5:
+      setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      break;
+    case 6:
+      setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      break;
+    case 7:
+      setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      break;
+    case 8:
+      setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      break;
+    default:
+      return;
+  }
+
+  delay(stepDist);
+  stopAllMotors();
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -537,110 +622,7 @@ void loop() {
   }
 
   updateTimelapseModeSelection();
-
-  // Mode 1: swing left, boom down
-  if (timelapseMode == 1) {
-    Serial.println("Timelapse Mode 1: Swing left, boom down");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
-    setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-    setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
-
-  // Mode 2: swing left, boom up
-  if (timelapseMode == 2) {
-    Serial.println("Timelapse Mode 2: Swing left, boom up");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
-    setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-    setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
-
-  // Mode 3: swing right, boom up
-  if (timelapseMode == 3) {
-    Serial.println("Timelapse Mode 3: Swing right, boom up");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-    setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
-    setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-    setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
-
-  // Mode 4: swing right, boom down
-  if (timelapseMode == 4) {
-    Serial.println("Timelapse Mode 4: Swing right, boom down");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-    setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
-    setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-    setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
-
-  // Mode 5: swing left
-  if (timelapseMode == 5) {
-    Serial.println("Timelapse Mode 5: Swing left");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
-
-  // Mode 6: boom up
-  if (timelapseMode == 6) {
-    Serial.println("Timelapse Mode 6: Boom up");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-    setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
-
-  // Mode 7: swing right
-  if (timelapseMode == 7) {
-    Serial.println("Timelapse Mode 7: Swing right");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-    setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
-
-  // Mode 8: boom down
-  if (timelapseMode == 8) {
-    Serial.println("Timelapse Mode 8: Boom down");
-    pulseTimelapseTrigger();
-
-    setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-    setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
-
-    delay(stepDist);
-    stopAllMotors();
-  }
+  handleActiveTimelapseMode();
 
   // MOCO Moves (bounce)
 
