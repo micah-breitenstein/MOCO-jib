@@ -145,6 +145,14 @@ void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2P
   }
 }
 
+void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t state) {
+  if (!isReversed) {
+    digitalWrite(normalPin, state);
+  } else {
+    digitalWrite(reversedPin, state);
+  }
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
