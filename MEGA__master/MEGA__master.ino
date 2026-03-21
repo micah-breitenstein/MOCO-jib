@@ -165,6 +165,23 @@ void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t norm
   }
 }
 
+void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8_t axis1Normal, uint8_t axis1Rev,
+                                    bool axis2Reversed, uint8_t axis2Normal, uint8_t axis2Rev,
+                                    int& soloState, int& motionState) {
+  if (soloState == 0 && ps2x.Button(buttonCode)) {
+    motionState = 1;
+    setDirectionalOutput(axis1Reversed, axis1Normal, axis1Rev, HIGH);
+    setDirectionalOutput(axis2Reversed, axis2Normal, axis2Rev, HIGH);
+  }
+  if (soloState == 0 && ps2x.ButtonReleased(buttonCode)) {
+    digitalWrite(axis1Normal, LOW);
+    digitalWrite(axis1Rev, LOW);
+    digitalWrite(axis2Normal, LOW);
+    digitalWrite(axis2Rev, LOW);
+    motionState = 0;
+  }
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -267,35 +284,13 @@ void loop() {
 
   ///////////swingLeft panRight
   /////////////////////////////////
-  if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_LEFT)) {
-    swingInMotion = 1;
-    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
-  }
-
-  if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panLeft, LOW);
-    swingInMotion = 0;
-  }
+  handleCombinedDirectionalMode(PSB_PAD_LEFT, isSwingReversed, swingLeft, swingRight,
+                                 isPanReversed, panRight, panLeft, swingSoloMode, swingInMotion);
 
   ///////////swingRight panLeft
   //////////////////////////////
-  if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
-    swingInMotion = 1;
-    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-    setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
-  }
-
-  if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(panRight, LOW);
-    swingInMotion = 0;
-  }
+  handleCombinedDirectionalMode(PSB_PAD_RIGHT, isSwingReversed, swingRight, swingLeft,
+                                 isPanReversed, panLeft, panRight, swingSoloMode, swingInMotion);
 
   //should all these below be within 1 if statement for swingmotion?
   if (swingInMotion == 1 && rightStickXvalue == 0) {
