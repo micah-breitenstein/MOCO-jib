@@ -78,11 +78,11 @@ constexpr uint8_t DIP_SWITCH_3 = 37;
 constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
 
-int swingSwitch = 0;
-int panSwitch = 0;
-int liftSwitch = 0;
-int tiltSwitch = 0;
-int focusSwitch = 0;
+bool swingSwitch = false;
+bool panSwitch = false;
+bool liftSwitch = false;
+bool tiltSwitch = false;
+bool focusSwitch = false;
 int delayTime;
 
 void setup() {
@@ -189,11 +189,11 @@ void loop() {
   else { //DualShock Controller
     ps2x.read_gamepad(false, vibrate); //uneccessary vibration
 
-    swingSwitch = digitalRead(DIP_SWITCH_1);
-    panSwitch = digitalRead(DIP_SWITCH_2);
-    liftSwitch = digitalRead(DIP_SWITCH_3);
-    tiltSwitch = digitalRead(DIP_SWITCH_4);
-    focusSwitch =  digitalRead(DIP_SWITCH_5);
+    swingSwitch = (digitalRead(DIP_SWITCH_1) == HIGH);
+    panSwitch = (digitalRead(DIP_SWITCH_2) == HIGH);
+    liftSwitch = (digitalRead(DIP_SWITCH_3) == HIGH);
+    tiltSwitch = (digitalRead(DIP_SWITCH_4) == HIGH);
+    focusSwitch = (digitalRead(DIP_SWITCH_5) == HIGH);
 
     rightStickYvalue = ps2x.Analog(PSS_RY);
     rightStickXvalue = ps2x.Analog(PSS_RX);
