@@ -631,18 +631,8 @@ void loop() {
     digitalWrite(trigger, HIGH);
     delay(interval / 2);
 
-    if (!isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
+    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
 
     delay(stepDist);
     digitalWrite(swingLeft, LOW);
@@ -664,19 +654,8 @@ void loop() {
     digitalWrite(trigger, HIGH);
     delay(interval / 2);
 
-    if (!isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
+    setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+    setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
 
     delay(stepDist);
     digitalWrite(liftDown, LOW);
