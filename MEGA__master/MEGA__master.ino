@@ -274,6 +274,16 @@ void handlePanAxis() {
   stopPanOnlyMotionAtCenter();
 }
 
+void handleLiftOnly(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftReversedPin) {
+  handleSoloDirectionalMode(buttonCode, isLiftReversed, liftNormalPin, liftReversedPin, liftSoloMode);
+}
+
+void handleLiftAndTilt(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftReversedPin,
+                       uint8_t tiltNormalPin, uint8_t tiltReversedPin) {
+  handleCombinedDirectionalMode(buttonCode, isLiftReversed, liftNormalPin, liftReversedPin,
+                                isTiltReversed, tiltNormalPin, tiltReversedPin, liftSoloMode, liftInMotion);
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -383,94 +393,16 @@ void loop() {
   // 3rd AXIS (BOOM LIFT)
 
   // lift UP (no tilt)
-  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP)) {
-    if (!isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-    liftSoloMode = 1;
-  }
-
-  if (liftSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_UP)) {
-    digitalWrite(liftUp, LOW);
-    digitalWrite(liftDown, LOW);
-    liftSoloMode = 0;
-  }
+  handleLiftOnly(PSB_PAD_UP, liftUp, liftDown);
 
   // lift DOWN (no tilt)
-  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN)) {
-    if (!isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-    liftSoloMode = 1;
-  }
-
-  if (liftSoloMode == 1  && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    liftSoloMode = 0;
-  }
+  handleLiftOnly(PSB_PAD_DOWN, liftDown, liftUp);
 
   // lift UP + tilt DOWN
-  ///////////////////
-
-  if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_UP)) {
-    liftInMotion = 1;
-    if (!isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-  }
-
-  if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_UP)) {
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltDown, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(tiltUp, LOW);
-    liftInMotion = 0;
-  }
+  handleLiftAndTilt(PSB_PAD_UP, liftUp, liftDown, tiltDown, tiltUp);
 
   // lift DOWN + tilt UP
-  ///////////////////
-  if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_DOWN)) {
-    liftInMotion = 1;
-
-    if (!isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-  }
-
-  if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltDown, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(tiltUp, LOW);
-    liftInMotion = 0;
-  }
+  handleLiftAndTilt(PSB_PAD_DOWN, liftDown, liftUp, tiltUp, tiltDown);
 
   // TODO: Consider consolidating liftInMotion checks.
 
