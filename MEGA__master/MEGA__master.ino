@@ -377,6 +377,30 @@ void pulseTimelapseTrigger() {
   delay(interval / 2);
 }
 
+void updateTimelapseModeSelection() {
+  if (timelapseMode != 0 || !ps2x.ButtonReleased(PSB_SELECT)) {
+    return;
+  }
+
+  if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
+    timelapseMode = 1;
+  } else if (leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
+    timelapseMode = 2;
+  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD) {
+    timelapseMode = 3;
+  } else if (leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD) {
+    timelapseMode = 4;
+  } else if (leftStickXvalue == STICK_MIN) {
+    timelapseMode = 5;
+  } else if (leftStickYvalue == STICK_MIN) {
+    timelapseMode = 6;
+  } else if (leftStickXvalue == STICK_MAX) {
+    timelapseMode = 7;
+  } else if (leftStickYvalue == STICK_MAX) {
+    timelapseMode = 8;
+  }
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -512,11 +536,9 @@ void loop() {
     stopAllMotors();
   }
 
-  // Mode 1: swing left, boom down
-  if (timelapseMode == 0 && leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 1;
-  }
+  updateTimelapseModeSelection();
 
+  // Mode 1: swing left, boom down
   if (timelapseMode == 1) {
     Serial.println("Timelapse Mode 1: Swing left, boom down");
     pulseTimelapseTrigger();
@@ -531,10 +553,6 @@ void loop() {
   }
 
   // Mode 2: swing left, boom up
-  if (timelapseMode == 0 && leftStickXvalue < TIMELAPSE_STICK_LOW_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 2;
-  }
-
   if (timelapseMode == 2) {
     Serial.println("Timelapse Mode 2: Swing left, boom up");
     pulseTimelapseTrigger();
@@ -549,10 +567,6 @@ void loop() {
   }
 
   // Mode 3: swing right, boom up
-  if (timelapseMode == 0 && leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue < TIMELAPSE_STICK_LOW_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 3;
-  }
-
   if (timelapseMode == 3) {
     Serial.println("Timelapse Mode 3: Swing right, boom up");
     pulseTimelapseTrigger();
@@ -567,10 +581,6 @@ void loop() {
   }
 
   // Mode 4: swing right, boom down
-  if (timelapseMode == 0 && leftStickXvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && leftStickYvalue > TIMELAPSE_STICK_HIGH_THRESHOLD && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 4;
-  }
-
   if (timelapseMode == 4) {
     Serial.println("Timelapse Mode 4: Swing right, boom down");
     pulseTimelapseTrigger();
@@ -585,10 +595,6 @@ void loop() {
   }
 
   // Mode 5: swing left
-  if (timelapseMode == 0 && leftStickXvalue == STICK_MIN && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 5;
-  }
-
   if (timelapseMode == 5) {
     Serial.println("Timelapse Mode 5: Swing left");
     pulseTimelapseTrigger();
@@ -601,10 +607,6 @@ void loop() {
   }
 
   // Mode 6: boom up
-  if (timelapseMode == 0 && leftStickYvalue == STICK_MIN && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 6;
-  }
-
   if (timelapseMode == 6) {
     Serial.println("Timelapse Mode 6: Boom up");
     pulseTimelapseTrigger();
@@ -617,10 +619,6 @@ void loop() {
   }
 
   // Mode 7: swing right
-  if (timelapseMode == 0 && leftStickXvalue == STICK_MAX && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 7;
-  }
-
   if (timelapseMode == 7) {
     Serial.println("Timelapse Mode 7: Swing right");
     pulseTimelapseTrigger();
@@ -633,10 +631,6 @@ void loop() {
   }
 
   // Mode 8: boom down
-  if (timelapseMode == 0 && leftStickYvalue == STICK_MAX && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 8;
-  }
-
   if (timelapseMode == 8) {
     Serial.println("Timelapse Mode 8: Boom down");
     pulseTimelapseTrigger();
