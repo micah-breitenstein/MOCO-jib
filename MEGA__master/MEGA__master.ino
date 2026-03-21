@@ -237,6 +237,16 @@ void activatePanOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* l
   panStop = PAN_STOP_ACTIVE;
 }
 
+void stopPanOnlyMotionAtCenter() {
+  if (swingInMotion == 0 && panStop == PAN_STOP_ACTIVE && rightStickXvalue == STICK_CENTER) {
+    digitalWrite(panLeft, LOW);
+    digitalWrite(panRight, LOW);
+    digitalWrite(panSpeedUpOnly, LOW);
+    digitalWrite(panSpeedDownOnly, LOW);
+    panStop = PAN_STOP_NONE;
+  }
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -356,13 +366,7 @@ void loop() {
     activatePanOnlyMotion(panRight, panLeft, "panrightonly with top speed");
   }
 
-  if (swingInMotion == 0 && panStop == PAN_STOP_ACTIVE && rightStickXvalue == STICK_CENTER) {
-    digitalWrite(panLeft, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panSpeedUpOnly, LOW);
-    digitalWrite(panSpeedDownOnly, LOW);
-    panStop = PAN_STOP_NONE;
-  }
+  stopPanOnlyMotionAtCenter();
 
   /////////////////////////////
   //3rd AXIS (BOOM LIFT)
