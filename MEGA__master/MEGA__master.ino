@@ -10,7 +10,7 @@ constexpr bool RUMBLE = false;
 
 PS2X ps2x;
 int error = 0;
-byte type = 0;
+byte controllerType = 0;
 byte vibrate = 0;
 
 // Button Settings
@@ -115,8 +115,8 @@ void configureController() {
 }
 
 void detectControllerType() {
-  type = ps2x.readType();
-  switch (type) {
+  controllerType = ps2x.readType();
+  switch (controllerType) {
     case 0:
       Serial.print("Unknown Controller type found ");
       break;
@@ -187,11 +187,9 @@ void setup() {
 
 void loop() {
 
-  if (error == 1) //skip loop if no controller found
+  if (error != 0 || controllerType == 2) //skip loop on controller config error or Guitar Hero controller
     return;
 
-  if (type == 2) { //Guitar Hero Controller
-  }
   else { //DualShock Controller
     ps2x.read_gamepad(false, vibrate); //uneccessary vibration
 
