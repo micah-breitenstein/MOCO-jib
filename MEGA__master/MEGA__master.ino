@@ -153,6 +153,18 @@ void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPi
   }
 }
 
+void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, int& modeState) {
+  if (ps2x.Button(PSB_SELECT) && ps2x.Button(buttonCode)) {
+    setDirectionalOutput(isReversed, normalPin, reversedPin, HIGH);
+    modeState = 1;
+  }
+  if (modeState == 1 && ps2x.ButtonReleased(buttonCode)) {
+    digitalWrite(normalPin, LOW);
+    digitalWrite(reversedPin, LOW);
+    modeState = 0;
+  }
+}
+
 void setup() {
 
   interval = intervalSeconds * 1000;
@@ -247,29 +259,11 @@ void loop() {
 
   ///////////swingLeft (no pan)
   /////////////////////////////////
-  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT)) {
-    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-    swingSoloMode = 1;
-  }
-
-  if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    swingSoloMode = 0;
-  }
+  handleSoloDirectionalMode(PSB_PAD_LEFT, isSwingReversed, swingLeft, swingRight, swingSoloMode);
 
   ///////////swingRight (no pan)
   /////////////////////////////////
-  if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT)) {
-    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-    swingSoloMode = 1;
-
-  }
-  if (swingSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
-    digitalWrite(swingRight, LOW);
-    digitalWrite(swingLeft, LOW);
-    swingSoloMode = 0;
-  }
+  handleSoloDirectionalMode(PSB_PAD_RIGHT, isSwingReversed, swingRight, swingLeft, swingSoloMode);
 
   ///////////swingLeft panRight
   /////////////////////////////////
