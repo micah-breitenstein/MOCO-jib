@@ -1,107 +1,93 @@
+// NANO Slave 5 — Camera Focus axis
+// Receives direction and speed commands from the Mega via digital pins.
+// Controls a stepper motor driver (DIR + PUL) for focus ring movement.
+// Simpler than other axes: 3 speed stages, all transitions require a rising edge.
 
-/////ARDUINO INPUTS
-int driverDIR = 2;
-int driverPUL = 4;
+///// PIN ASSIGNMENTS
+const int driverDIR    = 2;  // stepper driver direction pin
+const int driverPUL    = 4;  // stepper driver pulse pin
+const int upButton     = 7;  // HIGH = focus one direction from Mega
+const int downButton   = 6;  // HIGH = focus other direction from Mega
+const int speedUpPin   = 8;  // HIGH = increase speed stage
+const int speedDownPin = 9;  // HIGH = decrease speed stage
 
-int downbutton = 6;
-int upbutton  = 7;
-int downbuttonread;
-int upbuttonread;
+///// SPEED STAGE SETTINGS
+// Step pulse delay in microseconds per stage (0 = slowest, 2 = fastest).
+// Lower value = shorter delay between pulses = faster motor.
+const int STAGE_COUNT = 3;
+const int STAGE_DELAYS[STAGE_COUNT] = {2500, 800, 100};
 
-
-int speedupbutton = 8;
-int speeddownbutton = 9;
-int speedupbuttonread;
-int speeddownbuttonread;
-
-/////INTERNAL VARIABLES
+///// STATE
+int stage = 0;
+int count = STAGE_DELAYS[0];
 int pd;
-int count = 2500;
-int stage = 1;
-int lastreadup = 0;
-int lastreaddown = 0;
+int lastSpeedUp   = 0;
+int lastSpeedDown = 0;
 
-int stage1count = 2500;
-int stage2count = 800;
-int stage3count = 100;
+///// HELPERS
 
-
-void setup() {
-  //Serial.begin(57600);
-
-  pinMode (driverDIR, OUTPUT);
-  pinMode (driverPUL, OUTPUT);
-  pinMode(speeddownbutton, INPUT);
-  pinMode(speedupbutton, INPUT);
-  pinMode(upbutton, INPUT);
-  pinMode(downbutton, INPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
+// Send one step pulse to the stepper driver in the given direction.
+// dirHigh=true moves one way; dirHigh=false moves the other.
+void stepMotor(bool dirHigh) {
+  digitalWrite(driverDIR, dirHigh ? HIGH : LOW);
+  digitalWrite(driverPUL, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delayMicroseconds(pd);
+  digitalWrite(driverPUL, HIGH);
+  delayMicroseconds(pd);
 }
 
+// Handle speed stage transitions.
+// All transitions require a rising edge to prevent multiple increments per press.
+void updateSpeedStage(int speedUpRead, int speedDownRead) {
+  if (lastSpeedDown == 0 && speedDownRead == 1 && stage > 0) {
+    stage--;
+    count = STAGE_DELAYS[stage];
+    Serial.print("STAGE"); Serial.println(stage);
+  }
 
-//////////////////////////////////////////////////////////////////////////////////
+  if (lastSpeedUp == 0 && speedUpRead == 1 && stage < STAGE_COUNT - 1) {
+    stage++;
+    count = STAGE_DELAYS[stage];
+    Serial.print("STAGE"); Serial.println(stage);
+  }
+
+  lastSpeedUp   = speedUpRead;
+  lastSpeedDown = speedDownRead;
+}
+
+void setup() {
+  // Serial.begin(57600);
+  pinMode(driverDIR,    OUTPUT);
+  pinMode(driverPUL,    OUTPUT);
+  pinMode(speedUpPin,   INPUT);
+  pinMode(speedDownPin, INPUT);
+  pinMode(upButton,     INPUT);
+  pinMode(downButton,   INPUT);
+  pinMode(LED_BUILTIN,  OUTPUT);
+}
+
 void loop() {
-
-Serial.println(count);
-
   digitalWrite(LED_BUILTIN, LOW);
 
-  upbuttonread = digitalRead(upbutton);
-  downbuttonread = digitalRead(downbutton);
-  speedupbuttonread = digitalRead(speedupbutton);
-  speeddownbuttonread = digitalRead(speeddownbutton);
+  int upRead    = digitalRead(upButton);
+  int downRead  = digitalRead(downButton);
+  int speedUp   = digitalRead(speedUpPin);
+  int speedDown = digitalRead(speedDownPin);
 
-
-  //////////SPEED STAGE CHANGES
-  if (lastreaddown == 0 && stage == 2 && speeddownbuttonread == 1) {
-    stage = 1;
-    Serial.println("stage1");
-    count = stage1count;
-  }
-
-  if (lastreaddown == 0 && stage == 3 && speeddownbuttonread == 1) {
-    stage = 2;
-    Serial.println("stage2");
-    count = stage2count;
-  }
-
-  if (lastreadup == 0 && stage == 2 && speedupbuttonread == 1) {
-    stage = 3;
-    Serial.println("stage3");
-    count = stage3count;
-  }
-
-  if (lastreadup == 0 && stage == 1 && speedupbuttonread == 1) {
-    stage = 2;
-    Serial.println("stage2");
-    count = stage2count;
-  }
-
-  lastreadup = speedupbuttonread;
-  lastreaddown = speeddownbuttonread;
+  ///// SPEED STAGE CHANGES
+  updateSpeedStage(speedUp, speedDown);
 
   pd = count;
 
-
-  //////////MOTOR MOVEMENTS
-  if (upbuttonread == HIGH) {
-    digitalWrite(driverDIR, HIGH);
-    digitalWrite(driverPUL, LOW);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delayMicroseconds(pd);
-    digitalWrite(driverPUL, HIGH);
-    delayMicroseconds(pd);
-    Serial.println("Hi");
+  ///// MOTOR MOVEMENTS
+  if (upRead == HIGH) {
+    Serial.println("FOCUS IN");
+    stepMotor(true);
   }
 
-  if (downbuttonread == HIGH) {
-    digitalWrite(driverDIR, LOW);
-    digitalWrite(driverPUL, LOW);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delayMicroseconds(pd);
-    digitalWrite(driverPUL, HIGH);
-    delayMicroseconds(pd);
-    Serial.println("Lo");
+  if (downRead == HIGH) {
+    Serial.println("FOCUS OUT");
+    stepMotor(false);
   }
-
 }
