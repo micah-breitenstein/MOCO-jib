@@ -505,7 +505,7 @@ void loop() {
 
   // Mode 1: swing left, boom down
   if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 1; //swing left boom down
+    timelapseMode = 1;
   }
 
   if (timelapseMode == 1) {
@@ -515,28 +515,18 @@ void loop() {
     digitalWrite(trigger, HIGH);
     delay(interval / 2);
 
-    Serial.println("turning on timelapse 1 now");
     setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
     setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
     setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
     setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
 
     delay(stepDist);
-
-    Serial.println("turning off timelapse 1 now");
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
+    stopAllMotors();
   }
 
   // Mode 2: swing left, boom up
   if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 2; //swing left boom up
+    timelapseMode = 2;
   }
 
   if (timelapseMode == 2) {
@@ -552,19 +542,12 @@ void loop() {
     setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
 
     delay(stepDist);
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
+    stopAllMotors();
   }
 
   // Mode 3: swing right, boom up
   if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 3;  //swing right and boom up
+    timelapseMode = 3;
   }
 
   if (timelapseMode == 3) {
@@ -580,20 +563,12 @@ void loop() {
     setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
 
     delay(stepDist);
-
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
+    stopAllMotors();
   }
 
   // Mode 4: swing right, boom down
   if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 4; //swing right and boomdown
+    timelapseMode = 4;
   }
 
   if (timelapseMode == 4) {
@@ -609,19 +584,12 @@ void loop() {
     setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
 
     delay(stepDist);
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
+    stopAllMotors();
   }
 
   // Mode 5: swing left
   if (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 5; //swing left
+    timelapseMode = 5;
   }
 
   if (timelapseMode == 5) {
@@ -635,16 +603,12 @@ void loop() {
     setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
 
     delay(stepDist);
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-
+    stopAllMotors();
   }
 
   // Mode 6: boom up
   if (timelapseMode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 6; // boom up
+    timelapseMode = 6;
   }
 
   if (timelapseMode == 6) {
@@ -658,15 +622,12 @@ void loop() {
     setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
 
     delay(stepDist);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
+    stopAllMotors();
   }
 
   // Mode 7: swing right
   if (timelapseMode == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
-    timelapseMode = 7;  //swing right
+    timelapseMode = 7;
   }
 
   if (timelapseMode == 7) {
@@ -680,11 +641,7 @@ void loop() {
     setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
 
     delay(stepDist);
-    digitalWrite(swingLeft, LOW);
-    digitalWrite(swingRight, LOW);
-    digitalWrite(panRight, LOW);
-    digitalWrite(panLeft, LOW);
-
+    stopAllMotors();
   }
 
   // Mode 8: boom down
@@ -703,10 +660,7 @@ void loop() {
     setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
 
     delay(stepDist);
-    digitalWrite(liftDown, LOW);
-    digitalWrite(liftUp, LOW);
-    digitalWrite(tiltUp, LOW);
-    digitalWrite(tiltDown, LOW);
+    stopAllMotors();
   }
 
   // MOCO Moves (bounce)

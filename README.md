@@ -36,7 +36,7 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
 | L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1) |
-| **R3 (right stick click)** | **Cancel active bounce — stops all motors and resets state** |
+| **R3 (right stick click)** | **Cancel active timelapse or bounce — stops all motors and resets state** |
 
 ### Timelapse Modes (SELECT release)
 
@@ -52,6 +52,8 @@ Stick position at moment of SELECT release selects the move:
 | Full up (Y=0) | 6: boom up only |
 | Full right (X=255) | 7: swing right only |
 | Full down (Y=255) | 8: boom down only |
+
+- **Cancel:** press R3 at any time to stop timelapse and reset
 
 ### Bounce / MoCo Modes (START release)
 
