@@ -239,6 +239,11 @@ void resetPanTrimAtCenter() {
   }
 }
 
+void handlePanTrimAxis() {
+  applyPanTrimDuringSwing();
+  resetPanTrimAtCenter();
+}
+
 void activatePanOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* label) {
   Serial.println(label);
   digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
@@ -358,7 +363,6 @@ void loop() {
   handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown);
 
   // 1st AXIS (BOOM SWING)
-
   // swingLeft (no pan)
   handleSwingOnly(PSB_PAD_LEFT, swingLeft, swingRight);
 
@@ -371,11 +375,9 @@ void loop() {
   // swingRight + panLeft
   handleSwingAndPan(PSB_PAD_RIGHT, swingRight, swingLeft, panLeft, panRight);
 
-  applyPanTrimDuringSwing();
-  resetPanTrimAtCenter();
+  handlePanTrimAxis();
 
   // 2nd AXIS (CAMERA PAN)
-
   handlePanAxis();
 
   // 3rd AXIS (BOOM LIFT)
