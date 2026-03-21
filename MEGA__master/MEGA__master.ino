@@ -20,38 +20,38 @@ int swingSpeedUp = 26;
 int swingSpeedDown = 27;
 int swingSoloMode = 0;
 
-int panleft = 46;
-int panright = 48;
-int panspeedup = 50;
-int panspeeddown = 52;
-int panstop = 0;
-int speedstop = 0;
+int panLeft = 46;
+int panRight = 48;
+int panSpeedUp = 50;
+int panSpeedDown = 52;
+int panStop = 0;
+int speedStop = 0;
 
-int panspeeduponly = 29; //lower
-int panspeeddownonly = 45; //higher
+int panSpeedUpOnly = 29; //lower
+int panSpeedDownOnly = 45; //higher
 
-int liftdown = 30;
-int liftup = 31;
-int liftspeedup = 32;
-int liftspeeddown = 33;
-int liftsolo = 0;
+int liftDown = 30;
+int liftUp = 31;
+int liftSpeedUp = 32;
+int liftSpeedDown = 33;
+int liftSoloMode = 0;
 
-int tiltspeeduponly = 42; //lower val
-int tiltspeeddownonly = 44; //higher val
+int tiltSpeedUpOnly = 42; //lower val
+int tiltSpeedDownOnly = 44; //higher val
 
-int tiltdown = 34;
-int tiltup = 36;
-int tiltspeedup = 38;
-int tiltspeeddown = 40;
-int tiltstop = 0;
+int tiltDown = 34;
+int tiltUp = 36;
+int tiltSpeedUp = 38;
+int tiltSpeedDown = 40;
+int tiltStop = 0;
 
-int focusleft = 47;
-int focusright = 49;
-int focusspeedup = 51;
-int focusspeeddown = 53;
+int focusLeft = 47;
+int focusRight = 49;
+int focusSpeedUp = 51;
+int focusSpeedDown = 53;
 
 int swingInMotion = 0;
-int liftinmotion = 0;
+int liftInMotion = 0;
 
 int leftStickXvalue;
 int leftStickYvalue;
@@ -60,31 +60,31 @@ int rightStickYvalue;
 
 //timelapse variables
 ///////////////////
-int timelapsemode = 0;
-int intervalseconds = 15;
+int timelapseMode = 0;
+int intervalSeconds = 15;
 int interval;
-int intervaldelay;
-int stepdist = 100;
+int intervalDelay;
+int stepDist = 100;
 int trigger = 28;
 
 //motion control variables
 int bounce = 0;
 int count = 0;
-int mocodistance = 0;
+int mocoDistance = 0;
 int stage = 0;
 
-int DIPSWITCH1 = 35;
-int DIPSWITCH2 = 43;
-int DIPSWITCH3 = 37;
-int DIPSWITCH4 = 39;
-int DIPSWITCH5 = 41;
+int dipSwitch1 = 35;
+int dipSwitch2 = 43;
+int dipSwitch3 = 37;
+int dipSwitch4 = 39;
+int dipSwitch5 = 41;
 
 int swingSwitch = 0;
-int panswitch = 0;
-int liftswitch = 0;
-int tiltswitch = 0;
-int focusswitch = 0;
-int delaytime;
+int panSwitch = 0;
+int liftSwitch = 0;
+int tiltSwitch = 0;
+int focusSwitch = 0;
+int delayTime;
 
 void setup() {
 
@@ -94,37 +94,37 @@ void setup() {
   pinMode (swingRight, OUTPUT);
   pinMode (swingSpeedUp, OUTPUT);
   pinMode (swingSpeedDown, OUTPUT);
-  pinMode (liftdown, OUTPUT);
-  pinMode (liftup, OUTPUT);
-  pinMode (liftspeedup, OUTPUT);
-  pinMode (liftspeeddown, OUTPUT);
-  pinMode (panleft, OUTPUT);
-  pinMode (panright, OUTPUT);
-  pinMode (panspeedup, OUTPUT);
-  pinMode (panspeeddown, OUTPUT);
-  pinMode (tiltdown, OUTPUT);
-  pinMode (tiltup, OUTPUT);
-  pinMode (tiltspeedup, OUTPUT);
-  pinMode (tiltspeeddown, OUTPUT);
-  pinMode (focusleft, OUTPUT);
-  pinMode (focusright, OUTPUT);
-  pinMode (focusspeedup, OUTPUT);
-  pinMode (focusspeeddown, OUTPUT);
+  pinMode (liftDown, OUTPUT);
+  pinMode (liftUp, OUTPUT);
+  pinMode (liftSpeedUp, OUTPUT);
+  pinMode (liftSpeedDown, OUTPUT);
+  pinMode (panLeft, OUTPUT);
+  pinMode (panRight, OUTPUT);
+  pinMode (panSpeedUp, OUTPUT);
+  pinMode (panSpeedDown, OUTPUT);
+  pinMode (tiltDown, OUTPUT);
+  pinMode (tiltUp, OUTPUT);
+  pinMode (tiltSpeedUp, OUTPUT);
+  pinMode (tiltSpeedDown, OUTPUT);
+  pinMode (focusLeft, OUTPUT);
+  pinMode (focusRight, OUTPUT);
+  pinMode (focusSpeedUp, OUTPUT);
+  pinMode (focusSpeedDown, OUTPUT);
 
   pinMode(trigger, OUTPUT);
-  interval = intervalseconds * 1000;
+  interval = intervalSeconds * 1000;
 
-  pinMode (DIPSWITCH1, INPUT_PULLUP);
-  pinMode (DIPSWITCH2, INPUT_PULLUP);
-  pinMode (DIPSWITCH3, INPUT_PULLUP);
-  pinMode (DIPSWITCH4, INPUT_PULLUP);
-  pinMode (DIPSWITCH5, INPUT_PULLUP);
+  pinMode (dipSwitch1, INPUT_PULLUP);
+  pinMode (dipSwitch2, INPUT_PULLUP);
+  pinMode (dipSwitch3, INPUT_PULLUP);
+  pinMode (dipSwitch4, INPUT_PULLUP);
+  pinMode (dipSwitch5, INPUT_PULLUP);
 
-  pinMode (tiltspeeduponly, OUTPUT);
-  pinMode (tiltspeeddownonly, OUTPUT);
+  pinMode (tiltSpeedUpOnly, OUTPUT);
+  pinMode (tiltSpeedDownOnly, OUTPUT);
 
-  pinMode (panspeeduponly, OUTPUT);
-  pinMode (panspeeddownonly, OUTPUT);
+  pinMode (panSpeedUpOnly, OUTPUT);
+  pinMode (panSpeedDownOnly, OUTPUT);
 
 
 
@@ -190,11 +190,11 @@ void loop() {
   else { //DualShock Controller
     ps2x.read_gamepad(false, vibrate); //uneccessary vibration
 
-    swingSwitch = digitalRead(DIPSWITCH1);
-    panswitch = digitalRead(DIPSWITCH2);
-    liftswitch = digitalRead(DIPSWITCH3);
-    tiltswitch = digitalRead(DIPSWITCH4);
-    focusswitch =  digitalRead(DIPSWITCH5);
+    swingSwitch = digitalRead(dipSwitch1);
+    panSwitch = digitalRead(dipSwitch2);
+    liftSwitch = digitalRead(dipSwitch3);
+    tiltSwitch = digitalRead(dipSwitch4);
+    focusSwitch =  digitalRead(dipSwitch5);
 
     rightStickYvalue = ps2x.Analog(PSS_RY);
     rightStickXvalue = ps2x.Analog(PSS_RX);
@@ -204,40 +204,40 @@ void loop() {
 
     //////////////R1 and R2 Buttons
     if (ps2x.Button(PSB_R1)) {
-      digitalWrite(liftspeedup, HIGH);
-      digitalWrite(tiltspeedup, HIGH);
+      digitalWrite(liftSpeedUp, HIGH);
+      digitalWrite(tiltSpeedUp, HIGH);
     }
     if (ps2x.ButtonReleased(PSB_R1)) {
-      digitalWrite(liftspeedup, LOW);
-      digitalWrite(tiltspeedup, LOW);
+      digitalWrite(liftSpeedUp, LOW);
+      digitalWrite(tiltSpeedUp, LOW);
     }
 
     if (ps2x.Button(PSB_R2)) {
-      digitalWrite(liftspeeddown, HIGH);
-      digitalWrite(tiltspeeddown, HIGH);
+      digitalWrite(liftSpeedDown, HIGH);
+      digitalWrite(tiltSpeedDown, HIGH);
     }
 
     if (ps2x.ButtonReleased(PSB_R2)) {
-      digitalWrite(liftspeeddown, LOW);
-      digitalWrite(tiltspeeddown, LOW);
+      digitalWrite(liftSpeedDown, LOW);
+      digitalWrite(tiltSpeedDown, LOW);
     }
 
     ///////////L1 ad L2 Buttons
     if (ps2x.Button(PSB_L1)) {
-      digitalWrite(panspeedup, HIGH);
+      digitalWrite(panSpeedUp, HIGH);
       digitalWrite(swingSpeedUp, HIGH);
     }
     if (ps2x.ButtonReleased(PSB_L1)) {
-      digitalWrite(panspeedup, LOW);
+      digitalWrite(panSpeedUp, LOW);
       digitalWrite(swingSpeedUp, LOW);
     }
 
     if (ps2x.Button(PSB_L2)) {
-      digitalWrite(panspeeddown, HIGH);
+      digitalWrite(panSpeedDown, HIGH);
       digitalWrite(swingSpeedDown, HIGH);
     }
     if (ps2x.ButtonReleased(PSB_L2)) {
-      digitalWrite(panspeeddown, LOW);
+      digitalWrite(panSpeedDown, LOW);
       digitalWrite(swingSpeedDown, LOW);
     }
 
@@ -281,7 +281,7 @@ void loop() {
       swingSoloMode = 0;
     }
 
-    ///////////swingLeft panright
+    ///////////swingLeft panRight
     /////////////////////////////////
     if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_LEFT)) {
       swingInMotion = 1;
@@ -291,24 +291,24 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
     }
 
     if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
       digitalWrite(swingLeft, LOW);
-      digitalWrite (panright, LOW);
+      digitalWrite (panRight, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite (panleft, LOW);
+      digitalWrite (panLeft, LOW);
       swingInMotion = 0;
     }
 
 
-    ///////////swingRight panleft
+    ///////////swingRight panLeft
     //////////////////////////////
     if (swingSoloMode == 0 && ps2x.Button(PSB_PAD_RIGHT)) {
       swingInMotion = 1;
@@ -318,39 +318,39 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
     }
 
     if (swingSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
       digitalWrite(swingRight, LOW);
-      digitalWrite (panleft, LOW);
+      digitalWrite (panLeft, LOW);
       digitalWrite(swingLeft, LOW);
-      digitalWrite (panright, LOW);
+      digitalWrite (panRight, LOW);
       swingInMotion = 0;
     }
 
     //should all these below be within 1 if statement for swingmotion?
     if (swingInMotion == 1 && rightStickXvalue == 0) {
-      digitalWrite(panspeeddownonly, HIGH);
-      Serial.println("panspeeddownonly");
-      panstop = 2;
+      digitalWrite(panSpeedDownOnly, HIGH);
+      Serial.println("panSpeedDownOnly");
+      panStop = 2;
     }
 
     if (swingInMotion == 1 && rightStickXvalue == 255) {
-      digitalWrite(panspeeduponly, HIGH);
-      Serial.println("panspeeduponly");
-      panstop = 2;
+      digitalWrite(panSpeedUpOnly, HIGH);
+      Serial.println("panSpeedUpOnly");
+      panStop = 2;
     }
 
-    if (panstop == 2 && rightStickXvalue == 128  ) {
-      digitalWrite(panspeeduponly, LOW);
-      digitalWrite(panspeeddownonly, LOW);
-      panstop = 0;
+    if (panStop == 2 && rightStickXvalue == 128  ) {
+      digitalWrite(panSpeedUpOnly, LOW);
+      digitalWrite(panSpeedDownOnly, LOW);
+      panStop = 0;
     }
 
     /////////////////////////////
@@ -360,38 +360,38 @@ void loop() {
     if (swingInMotion == 0 &&  rightStickXvalue == 0) {
       Serial.println("panleftnonly with top speed");
 
-      digitalWrite(panspeeduponly, HIGH); //signal to nano to use top speed
-      digitalWrite(panspeeddownonly, HIGH);//signal to nano to use top speed
+      digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
+      digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
 
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
-      panstop = 1;
+      panStop = 1;
     }
 
     if (swingInMotion == 0 && rightStickXvalue == 255) {
       Serial.println("panrightonly with top speed");
-      digitalWrite(panspeeduponly, HIGH); //signal to nano to use top speed
-      digitalWrite(panspeeddownonly, HIGH);//signal to nano to use top speed
+      digitalWrite(panSpeedUpOnly, HIGH); //signal to nano to use top speed
+      digitalWrite(panSpeedDownOnly, HIGH);//signal to nano to use top speed
 
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
-      panstop = 1;
+      panStop = 1;
     }
 
-    if (swingInMotion == 0 && panstop == 1 && rightStickXvalue == 128) {
-      digitalWrite(panleft, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panspeeduponly, LOW);
-      digitalWrite(panspeeddownonly, LOW);
-      panstop = 0;
+    if (swingInMotion == 0 && panStop == 1 && rightStickXvalue == 128) {
+      digitalWrite(panLeft, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panSpeedUpOnly, LOW);
+      digitalWrite(panSpeedDownOnly, LOW);
+      panStop = 0;
     }
 
 
@@ -401,154 +401,154 @@ void loop() {
 
     //lift UP (no tilt)
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP)) {
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
       }
-      liftsolo = 1;
+      liftSoloMode = 1;
     }
 
-    if (liftsolo == 1 && ps2x.ButtonReleased(PSB_PAD_UP)) {
-      digitalWrite(liftup, LOW);
-      digitalWrite(liftdown, LOW);
-      liftsolo = 0;
+    if (liftSoloMode == 1 && ps2x.ButtonReleased(PSB_PAD_UP)) {
+      digitalWrite(liftUp, LOW);
+      digitalWrite(liftDown, LOW);
+      liftSoloMode = 0;
     }
 
     //lift DOWN (no tilt)
     if (ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN)) {
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
       }
-      liftsolo = 1;
+      liftSoloMode = 1;
     }
 
-    if (liftsolo == 1  && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      liftsolo = 0;
+    if (liftSoloMode == 1  && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      liftSoloMode = 0;
     }
 
 
     //lift UP tilt DOWN
     ///////////////////
 
-    if (liftsolo == 0 && ps2x.Button(PSB_PAD_UP)) {
-      liftinmotion = 1;
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
+    if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_UP)) {
+      liftInMotion = 1;
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
       }
     }
 
-    if (liftsolo == 0 && ps2x.ButtonReleased(PSB_PAD_UP)) {
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltdown, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(tiltup, LOW);
-      liftinmotion = 0;
+    if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_UP)) {
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(tiltUp, LOW);
+      liftInMotion = 0;
     }
 
     //lift DOWN tilt UP
     ///////////////////
-    if (liftsolo == 0 && ps2x.Button(PSB_PAD_DOWN)) {
-      liftinmotion = 1;
+    if (liftSoloMode == 0 && ps2x.Button(PSB_PAD_DOWN)) {
+      liftInMotion = 1;
 
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
       }
     }
 
-    if (liftsolo == 0 && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltdown, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(tiltup, LOW);
-      liftinmotion = 0;
+    if (liftSoloMode == 0 && ps2x.ButtonReleased(PSB_PAD_DOWN)) {
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(tiltUp, LOW);
+      liftInMotion = 0;
     }
 
-    //should this all be inn 1 liftinmotion if statement?
+    //should this all be inn 1 liftInMotion if statement?
 
-    if (liftinmotion == 1 && rightStickYvalue == 255) {
-      Serial.println("tiltspeeddownonly");
-      digitalWrite(tiltspeeddownonly, HIGH);
-      tiltstop = 2;
+    if (liftInMotion == 1 && rightStickYvalue == 255) {
+      Serial.println("tiltSpeedDownOnly");
+      digitalWrite(tiltSpeedDownOnly, HIGH);
+      tiltStop = 2;
     }
 
-    if (liftinmotion == 1 && rightStickYvalue == 0) {
+    if (liftInMotion == 1 && rightStickYvalue == 0) {
       Serial.println("tiltspeedupnonly");
-      digitalWrite(tiltspeeduponly, HIGH);
-      tiltstop = 2;
+      digitalWrite(tiltSpeedUpOnly, HIGH);
+      tiltStop = 2;
     }
-    //should below also be a liftinmotion?
-    if (tiltstop == 2 && rightStickYvalue == 128  ) {
-      digitalWrite(tiltspeeduponly, LOW);
-      digitalWrite(tiltspeeddownonly, LOW);
-      tiltstop = 0;
+    //should below also be a liftInMotion?
+    if (tiltStop == 2 && rightStickYvalue == 128  ) {
+      digitalWrite(tiltSpeedUpOnly, LOW);
+      digitalWrite(tiltSpeedDownOnly, LOW);
+      tiltStop = 0;
     }
 
     /////////////////////////////
     //2nd AXIS (CAMERA tilt)
     ////////////////////////////
 
-    if (liftinmotion == 0  && rightStickYvalue == 255) {
+    if (liftInMotion == 0  && rightStickYvalue == 255) {
       Serial.println("tiltdownonly");
       //signal to nano to use top speed
-      digitalWrite(tiltspeeduponly, HIGH); //signal to nano to use top speed
-      digitalWrite(tiltspeeddownonly, HIGH); //signal to nano to use top speed
+      digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
+      digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
       }
-      tiltstop = 1;
+      tiltStop = 1;
     }
 
-    if (liftinmotion == 0 && rightStickYvalue == 0) {
+    if (liftInMotion == 0 && rightStickYvalue == 0) {
       Serial.println("tiltuponly");
 
-      digitalWrite(tiltspeeduponly, HIGH); //signal to nano to use top speed
-      digitalWrite(tiltspeeddownonly, HIGH); //signal to nano to use top speed
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
+      digitalWrite(tiltSpeedUpOnly, HIGH); //signal to nano to use top speed
+      digitalWrite(tiltSpeedDownOnly, HIGH); //signal to nano to use top speed
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
       }
-      tiltstop = 1;
+      tiltStop = 1;
     }
 
-    if (liftinmotion == 0 && tiltstop == 1 && rightStickYvalue == 128) {
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
-      digitalWrite(tiltspeeduponly, LOW);
-      digitalWrite(tiltspeeddownonly, LOW);
-      tiltstop = 0;
+    if (liftInMotion == 0 && tiltStop == 1 && rightStickYvalue == 128) {
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      digitalWrite(tiltSpeedUpOnly, LOW);
+      digitalWrite(tiltSpeedDownOnly, LOW);
+      tiltStop = 0;
     }
 
 
@@ -557,46 +557,46 @@ void loop() {
     ////////////////////////////
 
     if (ps2x.Button(PSB_TRIANGLE)) {
-      if (focusswitch == 0) {
-        digitalWrite(focusleft, HIGH);
+      if (focusSwitch == 0) {
+        digitalWrite(focusLeft, HIGH);
       }
-      if (focusswitch == 1) {
-        digitalWrite(focusright, HIGH);
+      if (focusSwitch == 1) {
+        digitalWrite(focusRight, HIGH);
       }
 
     }
     if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
-      digitalWrite(focusleft, LOW);
-      digitalWrite(focusright, LOW);
+      digitalWrite(focusLeft, LOW);
+      digitalWrite(focusRight, LOW);
     }
 
     if (ps2x.Button(PSB_CROSS)) {
-      if (focusswitch == 0) {
-        digitalWrite(focusright, HIGH);
+      if (focusSwitch == 0) {
+        digitalWrite(focusRight, HIGH);
       }
-      if (focusswitch == 1) {
-        digitalWrite(focusleft, HIGH);
+      if (focusSwitch == 1) {
+        digitalWrite(focusLeft, HIGH);
       }
     }
 
     if (ps2x.ButtonReleased(PSB_CROSS)) {
-      digitalWrite(focusright, LOW);
-      digitalWrite(focusleft, LOW);
+      digitalWrite(focusRight, LOW);
+      digitalWrite(focusLeft, LOW);
     }
 
 
     if (ps2x.Button(PSB_SQUARE)) {
-      digitalWrite(focusspeeddown, HIGH);
+      digitalWrite(focusSpeedDown, HIGH);
     }
     if (ps2x.ButtonReleased(PSB_SQUARE)) {
-      digitalWrite(focusspeeddown, LOW);
+      digitalWrite(focusSpeedDown, LOW);
     }
 
     if (ps2x.Button(PSB_CIRCLE)) {
-      digitalWrite(focusspeedup, HIGH);
+      digitalWrite(focusSpeedUp, HIGH);
     }
     if (ps2x.ButtonReleased(PSB_CIRCLE)) {
-      digitalWrite(focusspeedup, LOW);
+      digitalWrite(focusSpeedUp, LOW);
     }
 
 
@@ -609,11 +609,11 @@ void loop() {
     ///////swing left boom down
     ///////////////////////////////////
 
-    if  (timelapsemode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 1; //swing left boom down
+    if  (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 1; //swing left boom down
     }
 
-    if (timelapsemode == 1) {
+    if (timelapseMode == 1) {
       Serial.println("timelapse mode 1");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
@@ -627,47 +627,47 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
       }
 
-      delay(stepdist);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
+      }
+
+      delay(stepDist);
 
       Serial.println("turning off timelapse 1 now");
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
     }
 
     ///////swing LEFT and lift UP
     ///////////////////////////////////
-    if (timelapsemode == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 2; //swing left boom up
+    if (timelapseMode == 0 && leftStickXvalue < 123 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 2; //swing left boom up
     }
 
-    if (timelapsemode == 2) {
+    if (timelapseMode == 2) {
       Serial.println("timelapse mode 2");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
@@ -680,46 +680,46 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
       }
 
 
-      delay(stepdist);
+      delay(stepDist);
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
     }
 
     ///////swing right and boomup
     ///////////////////////////////////
-    if (timelapsemode == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 3;  //swing right and boom up
+    if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue < 123 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 3;  //swing right and boom up
     }
 
-    if (timelapsemode == 3) {
+    if (timelapseMode == 3) {
       Serial.println("timelapse mode 3");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
@@ -733,49 +733,49 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
       }
 
 
 
-      delay(stepdist);
+      delay(stepDist);
 
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
     }
 
 
     ///////swing right and boomdown
     ///////////////////////////////////
-    if (timelapsemode == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 4; //swing right and boomdown
+    if (timelapseMode == 0 && leftStickXvalue > 133 && leftStickYvalue > 133 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 4; //swing right and boomdown
     }
 
-    if (timelapsemode == 4) {
+    if (timelapseMode == 4) {
       Serial.println("timelapse mode 4");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
@@ -790,47 +790,47 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
+      }
+
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
       }
 
 
-      delay(stepdist);
+      delay(stepDist);
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
     }
 
     ///////swing left
     ///////////////////////////////////
 
-    if  (timelapsemode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 5; //swing left
+    if  (timelapseMode == 0 && leftStickXvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 5; //swing left
     }
 
-    if (timelapsemode == 5) {
+    if (timelapseMode == 5) {
       Serial.println("timelapse mode 5");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
@@ -843,64 +843,64 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
 
-      delay(stepdist);
+      delay(stepDist);
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
 
     }
 
 
     ///////lift up
     ///////////////////////////////////
-    if (timelapsemode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 6; // boom up
+    if (timelapseMode == 0 && leftStickYvalue == 0 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 6; // boom up
     }
 
-    if (timelapsemode == 6) {
+    if (timelapseMode == 6) {
       Serial.println("timelapse mode 6");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
       digitalWrite(trigger, HIGH);
       delay (interval / 2);
 
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
-      }
-
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
-      }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
       }
 
-      delay(stepdist);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
+      }
+
+      delay(stepDist);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
     }
 
 
     ///////swing right
     ///////////////////////////////////
-    if (timelapsemode == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 7;  //swing right
+    if (timelapseMode == 0 && leftStickXvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 7;  //swing right
     }
 
-    if (timelapsemode == 7) {
+    if (timelapseMode == 7) {
       Serial.println("timelapse mode 7");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
@@ -913,29 +913,29 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
 
-      delay(stepdist);
+      delay(stepDist);
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
 
     }
 
 
     /////lift DOWN
     ///////////////
-    if (timelapsemode == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
-      timelapsemode = 8;
+    if (timelapseMode == 0 && leftStickYvalue == 255 && ps2x.ButtonReleased(PSB_SELECT)) {
+      timelapseMode = 8;
     }
 
-    if (timelapsemode == 8) {
+    if (timelapseMode == 8) {
       Serial.println("timelapse mode 8");
       digitalWrite(trigger, LOW);
       delay (interval / 2);
@@ -943,25 +943,25 @@ void loop() {
       delay (interval / 2);
 
 
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
-      }
-
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
-      }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
       }
 
-      delay(stepdist);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
+      }
+
+      delay(stepDist);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -988,25 +988,25 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
+      }
+
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
       }
       count++;
 
@@ -1015,20 +1015,20 @@ void loop() {
 
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
 
-      mocodistance = count;
+      mocoDistance = count;
       count = 0;
       stage = 1;
     }
 
     if (bounce == 1 && stage == 1) { //end point
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
         //turn off motors
         if (swingSwitch == 0) {
@@ -1037,25 +1037,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, LOW);
         }
 
 
@@ -1067,30 +1067,30 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, HIGH);
         }
         count++;
       }
 
-      if (count >= mocodistance) {//starting point
+      if (count >= mocoDistance) {//starting point
 
         if (swingSwitch == 0) {
           digitalWrite(swingRight, LOW);
@@ -1098,25 +1098,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, LOW);
         }
 
         //turn motors on
@@ -1127,30 +1127,30 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, HIGH);
         }
         count++;
       }
 
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
     }
@@ -1172,25 +1172,25 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
       }
       count++;
 
@@ -1198,20 +1198,20 @@ void loop() {
     if (bounce == 2 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
 
-      mocodistance = count;
+      mocoDistance = count;
       count = 0;
       stage = 1;
     }
 
     if (bounce == 2 && stage == 1) {
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
         //turn motors off
 
@@ -1221,25 +1221,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, LOW);
         }
 
 
@@ -1251,30 +1251,30 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, HIGH);
         }
         count++;
       }
 
-      if (count >= mocodistance) {
+      if (count >= mocoDistance) {
 
         //turn motors off
         if (swingSwitch == 0) {
@@ -1283,25 +1283,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, LOW);
         }
 
         //turn motors on
@@ -1311,30 +1311,30 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, HIGH);
         }
         count++;
       }
 
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
     }
@@ -1356,25 +1356,25 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
+      }
+
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
       }
 
       count++;
@@ -1384,21 +1384,21 @@ void loop() {
 
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
 
-      mocodistance = count;
+      mocoDistance = count;
       count = 0;
       stage = 1;
     }
 
     if (bounce == 3 && stage == 1) {
 
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
         // motor off
         if (swingSwitch == 0) {
@@ -1407,25 +1407,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, LOW);
         }
 
 
@@ -1436,31 +1436,31 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, HIGH);
         }
 
         count++;
       }
 
-      if (count >= mocodistance) {
+      if (count >= mocoDistance) {
 
         //motor off
         if (swingSwitch == 0) {
@@ -1469,25 +1469,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, LOW);
         }
 
         //motor on
@@ -1497,30 +1497,30 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, HIGH);
         }
 
         count++;
       }
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
     }
@@ -1541,25 +1541,25 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
-      }
-
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
-      }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
+      }
+
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
+      }
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
       }
 
       count++;
@@ -1570,20 +1570,20 @@ void loop() {
 
       digitalWrite(swingLeft, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panright, LOW);
-      digitalWrite(panleft, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltup, LOW);
-      digitalWrite(tiltdown, LOW);
-      mocodistance = count;
+      digitalWrite(panRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      mocoDistance = count;
       count = 0;
       stage = 1;
 
     }
 
     if (bounce == 4 && stage == 1) {
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
         //motor off
         if (swingSwitch == 0) {
@@ -1592,25 +1592,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, LOW);
         }
 
         //motor on
@@ -1620,31 +1620,31 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, HIGH);
         }
 
         count++;
       }
 
-      if (count >= mocodistance) {
+      if (count >= mocoDistance) {
 
         //motor OFF
         if (swingSwitch == 0) {
@@ -1653,25 +1653,25 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, LOW);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftup, LOW);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, LOW);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, LOW);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, LOW);
         }
 
         //motor ON
@@ -1681,31 +1681,31 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, HIGH);
-        }
-
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, HIGH);
-        }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, HIGH);
         }
 
         count++;
       }
 
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
 
@@ -1731,11 +1731,11 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingRight, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panRight, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panLeft, HIGH);
       }
       count++;
 
@@ -1743,17 +1743,17 @@ void loop() {
     if (bounce == 5 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
 
       digitalWrite(swingLeft, LOW);
-      digitalWrite(panright, LOW);
+      digitalWrite(panRight, LOW);
       digitalWrite(swingRight, LOW);
-      digitalWrite(panleft, LOW);
+      digitalWrite(panLeft, LOW);
 
-      mocodistance = count;
+      mocoDistance = count;
       count = 0;
       stage = 1;
     }
 
     if (bounce == 5 && stage == 1) {
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
         //motor OFF
         if (swingSwitch == 0) {
@@ -1762,11 +1762,11 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, LOW);
         }
         //motor ON
         if (swingSwitch == 0) {
@@ -1775,17 +1775,17 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, HIGH);
         }
 
         count++;
       }
 
-      if (count >= mocodistance) {
+      if (count >= mocoDistance) {
 
         //motor OFF
         if (swingSwitch == 0) {
@@ -1794,11 +1794,11 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, LOW);
         }
 
         //motor ON
@@ -1808,17 +1808,17 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, HIGH);
         }
 
         count++;
       }
 
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
     }
@@ -1833,103 +1833,103 @@ void loop() {
     }
     if (bounce == 6 && stage == 0) {
 
-      if (liftswitch == 0) {
-        digitalWrite(liftup, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftUp, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftdown, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftDown, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltdown, HIGH);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltDown, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltup, HIGH);
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltUp, HIGH);
       }
       count++;
 
     }
     if (bounce == 6 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
 
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltdown, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(tiltup, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(tiltUp, LOW);
 
-      mocodistance = count;
+      mocoDistance = count;
       count = 0;
       stage = 1;
     }
 
     if (bounce == 6 && stage == 1) {
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
-        if (liftswitch == 0) {
-          digitalWrite(liftup, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, LOW);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, LOW);
-        }
-
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, LOW);
-        }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, LOW);
         }
 
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, LOW);
+        }
 
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, HIGH);
+
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, HIGH);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, HIGH);
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, HIGH);
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, HIGH);
         }
 
         count++;
       }
 
-      if (count >= mocodistance) {
+      if (count >= mocoDistance) {
 
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, LOW);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, LOW);
-        }
-
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, LOW);
-        }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, LOW);
         }
 
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, LOW);
+        }
 
-        if (liftswitch == 0) {
-          digitalWrite(liftup, HIGH);
+
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, HIGH);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, HIGH);
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, HIGH);
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, HIGH);
         }
         count++;
       }
 
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
     }
@@ -1954,11 +1954,11 @@ void loop() {
       if (swingSwitch == 1) {
         digitalWrite(swingLeft, HIGH);
       }
-      if (panswitch == 0) {
-        digitalWrite(panleft, HIGH);
+      if (panSwitch == 0) {
+        digitalWrite(panLeft, HIGH);
       }
-      if (panswitch == 1) {
-        digitalWrite(panright, HIGH);
+      if (panSwitch == 1) {
+        digitalWrite(panRight, HIGH);
       }
 
       count++;
@@ -1967,19 +1967,19 @@ void loop() {
     if (bounce == 7 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
 
       digitalWrite(swingRight, LOW);
-      digitalWrite(panleft, LOW);
+      digitalWrite(panLeft, LOW);
       digitalWrite(swingLeft, LOW);
-      digitalWrite(panright, LOW);
+      digitalWrite(panRight, LOW);
 
 
-      mocodistance = count;
+      mocoDistance = count;
       count = 0;
       stage = 1;
     }
 
     if (bounce == 7 && stage == 1) {
 
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
 
         if (swingSwitch == 0) {
@@ -1988,11 +1988,11 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, LOW);
         }
 
 
@@ -2003,17 +2003,17 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, HIGH);
         }
 
         count++;
       }
 
-      if (count >= mocodistance) {
+      if (count >= mocoDistance) {
 
         if (swingSwitch == 0) {
           digitalWrite(swingLeft, LOW);
@@ -2021,11 +2021,11 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingRight, LOW);
         }
-        if (panswitch == 0) {
-          digitalWrite(panright, LOW);
+        if (panSwitch == 0) {
+          digitalWrite(panRight, LOW);
         }
-        if (panswitch == 1) {
-          digitalWrite(panleft, LOW);
+        if (panSwitch == 1) {
+          digitalWrite(panLeft, LOW);
         }
 
 
@@ -2035,17 +2035,17 @@ void loop() {
         if (swingSwitch == 1) {
           digitalWrite(swingLeft, HIGH);
         }
-        if (panswitch == 0) {
-          digitalWrite(panleft, HIGH);
+        if (panSwitch == 0) {
+          digitalWrite(panLeft, HIGH);
         }
-        if (panswitch == 1) {
-          digitalWrite(panright, HIGH);
+        if (panSwitch == 1) {
+          digitalWrite(panRight, HIGH);
         }
 
 
         count++;
       }
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
     }
@@ -2062,18 +2062,18 @@ void loop() {
 
     if (bounce == 8 && stage == 0) {
 
-      if (liftswitch == 0) {
-        digitalWrite(liftdown, HIGH);
+      if (liftSwitch == 0) {
+        digitalWrite(liftDown, HIGH);
       }
-      if (liftswitch == 1) {
-        digitalWrite(liftup, HIGH);
+      if (liftSwitch == 1) {
+        digitalWrite(liftUp, HIGH);
       }
 
-      if (tiltswitch == 0) {
-        digitalWrite(tiltup, HIGH);
+      if (tiltSwitch == 0) {
+        digitalWrite(tiltUp, HIGH);
       }
-      if (tiltswitch == 1) {
-        digitalWrite(tiltdown, HIGH);
+      if (tiltSwitch == 1) {
+        digitalWrite(tiltDown, HIGH);
       }
 
       count++;
@@ -2082,84 +2082,84 @@ void loop() {
 
     if (bounce == 8 && stage == 0 && ps2x.ButtonReleased(PSB_L3)) {
 
-      digitalWrite(liftup, LOW);
-      digitalWrite(tiltdown, LOW);
-      digitalWrite(liftdown, LOW);
-      digitalWrite(tiltup, LOW);
+      digitalWrite(liftUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(tiltUp, LOW);
 
-      mocodistance = count;
+      mocoDistance = count;
       count = 0;
       stage = 1;
 
     }
 
     if (bounce == 8 && stage == 1) {
-      if (count <= mocodistance) {
+      if (count <= mocoDistance) {
 
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, LOW);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, LOW);
-        }
-
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, LOW);
-        }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, LOW);
         }
 
-        if (liftswitch == 0) {
-          digitalWrite(liftup, HIGH);
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, LOW);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, HIGH);
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, LOW);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, HIGH);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, HIGH);
+        }
+
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, HIGH);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, HIGH);
         }
         count++;
       }
 
-      if (count >= mocodistance) {
+      if (count >= mocoDistance) {
 
-        if (liftswitch == 0) {
-          digitalWrite(liftup, LOW);
+        if (liftSwitch == 0) {
+          digitalWrite(liftUp, LOW);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftdown, LOW);
-        }
-
-        if (tiltswitch == 0) {
-          digitalWrite(tiltdown, LOW);
-        }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltup, LOW);
+        if (liftSwitch == 1) {
+          digitalWrite(liftDown, LOW);
         }
 
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltDown, LOW);
+        }
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltUp, LOW);
+        }
 
-        if (liftswitch == 0) {
-          digitalWrite(liftdown, HIGH);
+
+        if (liftSwitch == 0) {
+          digitalWrite(liftDown, HIGH);
         }
-        if (liftswitch == 1) {
-          digitalWrite(liftup, HIGH);
+        if (liftSwitch == 1) {
+          digitalWrite(liftUp, HIGH);
         }
 
-        if (tiltswitch == 0) {
-          digitalWrite(tiltup, HIGH);
+        if (tiltSwitch == 0) {
+          digitalWrite(tiltUp, HIGH);
         }
-        if (tiltswitch == 1) {
-          digitalWrite(tiltdown, HIGH);
+        if (tiltSwitch == 1) {
+          digitalWrite(tiltDown, HIGH);
         }
         count++;
       }
 
-      if (count >= mocodistance * 2) {
+      if (count >= mocoDistance * 2) {
         count = 0;
       }
     }
