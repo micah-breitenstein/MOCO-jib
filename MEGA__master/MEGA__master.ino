@@ -516,32 +516,10 @@ void loop() {
     delay(interval / 2);
 
     Serial.println("turning on timelapse 1 now");
-    if (!isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-
-    if (!isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
+    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+    setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+    setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
 
     delay(stepDist);
 
@@ -568,32 +546,10 @@ void loop() {
     digitalWrite(trigger, HIGH);
     delay(interval / 2);
 
-    if (!isSwingReversed) {
-      digitalWrite(swingLeft, HIGH);
-    }
-    if (isSwingReversed) {
-      digitalWrite(swingRight, HIGH);
-    }
-    if (!isPanReversed) {
-      digitalWrite(panRight, HIGH);
-    }
-    if (isPanReversed) {
-      digitalWrite(panLeft, HIGH);
-    }
-
-    if (!isLiftReversed) {
-      digitalWrite(liftUp, HIGH);
-    }
-    if (isLiftReversed) {
-      digitalWrite(liftDown, HIGH);
-    }
-
-    if (!isTiltReversed) {
-      digitalWrite(tiltDown, HIGH);
-    }
-    if (isTiltReversed) {
-      digitalWrite(tiltUp, HIGH);
-    }
+    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+    setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+    setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
 
     delay(stepDist);
     digitalWrite(swingLeft, LOW);
