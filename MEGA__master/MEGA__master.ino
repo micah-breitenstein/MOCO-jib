@@ -94,6 +94,12 @@ enum PendingRumblePattern {
   PENDING_RUMBLE_STEP_DIST
 };
 
+enum FeedbackRumblePhase {
+  FEEDBACK_RUMBLE_IDLE,
+  FEEDBACK_RUMBLE_ON,
+  FEEDBACK_RUMBLE_PAUSE
+};
+
 IntervalRumblePhase intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
 unsigned long intervalRumblePhaseStartMs = 0;
 uint8_t intervalRumbleLongsRemaining = 0;
@@ -104,6 +110,9 @@ uint8_t stepDistRumbleLongsRemaining = 0;
 PendingRumblePattern pendingRumblePattern = PENDING_RUMBLE_NONE;
 bool rumbleSeparatorActive = false;
 unsigned long rumbleSeparatorStartMs = 0;
+FeedbackRumblePhase feedbackRumblePhase = FEEDBACK_RUMBLE_IDLE;
+unsigned long feedbackRumblePhaseStartMs = 0;
+uint8_t feedbackRumblePulsesRemaining = 0;
 
 // Motion Control Variables
 int bounce = 0;
@@ -140,6 +149,9 @@ constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 1000;
 constexpr unsigned long STEP_DIST_RUMBLE_LONG_ON_MS = 600;
 constexpr unsigned long STEP_DIST_RUMBLE_LONG_TOTAL_MS = 1000;
 constexpr unsigned long RUMBLE_PATTERN_SEPARATOR_MS = 300;
+constexpr unsigned long FEEDBACK_RUMBLE_ON_MS = 120;
+constexpr unsigned long FEEDBACK_RUMBLE_TOTAL_MS = 240;
+constexpr uint8_t LIMIT_REACHED_RUMBLE_PULSES = 2;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -442,7 +454,18 @@ void stopIntervalRumbleFeedback() {
   pendingRumblePattern = PENDING_RUMBLE_NONE;
   rumbleSeparatorActive = false;
   rumbleSeparatorStartMs = 0;
+  feedbackRumblePhase = FEEDBACK_RUMBLE_IDLE;
+  feedbackRumblePhaseStartMs = 0;
+  feedbackRumblePulsesRemaining = 0;
   vibrate = 0;
+}
+
+void startLimitReachedRumbleFeedback() {
+  stopIntervalRumbleFeedback();
+  feedbackRumblePhase = FEEDBACK_RUMBLE_ON;
+  feedbackRumblePhaseStartMs = millis();
+  feedbackRumblePulsesRemaining = LIMIT_REACHED_RUMBLE_PULSES;
+  vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
 void startIntervalRumbleFeedbackNow() {
@@ -522,6 +545,36 @@ void startStepDistRumbleFeedback() {
 }
 
 void handleIntervalRumbleFeedback(unsigned long now) {
+  if (feedbackRumblePhase != FEEDBACK_RUMBLE_IDLE) {
+    switch (feedbackRumblePhase) {
+      case FEEDBACK_RUMBLE_ON:
+        vibrate = RUMBLE_ACTIVE_INTENSITY;
+        if (now - feedbackRumblePhaseStartMs >= FEEDBACK_RUMBLE_ON_MS) {
+          feedbackRumblePhase = FEEDBACK_RUMBLE_PAUSE;
+          feedbackRumblePhaseStartMs = now;
+          vibrate = 0;
+        }
+        break;
+      case FEEDBACK_RUMBLE_PAUSE:
+        vibrate = 0;
+        if (now - feedbackRumblePhaseStartMs >= (FEEDBACK_RUMBLE_TOTAL_MS - FEEDBACK_RUMBLE_ON_MS)) {
+          if (feedbackRumblePulsesRemaining > 0) {
+            feedbackRumblePulsesRemaining--;
+          }
+          if (feedbackRumblePulsesRemaining > 0) {
+            feedbackRumblePhase = FEEDBACK_RUMBLE_ON;
+            feedbackRumblePhaseStartMs = now;
+          } else {
+            stopIntervalRumbleFeedback();
+          }
+        }
+        break;
+      case FEEDBACK_RUMBLE_IDLE:
+        break;
+    }
+    return;
+  }
+
   if (rumbleSeparatorActive) {
     vibrate = 0;
     if (now - rumbleSeparatorStartMs >= RUMBLE_PATTERN_SEPARATOR_MS) {
@@ -619,6 +672,8 @@ void adjustIntervalSeconds(int delta) {
     newIntervalSeconds = TIMELAPSE_INTERVAL_MAX_SECONDS;
   }
   if (newIntervalSeconds == timelapseIntervalSeconds) {
+    startLimitReachedRumbleFeedback();
+    Serial.println("Timelapse interval limit reached.");
     return;
   }
 
@@ -638,6 +693,8 @@ void adjustStepDist(int delta) {
     newStepDist = TIMELAPSE_STEP_DIST_MAX_MS;
   }
   if (newStepDist == stepDist) {
+    startLimitReachedRumbleFeedback();
+    Serial.println("Timelapse stepDist limit reached.");
     return;
   }
 
