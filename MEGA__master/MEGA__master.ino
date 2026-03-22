@@ -61,7 +61,7 @@ int rightStickYvalue;
 // Timelapse Variables
 int timelapseMode = 0;
 int intervalSeconds = 15;
-unsigned long interval;
+unsigned long timelapseIntervalMs;
 int stepDist = 100;
 const uint8_t trigger = 28;
 
@@ -401,7 +401,7 @@ void stopAllMotors() {
 }
 
 void updateIntervalMs() {
-  interval = static_cast<unsigned long>(intervalSeconds) * 1000UL;
+  timelapseIntervalMs = static_cast<unsigned long>(intervalSeconds) * 1000UL;
 }
 
 void stopIntervalRumbleFeedback() {
@@ -872,14 +872,14 @@ void handleActiveTimelapseMode(unsigned long now) {
       timelapsePhaseStartMs = now;
       break;
     case TIMELAPSE_PHASE_TRIGGER_LOW:
-      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(interval / 2)) {
+      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
         digitalWrite(trigger, HIGH);
         timelapsePhase = TIMELAPSE_PHASE_TRIGGER_HIGH;
         timelapsePhaseStartMs = now;
       }
       break;
     case TIMELAPSE_PHASE_TRIGGER_HIGH:
-      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(interval / 2)) {
+      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
         applyTimelapseModeOutputs(timelapseMode);
         timelapsePhase = TIMELAPSE_PHASE_MOVE_ACTIVE;
         timelapsePhaseStartMs = now;
