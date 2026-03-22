@@ -152,6 +152,7 @@ constexpr unsigned long RUMBLE_PATTERN_SEPARATOR_MS = 300;
 constexpr unsigned long FEEDBACK_RUMBLE_ON_MS = 120;
 constexpr unsigned long FEEDBACK_RUMBLE_TOTAL_MS = 240;
 constexpr uint8_t LIMIT_REACHED_RUMBLE_PULSES = 2;
+constexpr uint8_t LOCKOUT_DENIED_RUMBLE_PULSES = 3;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -468,6 +469,14 @@ void startLimitReachedRumbleFeedback() {
   vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
+void startLockoutDeniedRumbleFeedback() {
+  stopIntervalRumbleFeedback();
+  feedbackRumblePhase = FEEDBACK_RUMBLE_ON;
+  feedbackRumblePhaseStartMs = millis();
+  feedbackRumblePulsesRemaining = LOCKOUT_DENIED_RUMBLE_PULSES;
+  vibrate = RUMBLE_ACTIVE_INTENSITY;
+}
+
 void startIntervalRumbleFeedbackNow() {
   stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
   stepDistRumblePhaseStartMs = 0;
@@ -710,21 +719,33 @@ void adjustStepDist(int delta) {
 // with active timelapse or bounce motion.
 bool handleTimelapseIntervalAdjustment() {
   bool adjustmentAllowed = (timelapseMode == 0 && bounce == 0);
-  bool intervalAdjustUpComboActive = adjustmentAllowed && ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_UP);
-  bool intervalAdjustDownComboActive = adjustmentAllowed && ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_DOWN);
+  bool intervalAdjustUpComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_UP);
+  bool intervalAdjustDownComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_DOWN);
 
-  if (intervalAdjustUpComboActive && !lastIntervalAdjustUpComboActive) {
-    adjustIntervalSeconds(1);
+  if (intervalAdjustUpComboRawActive && !lastIntervalAdjustUpComboActive) {
+    if (adjustmentAllowed) {
+      adjustIntervalSeconds(1);
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Timelapse interval adjustment blocked: auto mode active.");
+    }
   }
 
-  if (intervalAdjustDownComboActive && !lastIntervalAdjustDownComboActive) {
-    adjustIntervalSeconds(-1);
+  if (intervalAdjustDownComboRawActive && !lastIntervalAdjustDownComboActive) {
+    if (adjustmentAllowed) {
+      adjustIntervalSeconds(-1);
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Timelapse interval adjustment blocked: auto mode active.");
+    }
   }
 
-  lastIntervalAdjustUpComboActive = intervalAdjustUpComboActive;
-  lastIntervalAdjustDownComboActive = intervalAdjustDownComboActive;
+  lastIntervalAdjustUpComboActive = intervalAdjustUpComboRawActive;
+  lastIntervalAdjustDownComboActive = intervalAdjustDownComboRawActive;
 
-  if (intervalAdjustUpComboActive || intervalAdjustDownComboActive) {
+  bool intervalAdjustComboHandled = adjustmentAllowed && (intervalAdjustUpComboRawActive || intervalAdjustDownComboRawActive);
+
+  if (intervalAdjustComboHandled) {
     stopAllMotors();
     return true;
   }
@@ -739,21 +760,33 @@ bool handleTimelapseIntervalAdjustment() {
 // with active timelapse or bounce motion.
 bool handleTimelapseStepDistAdjustment() {
   bool adjustmentAllowed = (timelapseMode == 0 && bounce == 0);
-  bool stepDistAdjustUpComboActive = adjustmentAllowed && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
-  bool stepDistAdjustDownComboActive = adjustmentAllowed && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT);
+  bool stepDistAdjustUpComboRawActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
+  bool stepDistAdjustDownComboRawActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT);
 
-  if (stepDistAdjustUpComboActive && !lastStepDistAdjustUpComboActive) {
-    adjustStepDist(TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
+  if (stepDistAdjustUpComboRawActive && !lastStepDistAdjustUpComboActive) {
+    if (adjustmentAllowed) {
+      adjustStepDist(TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Timelapse stepDist adjustment blocked: auto mode active.");
+    }
   }
 
-  if (stepDistAdjustDownComboActive && !lastStepDistAdjustDownComboActive) {
-    adjustStepDist(-TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
+  if (stepDistAdjustDownComboRawActive && !lastStepDistAdjustDownComboActive) {
+    if (adjustmentAllowed) {
+      adjustStepDist(-TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Timelapse stepDist adjustment blocked: auto mode active.");
+    }
   }
 
-  lastStepDistAdjustUpComboActive = stepDistAdjustUpComboActive;
-  lastStepDistAdjustDownComboActive = stepDistAdjustDownComboActive;
+  lastStepDistAdjustUpComboActive = stepDistAdjustUpComboRawActive;
+  lastStepDistAdjustDownComboActive = stepDistAdjustDownComboRawActive;
 
-  if (stepDistAdjustUpComboActive || stepDistAdjustDownComboActive) {
+  bool stepDistAdjustComboHandled = adjustmentAllowed && (stepDistAdjustUpComboRawActive || stepDistAdjustDownComboRawActive);
+
+  if (stepDistAdjustComboHandled) {
     stopAllMotors();
     return true;
   }

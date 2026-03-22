@@ -89,6 +89,7 @@ You can now change the timelapse interval directly from the controller while no 
 - **Allowed range:** 1 to 99 seconds
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
 - **Limit feedback:** trying to go below/above range gives a distinct double-short rumble
+- **Lockout feedback:** trying this combo while timelapse or bounce is active gives a distinct triple-short deny rumble
 - **R3 behavior priority:**
 	- If timelapse is active, R3 cancels timelapse
 	- Else if bounce is active, R3 cancels bounce
@@ -128,6 +129,7 @@ You can also change the timelapse move-active duration (`stepDist`) directly fro
 - **Allowed range:** 20 ms to 150 ms
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
 - **Limit feedback:** trying to go below/above range gives a distinct double-short rumble
+- **Lockout feedback:** trying this combo while timelapse or bounce is active gives a distinct triple-short deny rumble
 - **Rumble feedback:** long-pulse count encodes `stepDist` in 10 ms units (`stepDist / 10`)
 	- `20 ms` → 2 long pulses
 	- `100 ms` → 10 long pulses
