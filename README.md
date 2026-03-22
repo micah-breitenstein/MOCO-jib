@@ -62,6 +62,40 @@ Same stick positions as timelapse modes above, triggered with START instead of S
 - **Stage 1:** rig bounces back and forth over the recorded distance automatically
 - **Cancel:** press R3 at any time to stop bounce and reset
 
+## New Features
+
+### Controller-adjustable timelapse interval (no reflash needed)
+
+You can now change the timelapse interval directly from the controller while no auto mode is active.
+
+- **Increase interval:** hold **START** and tap **D-pad UP**
+- **Decrease interval:** hold **START** and tap **D-pad DOWN**
+- **Allowed range:** 1 to 99 seconds
+- **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
+
+When changed, the Mega prints the value over Serial as:
+
+- `Timelapse interval (seconds) = X`
+
+### Rumble interval feedback (time-code)
+
+After each interval change, the controller rumbles in a pattern that encodes the selected seconds:
+
+- **Long rumble = 10 seconds**
+- **Short rumble sequence = 1-second units**
+
+Examples:
+
+- **15 seconds** → 1 long + 5 short
+- **20 seconds** → 2 long
+- **24 seconds** → 2 long + 4 short
+
+Interpretation guide:
+
+- Count the number of long rumbles first (tens place)
+- Count the number of short rumbles next (ones place)
+- Total seconds = `(long count × 10) + short count`
+
 ## Project Details Sheet
 
 - Full project details are documented here: https://docs.google.com/spreadsheets/d/1BU9yWQd8groFjTa8OWagQ6Nst10-R33pP6oTYL_nhLQ/edit?usp=sharing
