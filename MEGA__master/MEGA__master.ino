@@ -172,6 +172,10 @@ bool lastIntervalAdjustDownComboActive = false;
 bool lastStepDistAdjustUpComboActive = false;
 bool lastStepDistAdjustDownComboActive = false;
 bool lastEmergencyStopComboActive = false;
+bool lastRumbleMuteToggleComboActive = false;
+bool rumbleMuted = false;
+bool suppressNextSelectRelease = false;
+bool suppressNextStartRelease = false;
 
 void configureController() {
 
@@ -502,6 +506,10 @@ void startR3CancelRumbleFeedback() {
   startFeedbackRumble(R3_CANCEL_RUMBLE_PULSES, R3_CANCEL_RUMBLE_ON_MS, R3_CANCEL_RUMBLE_TOTAL_MS);
 }
 
+void startRumbleUnmuteFeedback() {
+  startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+}
+
 void startIntervalRumbleFeedbackNow() {
   stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
   stepDistRumblePhaseStartMs = 0;
@@ -819,6 +827,29 @@ bool handleTimelapseStepDistAdjustment() {
   return false;
 }
 
+// START + SELECT + SQUARE toggles controller rumble mute.
+// This only changes controller vibration output; serial logs remain enabled.
+bool handleRumbleMuteToggle() {
+  bool rumbleMuteToggleComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_SQUARE);
+
+  if (rumbleMuteToggleComboActive && !lastRumbleMuteToggleComboActive) {
+    rumbleMuted = !rumbleMuted;
+    suppressNextSelectRelease = true;
+    suppressNextStartRelease = true;
+    stopIntervalRumbleFeedback();
+
+    Serial.print("Controller rumble ");
+    Serial.println(rumbleMuted ? "muted." : "unmuted.");
+
+    if (!rumbleMuted) {
+      startRumbleUnmuteFeedback();
+    }
+  }
+
+  lastRumbleMuteToggleComboActive = rumbleMuteToggleComboActive;
+  return rumbleMuteToggleComboActive;
+}
+
 void handleThumbstickCancel() {
   if (!ps2x.ButtonReleased(PSB_R3)) {
     return;
@@ -1001,6 +1032,13 @@ int stickPositionToMode(int stickX, int stickY) {
 }
 
 void updateTimelapseModeSelection() {
+  if (suppressNextSelectRelease) {
+    if (ps2x.ButtonReleased(PSB_SELECT)) {
+      suppressNextSelectRelease = false;
+    }
+    return;
+  }
+
   if (timelapseMode != 0 || !ps2x.ButtonReleased(PSB_SELECT)) {
     return;
   }
@@ -1031,6 +1069,13 @@ const char* getBounceModeSerialLabel(int mode) {
 }
 
 void updateBounceModeSelection() {
+  if (suppressNextStartRelease) {
+    if (ps2x.ButtonReleased(PSB_START)) {
+      suppressNextStartRelease = false;
+    }
+    return;
+  }
+
   if (bounce != 0 || !ps2x.ButtonReleased(PSB_START)) {
     return;
   }
@@ -1321,6 +1366,7 @@ void setup() {
   detectControllerType();
   Serial.println("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds.");
   Serial.println("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms.");
+  Serial.println("START + SELECT + SQUARE toggles controller rumble mute.");
 }
 
 void loop() {
@@ -1336,7 +1382,7 @@ void loop() {
     return;
 
   handleIntervalRumbleFeedback(millis());
-  ps2x.read_gamepad(false, vibrate); // rumble intensity comes from the interval feedback state machine
+  ps2x.read_gamepad(false, rumbleMuted ? 0 : vibrate); // rumble can be muted without affecting serial logs or internal feedback state
 
   unsigned long now = millis();
 
@@ -1364,6 +1410,10 @@ void loop() {
   }
 
   if (handleTimelapseStepDistAdjustment()) {
+    return;
+  }
+
+  if (handleRumbleMuteToggle()) {
     return;
   }
 

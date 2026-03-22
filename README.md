@@ -34,6 +34,7 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 | L1 / L2 | Pan + swing speed up / down |
 | R1 / R2 | Lift + tilt speed up / down |
 | **L1 + L2 + R1 + R2** | **Emergency stop: immediately stops all motors, cancels timelapse/bounce, and clears interval rumble. Normal controls resume after release.** |
+| **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** |
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
 | L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1) |
@@ -81,6 +82,19 @@ Use this at any time for a hard stop:
 	- on combo release, Serial prints `EMERGENCY STOP RELEASED | controls re-enabled`
 	- on combo release, a short confirmation rumble plays to confirm controls are re-enabled
 	- timelapse/bounce stay canceled until you start them again (SELECT release / START release)
+
+### Rumble mute toggle
+
+Use this when you want quiet operation but still want Serial feedback:
+
+- Hold **START + SELECT + SQUARE** together to toggle rumble mute
+- When muted:
+	- controller vibration output is disabled
+	- Serial log messages still print normally
+	- interval / `stepDist` / limit / deny / cancel / release rumble patterns are suppressed on the controller
+- When unmuted:
+	- controller rumble output resumes normally
+	- a short confirmation rumble plays when rumble is turned back on
 
 ### Controller-adjustable timelapse interval (no reflash needed)
 
