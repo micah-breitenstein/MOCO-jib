@@ -37,7 +37,7 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
 | L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1) |
-| **R3 (right stick click)** | **Cancel active timelapse/bounce (stops motors + resets). If no auto mode is active, it cancels interval rumble feedback.** |
+| **R3 (right stick click)** | **Cancel active timelapse/bounce (stops motors + resets). If no auto mode is active, it cancels rumble feedback. A distinct single medium cancel rumble confirms the action.** |
 
 ### Timelapse Modes (SELECT release)
 
@@ -78,6 +78,8 @@ Use this at any time for a hard stop:
 - Recovery behavior:
 	- while all 4 buttons are held, other inputs are ignored
 	- after releasing the combo, manual controls respond again immediately
+	- on combo release, Serial prints `EMERGENCY STOP RELEASED | controls re-enabled`
+	- on combo release, a short confirmation rumble plays to confirm controls are re-enabled
 	- timelapse/bounce stay canceled until you start them again (SELECT release / START release)
 
 ### Controller-adjustable timelapse interval (no reflash needed)
@@ -94,6 +96,7 @@ You can now change the timelapse interval directly from the controller while no 
 	- If timelapse is active, R3 cancels timelapse
 	- Else if bounce is active, R3 cancels bounce
 	- Else (idle), R3 cancels interval rumble feedback
+	- A distinct single medium cancel rumble confirms any R3 cancel action
 
 When changed, the Mega prints the value over Serial as:
 

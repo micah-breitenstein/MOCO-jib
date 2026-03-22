@@ -113,6 +113,8 @@ unsigned long rumbleSeparatorStartMs = 0;
 FeedbackRumblePhase feedbackRumblePhase = FEEDBACK_RUMBLE_IDLE;
 unsigned long feedbackRumblePhaseStartMs = 0;
 uint8_t feedbackRumblePulsesRemaining = 0;
+unsigned long feedbackRumbleOnMs = 0;
+unsigned long feedbackRumbleTotalMs = 0;
 
 // Motion Control Variables
 int bounce = 0;
@@ -153,6 +155,12 @@ constexpr unsigned long FEEDBACK_RUMBLE_ON_MS = 120;
 constexpr unsigned long FEEDBACK_RUMBLE_TOTAL_MS = 240;
 constexpr uint8_t LIMIT_REACHED_RUMBLE_PULSES = 2;
 constexpr uint8_t LOCKOUT_DENIED_RUMBLE_PULSES = 3;
+constexpr unsigned long EMERGENCY_RELEASE_RUMBLE_ON_MS = 100;
+constexpr unsigned long EMERGENCY_RELEASE_RUMBLE_TOTAL_MS = 180;
+constexpr uint8_t EMERGENCY_RELEASE_RUMBLE_PULSES = 1;
+constexpr unsigned long R3_CANCEL_RUMBLE_ON_MS = 300;
+constexpr unsigned long R3_CANCEL_RUMBLE_TOTAL_MS = 450;
+constexpr uint8_t R3_CANCEL_RUMBLE_PULSES = 1;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -458,23 +466,40 @@ void stopIntervalRumbleFeedback() {
   feedbackRumblePhase = FEEDBACK_RUMBLE_IDLE;
   feedbackRumblePhaseStartMs = 0;
   feedbackRumblePulsesRemaining = 0;
+  feedbackRumbleOnMs = 0;
+  feedbackRumbleTotalMs = 0;
   vibrate = 0;
 }
 
-void startLimitReachedRumbleFeedback() {
+void startFeedbackRumble(uint8_t pulses, unsigned long onMs, unsigned long totalMs) {
+  if (pulses == 0 || totalMs < onMs) {
+    stopIntervalRumbleFeedback();
+    return;
+  }
+
   stopIntervalRumbleFeedback();
   feedbackRumblePhase = FEEDBACK_RUMBLE_ON;
   feedbackRumblePhaseStartMs = millis();
-  feedbackRumblePulsesRemaining = LIMIT_REACHED_RUMBLE_PULSES;
+  feedbackRumblePulsesRemaining = pulses;
+  feedbackRumbleOnMs = onMs;
+  feedbackRumbleTotalMs = totalMs;
   vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
+void startLimitReachedRumbleFeedback() {
+  startFeedbackRumble(LIMIT_REACHED_RUMBLE_PULSES, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+}
+
 void startLockoutDeniedRumbleFeedback() {
-  stopIntervalRumbleFeedback();
-  feedbackRumblePhase = FEEDBACK_RUMBLE_ON;
-  feedbackRumblePhaseStartMs = millis();
-  feedbackRumblePulsesRemaining = LOCKOUT_DENIED_RUMBLE_PULSES;
-  vibrate = RUMBLE_ACTIVE_INTENSITY;
+  startFeedbackRumble(LOCKOUT_DENIED_RUMBLE_PULSES, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+}
+
+void startEmergencyReleaseRumbleFeedback() {
+  startFeedbackRumble(EMERGENCY_RELEASE_RUMBLE_PULSES, EMERGENCY_RELEASE_RUMBLE_ON_MS, EMERGENCY_RELEASE_RUMBLE_TOTAL_MS);
+}
+
+void startR3CancelRumbleFeedback() {
+  startFeedbackRumble(R3_CANCEL_RUMBLE_PULSES, R3_CANCEL_RUMBLE_ON_MS, R3_CANCEL_RUMBLE_TOTAL_MS);
 }
 
 void startIntervalRumbleFeedbackNow() {
@@ -558,7 +583,7 @@ void handleIntervalRumbleFeedback(unsigned long now) {
     switch (feedbackRumblePhase) {
       case FEEDBACK_RUMBLE_ON:
         vibrate = RUMBLE_ACTIVE_INTENSITY;
-        if (now - feedbackRumblePhaseStartMs >= FEEDBACK_RUMBLE_ON_MS) {
+        if (now - feedbackRumblePhaseStartMs >= feedbackRumbleOnMs) {
           feedbackRumblePhase = FEEDBACK_RUMBLE_PAUSE;
           feedbackRumblePhaseStartMs = now;
           vibrate = 0;
@@ -566,7 +591,7 @@ void handleIntervalRumbleFeedback(unsigned long now) {
         break;
       case FEEDBACK_RUMBLE_PAUSE:
         vibrate = 0;
-        if (now - feedbackRumblePhaseStartMs >= (FEEDBACK_RUMBLE_TOTAL_MS - FEEDBACK_RUMBLE_ON_MS)) {
+        if (now - feedbackRumblePhaseStartMs >= (feedbackRumbleTotalMs - feedbackRumbleOnMs)) {
           if (feedbackRumblePulsesRemaining > 0) {
             feedbackRumblePulsesRemaining--;
           }
@@ -801,16 +826,25 @@ void handleThumbstickCancel() {
 
   if (timelapseMode != 0) {
     resetTimelapseState();
+    startR3CancelRumbleFeedback();
+    Serial.println("R3 cancel: timelapse reset.");
     return;
   }
 
   if (bounce != 0) {
     resetBounceState();
+    startR3CancelRumbleFeedback();
+    Serial.println("R3 cancel: bounce reset.");
     return;
   }
 
-  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE || stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE) {
+  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE
+      || stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE
+      || rumbleSeparatorActive
+      || feedbackRumblePhase != FEEDBACK_RUMBLE_IDLE
+      || pendingRumblePattern != PENDING_RUMBLE_NONE) {
     stopIntervalRumbleFeedback();
+    startR3CancelRumbleFeedback();
     Serial.println("Rumble feedback canceled.");
   }
 }
@@ -832,6 +866,10 @@ bool handleEmergencyStop() {
   bool emergencyStopComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_L2) && ps2x.Button(PSB_R1) && ps2x.Button(PSB_R2);
 
   if (!emergencyStopComboActive) {
+    if (lastEmergencyStopComboActive) {
+      Serial.println("EMERGENCY STOP RELEASED | controls re-enabled");
+      startEmergencyReleaseRumbleFeedback();
+    }
     lastEmergencyStopComboActive = false;
     return false;
   }
