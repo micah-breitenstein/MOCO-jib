@@ -88,6 +88,12 @@ enum StepDistRumblePhase {
   STEP_DIST_RUMBLE_LONG_PAUSE
 };
 
+enum PendingRumblePattern {
+  PENDING_RUMBLE_NONE,
+  PENDING_RUMBLE_INTERVAL,
+  PENDING_RUMBLE_STEP_DIST
+};
+
 IntervalRumblePhase intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
 unsigned long intervalRumblePhaseStartMs = 0;
 uint8_t intervalRumbleLongsRemaining = 0;
@@ -95,6 +101,9 @@ uint8_t intervalRumbleShortsRemaining = 0;
 StepDistRumblePhase stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
 unsigned long stepDistRumblePhaseStartMs = 0;
 uint8_t stepDistRumbleLongsRemaining = 0;
+PendingRumblePattern pendingRumblePattern = PENDING_RUMBLE_NONE;
+bool rumbleSeparatorActive = false;
+unsigned long rumbleSeparatorStartMs = 0;
 
 // Motion Control Variables
 int bounce = 0;
@@ -130,6 +139,7 @@ constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 200;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 1000;
 constexpr unsigned long STEP_DIST_RUMBLE_LONG_ON_MS = 600;
 constexpr unsigned long STEP_DIST_RUMBLE_LONG_TOTAL_MS = 1000;
+constexpr unsigned long RUMBLE_PATTERN_SEPARATOR_MS = 300;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -429,10 +439,13 @@ void stopIntervalRumbleFeedback() {
   stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
   stepDistRumblePhaseStartMs = 0;
   stepDistRumbleLongsRemaining = 0;
+  pendingRumblePattern = PENDING_RUMBLE_NONE;
+  rumbleSeparatorActive = false;
+  rumbleSeparatorStartMs = 0;
   vibrate = 0;
 }
 
-void startIntervalRumbleFeedback() {
+void startIntervalRumbleFeedbackNow() {
   stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
   stepDistRumblePhaseStartMs = 0;
   stepDistRumbleLongsRemaining = 0;
@@ -453,7 +466,7 @@ void startIntervalRumbleFeedback() {
   vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
-void startStepDistRumbleFeedback() {
+void startStepDistRumbleFeedbackNow() {
   intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
   intervalRumblePhaseStartMs = 0;
   intervalRumbleLongsRemaining = 0;
@@ -470,7 +483,62 @@ void startStepDistRumbleFeedback() {
   vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
+void startRumbleSeparator(PendingRumblePattern nextPattern) {
+  intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
+  intervalRumblePhaseStartMs = 0;
+  intervalRumbleLongsRemaining = 0;
+  intervalRumbleShortsRemaining = 0;
+  stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
+  stepDistRumblePhaseStartMs = 0;
+  stepDistRumbleLongsRemaining = 0;
+  pendingRumblePattern = nextPattern;
+  rumbleSeparatorActive = true;
+  rumbleSeparatorStartMs = millis();
+  vibrate = 0;
+}
+
+void startIntervalRumbleFeedback() {
+  if (stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE) {
+    startRumbleSeparator(PENDING_RUMBLE_INTERVAL);
+    return;
+  }
+
+  pendingRumblePattern = PENDING_RUMBLE_NONE;
+  rumbleSeparatorActive = false;
+  rumbleSeparatorStartMs = 0;
+  startIntervalRumbleFeedbackNow();
+}
+
+void startStepDistRumbleFeedback() {
+  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE) {
+    startRumbleSeparator(PENDING_RUMBLE_STEP_DIST);
+    return;
+  }
+
+  pendingRumblePattern = PENDING_RUMBLE_NONE;
+  rumbleSeparatorActive = false;
+  rumbleSeparatorStartMs = 0;
+  startStepDistRumbleFeedbackNow();
+}
+
 void handleIntervalRumbleFeedback(unsigned long now) {
+  if (rumbleSeparatorActive) {
+    vibrate = 0;
+    if (now - rumbleSeparatorStartMs >= RUMBLE_PATTERN_SEPARATOR_MS) {
+      rumbleSeparatorActive = false;
+      rumbleSeparatorStartMs = 0;
+      PendingRumblePattern patternToStart = pendingRumblePattern;
+      pendingRumblePattern = PENDING_RUMBLE_NONE;
+
+      if (patternToStart == PENDING_RUMBLE_INTERVAL) {
+        startIntervalRumbleFeedbackNow();
+      } else if (patternToStart == PENDING_RUMBLE_STEP_DIST) {
+        startStepDistRumbleFeedbackNow();
+      }
+    }
+    return;
+  }
+
   if (stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE) {
     switch (stepDistRumblePhase) {
       case STEP_DIST_RUMBLE_LONG_ACTIVE:

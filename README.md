@@ -111,6 +111,7 @@ Interpretation guide:
 - Count the number of long rumbles first (tens place)
 - Count the number of short rumbles next (ones place)
 - Total seconds = `(long count × 10) + short count`
+- If you switch from interval adjustment to `stepDist` adjustment (or back), a brief silent separator pause is inserted before the new rumble pattern starts
 
 ### Controller-adjustable timelapse move time (`stepDist`) (no reflash needed)
 
