@@ -121,7 +121,10 @@ You can also change the timelapse move-active duration (`stepDist`) directly fro
 - **Step size:** **10 ms** per press
 - **Allowed range:** 20 ms to 150 ms
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
-- **Rumble feedback:** each successful `stepDist` change triggers a short confirmation rumble
+- **Rumble feedback:** long-pulse count encodes `stepDist` in 10 ms units (`stepDist / 10`)
+	- `20 ms` → 2 long pulses
+	- `100 ms` → 10 long pulses
+	- `150 ms` → 15 long pulses
 
 When changed, the Mega prints the value over Serial as:
 

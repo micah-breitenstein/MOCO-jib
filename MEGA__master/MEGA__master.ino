@@ -82,10 +82,19 @@ enum IntervalRumblePhase {
   INTERVAL_RUMBLE_SHORT_PAUSE
 };
 
+enum StepDistRumblePhase {
+  STEP_DIST_RUMBLE_IDLE,
+  STEP_DIST_RUMBLE_LONG_ACTIVE,
+  STEP_DIST_RUMBLE_LONG_PAUSE
+};
+
 IntervalRumblePhase intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
 unsigned long intervalRumblePhaseStartMs = 0;
 uint8_t intervalRumbleLongsRemaining = 0;
 uint8_t intervalRumbleShortsRemaining = 0;
+StepDistRumblePhase stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
+unsigned long stepDistRumblePhaseStartMs = 0;
+uint8_t stepDistRumbleLongsRemaining = 0;
 
 // Motion Control Variables
 int bounce = 0;
@@ -119,7 +128,8 @@ constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 10000;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 200;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 1000;
-constexpr unsigned long STEP_DIST_RUMBLE_MS = 200;
+constexpr unsigned long STEP_DIST_RUMBLE_LONG_ON_MS = 600;
+constexpr unsigned long STEP_DIST_RUMBLE_LONG_TOTAL_MS = 1000;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -131,8 +141,6 @@ bool lastIntervalAdjustDownComboActive = false;
 bool lastStepDistAdjustUpComboActive = false;
 bool lastStepDistAdjustDownComboActive = false;
 bool lastEmergencyStopComboActive = false;
-bool stepDistRumbleActive = false;
-unsigned long stepDistRumbleStartMs = 0;
 
 void configureController() {
 
@@ -418,14 +426,16 @@ void stopIntervalRumbleFeedback() {
   intervalRumblePhaseStartMs = 0;
   intervalRumbleLongsRemaining = 0;
   intervalRumbleShortsRemaining = 0;
-  stepDistRumbleActive = false;
-  stepDistRumbleStartMs = 0;
+  stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
+  stepDistRumblePhaseStartMs = 0;
+  stepDistRumbleLongsRemaining = 0;
   vibrate = 0;
 }
 
 void startIntervalRumbleFeedback() {
-  stepDistRumbleActive = false;
-  stepDistRumbleStartMs = 0;
+  stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
+  stepDistRumblePhaseStartMs = 0;
+  stepDistRumbleLongsRemaining = 0;
 
   intervalRumbleLongsRemaining = timelapseIntervalSeconds / 10;
   intervalRumbleShortsRemaining = timelapseIntervalSeconds % 10;
@@ -449,18 +459,44 @@ void startStepDistRumbleFeedback() {
   intervalRumbleLongsRemaining = 0;
   intervalRumbleShortsRemaining = 0;
 
-  stepDistRumbleActive = true;
-  stepDistRumbleStartMs = millis();
+  stepDistRumbleLongsRemaining = stepDist / TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS;
+  if (stepDistRumbleLongsRemaining == 0) {
+    stopIntervalRumbleFeedback();
+    return;
+  }
+
+  stepDistRumblePhase = STEP_DIST_RUMBLE_LONG_ACTIVE;
+  stepDistRumblePhaseStartMs = millis();
   vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
 void handleIntervalRumbleFeedback(unsigned long now) {
-  if (stepDistRumbleActive) {
-    vibrate = RUMBLE_ACTIVE_INTENSITY;
-    if (now - stepDistRumbleStartMs >= STEP_DIST_RUMBLE_MS) {
-      stepDistRumbleActive = false;
-      stepDistRumbleStartMs = 0;
-      vibrate = 0;
+  if (stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE) {
+    switch (stepDistRumblePhase) {
+      case STEP_DIST_RUMBLE_LONG_ACTIVE:
+        vibrate = RUMBLE_ACTIVE_INTENSITY;
+        if (now - stepDistRumblePhaseStartMs >= STEP_DIST_RUMBLE_LONG_ON_MS) {
+          stepDistRumblePhase = STEP_DIST_RUMBLE_LONG_PAUSE;
+          stepDistRumblePhaseStartMs = now;
+          vibrate = 0;
+        }
+        break;
+      case STEP_DIST_RUMBLE_LONG_PAUSE:
+        vibrate = 0;
+        if (now - stepDistRumblePhaseStartMs >= (STEP_DIST_RUMBLE_LONG_TOTAL_MS - STEP_DIST_RUMBLE_LONG_ON_MS)) {
+          if (stepDistRumbleLongsRemaining > 0) {
+            stepDistRumbleLongsRemaining--;
+          }
+          if (stepDistRumbleLongsRemaining > 0) {
+            stepDistRumblePhase = STEP_DIST_RUMBLE_LONG_ACTIVE;
+            stepDistRumblePhaseStartMs = now;
+          } else {
+            stopIntervalRumbleFeedback();
+          }
+        }
+        break;
+      case STEP_DIST_RUMBLE_IDLE:
+        break;
     }
     return;
   }
@@ -615,7 +651,7 @@ void handleThumbstickCancel() {
     return;
   }
 
-  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE || stepDistRumbleActive) {
+  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE || stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE) {
     stopIntervalRumbleFeedback();
     Serial.println("Rumble feedback canceled.");
   }
