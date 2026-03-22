@@ -518,6 +518,27 @@ bool handleTimelapseIntervalAdjustment() {
   return false;
 }
 
+void handleThumbstickCancel() {
+  if (!ps2x.ButtonReleased(PSB_R3)) {
+    return;
+  }
+
+  if (timelapseMode != 0) {
+    resetTimelapseState();
+    return;
+  }
+
+  if (bounce != 0) {
+    resetBounceState();
+    return;
+  }
+
+  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE) {
+    stopIntervalRumbleFeedback();
+    Serial.println("Interval rumble feedback canceled.");
+  }
+}
+
 const char* getTimelapseModeLabel(int mode) {
   switch (mode) {
     // Mode 1: swing left, boom down
@@ -984,6 +1005,8 @@ void loop() {
   leftStickYvalue  = ps2x.Analog(PSS_LY);
   leftStickXvalue  = ps2x.Analog(PSS_LX);
 
+  handleThumbstickCancel();
+
   if (handleTimelapseIntervalAdjustment()) {
     return;
   }
@@ -1037,20 +1060,10 @@ void loop() {
 
   // Timelapse
 
-  // R3 (right stick click) cancels active timelapse and stops all motors
-  if (timelapseMode != 0 && ps2x.ButtonReleased(PSB_R3)) {
-    resetTimelapseState();
-  }
-
   updateTimelapseModeSelection();
   handleActiveTimelapseMode(now);
 
   // MOCO Moves (bounce)
-
-  // R3 (right stick click) cancels active bounce and stops all motors
-  if (bounce != 0 && ps2x.ButtonReleased(PSB_R3)) {
-    resetBounceState();
-  }
 
   updateBounceModeSelection();
 

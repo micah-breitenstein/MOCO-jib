@@ -36,7 +36,7 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
 | L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1) |
-| **R3 (right stick click)** | **Cancel active timelapse or bounce — stops all motors and resets state** |
+| **R3 (right stick click)** | **Cancel active timelapse/bounce (stops motors + resets). Also cancels interval rumble feedback if no auto mode is active.** |
 
 ### Timelapse Modes (SELECT release)
 
@@ -72,6 +72,7 @@ You can now change the timelapse interval directly from the controller while no 
 - **Decrease interval:** hold **START** and tap **D-pad DOWN**
 - **Allowed range:** 1 to 99 seconds
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
+- **Cancel rumble feedback:** press **R3** (right stick click)
 
 When changed, the Mega prints the value over Serial as:
 
