@@ -100,6 +100,20 @@ Interpretation guide:
 - Count the number of short rumbles next (ones place)
 - Total seconds = `(long count × 10) + short count`
 
+### Controller-adjustable timelapse move time (`stepDist`) (no reflash needed)
+
+You can also change the timelapse move-active duration (`stepDist`) directly from the controller.
+
+- **Increase `stepDist`:** hold **SELECT** and tap **D-pad RIGHT**
+- **Decrease `stepDist`:** hold **SELECT** and tap **D-pad LEFT**
+- **Step size:** **10 ms** per press
+- **Allowed range:** 20 ms to 150 ms
+- **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
+
+When changed, the Mega prints the value over Serial as:
+
+- `Timelapse stepDist (ms) = X`
+
 ## Project Details Sheet
 
 - Full project details are documented here: https://docs.google.com/spreadsheets/d/1BU9yWQd8groFjTa8OWagQ6Nst10-R33pP6oTYL_nhLQ/edit?usp=sharing

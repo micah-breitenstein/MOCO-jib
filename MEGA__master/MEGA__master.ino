@@ -112,6 +112,9 @@ constexpr int TILT_STOP_ACTIVE = 1;
 constexpr int TILT_STOP_TRIM = 2;
 constexpr int TIMELAPSE_INTERVAL_MIN_SECONDS = 1;
 constexpr int TIMELAPSE_INTERVAL_MAX_SECONDS = 99;
+constexpr int TIMELAPSE_STEP_DIST_MIN_MS = 20;
+constexpr int TIMELAPSE_STEP_DIST_MAX_MS = 150;
+constexpr int TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS = 10;
 constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 10000;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 200;
@@ -124,6 +127,8 @@ bool isTiltReversed = false;
 bool isFocusReversed = false;
 bool lastIntervalAdjustUpComboActive = false;
 bool lastIntervalAdjustDownComboActive = false;
+bool lastStepDistAdjustUpComboActive = false;
+bool lastStepDistAdjustDownComboActive = false;
 
 void configureController() {
 
@@ -490,6 +495,23 @@ void adjustIntervalSeconds(int delta) {
   startIntervalRumbleFeedback();
 }
 
+void adjustStepDist(int delta) {
+  int newStepDist = stepDist + delta;
+  if (newStepDist < TIMELAPSE_STEP_DIST_MIN_MS) {
+    newStepDist = TIMELAPSE_STEP_DIST_MIN_MS;
+  }
+  if (newStepDist > TIMELAPSE_STEP_DIST_MAX_MS) {
+    newStepDist = TIMELAPSE_STEP_DIST_MAX_MS;
+  }
+  if (newStepDist == stepDist) {
+    return;
+  }
+
+  stepDist = newStepDist;
+  Serial.print("Timelapse stepDist (ms) = ");
+  Serial.println(stepDist);
+}
+
 // START + PAD_UP increases timelapseIntervalSeconds.
 // START + PAD_DOWN decreases timelapseIntervalSeconds.
 // This is only active while no auto mode is running so it does not conflict
@@ -511,6 +533,35 @@ bool handleTimelapseIntervalAdjustment() {
   lastIntervalAdjustDownComboActive = intervalAdjustDownComboActive;
 
   if (intervalAdjustUpComboActive || intervalAdjustDownComboActive) {
+    stopAllMotors();
+    return true;
+  }
+
+  return false;
+}
+
+// SELECT + PAD_RIGHT increases stepDist.
+// SELECT + PAD_LEFT decreases stepDist.
+// stepDist changes by 10 ms per press.
+// This is only active while no auto mode is running so it does not conflict
+// with active timelapse or bounce motion.
+bool handleTimelapseStepDistAdjustment() {
+  bool adjustmentAllowed = (timelapseMode == 0 && bounce == 0);
+  bool stepDistAdjustUpComboActive = adjustmentAllowed && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
+  bool stepDistAdjustDownComboActive = adjustmentAllowed && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT);
+
+  if (stepDistAdjustUpComboActive && !lastStepDistAdjustUpComboActive) {
+    adjustStepDist(TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
+  }
+
+  if (stepDistAdjustDownComboActive && !lastStepDistAdjustDownComboActive) {
+    adjustStepDist(-TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
+  }
+
+  lastStepDistAdjustUpComboActive = stepDistAdjustUpComboActive;
+  lastStepDistAdjustDownComboActive = stepDistAdjustDownComboActive;
+
+  if (stepDistAdjustUpComboActive || stepDistAdjustDownComboActive) {
     stopAllMotors();
     return true;
   }
@@ -973,6 +1024,7 @@ void setup() {
   configureController();
   detectControllerType();
   Serial.println("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds.");
+  Serial.println("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms.");
 }
 
 void loop() {
@@ -1008,6 +1060,10 @@ void loop() {
   handleThumbstickCancel();
 
   if (handleTimelapseIntervalAdjustment()) {
+    return;
+  }
+
+  if (handleTimelapseStepDistAdjustment()) {
     return;
   }
 
