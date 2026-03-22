@@ -176,6 +176,7 @@ bool lastRumbleMuteToggleComboActive = false;
 bool rumbleMuted = false;
 bool suppressNextSelectRelease = false;
 bool suppressNextStartRelease = false;
+bool lastSettingsReplayComboActive = false;
 
 void configureController() {
 
@@ -508,6 +509,24 @@ void startR3CancelRumbleFeedback() {
 
 void startRumbleUnmuteFeedback() {
   startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+}
+
+void startSettingsReplayRumble() {
+  startIntervalRumbleFeedback();
+  Serial.print("Settings replay: interval=");
+  Serial.print(timelapseIntervalSeconds);
+  Serial.print("s, stepDist=");
+  Serial.print(stepDist);
+  Serial.println("ms");
+}
+
+void startSettingsReplayRumble() {
+  startIntervalRumbleFeedback();
+  Serial.print("Settings replay: interval=");
+  Serial.print(timelapseIntervalSeconds);
+  Serial.print("s, stepDist=");
+  Serial.print(stepDist);
+  Serial.println("ms");
 }
 
 void startIntervalRumbleFeedbackNow() {
@@ -848,6 +867,19 @@ bool handleRumbleMuteToggle() {
 
   lastRumbleMuteToggleComboActive = rumbleMuteToggleComboActive;
   return rumbleMuteToggleComboActive;
+}
+
+// L1 + L2 + CIRCLE replays current interval and stepDist rumble patterns.
+// This is read-only; no values change.
+bool handleSettingsReplay() {
+  bool settingsReplayComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_L2) && ps2x.Button(PSB_CIRCLE);
+
+  if (settingsReplayComboActive && !lastSettingsReplayComboActive) {
+    startSettingsReplayRumble();
+  }
+
+  lastSettingsReplayComboActive = settingsReplayComboActive;
+  return settingsReplayComboActive;
 }
 
 void handleThumbstickCancel() {
@@ -1367,6 +1399,8 @@ void setup() {
   Serial.println("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds.");
   Serial.println("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms.");
   Serial.println("START + SELECT + SQUARE toggles controller rumble mute.");
+  Serial.println("L1 + L2 + CIRCLE replays current settings as rumble patterns.");
+}
 }
 
 void loop() {
@@ -1414,6 +1448,10 @@ void loop() {
   }
 
   if (handleRumbleMuteToggle()) {
+    return;
+  }
+
+  if (handleSettingsReplay()) {
     return;
   }
 

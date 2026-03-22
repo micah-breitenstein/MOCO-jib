@@ -38,7 +38,7 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
 | L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1) |
-| **R3 (right stick click)** | **Cancel active timelapse/bounce (stops motors + resets). If no auto mode is active, it cancels rumble feedback. A distinct single medium cancel rumble confirms the action.** |
+| **R3 (press right joystick inward / right stick click)** | **Cancel active timelapse/bounce (stops motors + resets). If no auto mode is active, it cancels rumble feedback. A distinct single medium cancel rumble confirms the action.** |
 
 ### Timelapse Modes (SELECT release)
 
@@ -55,14 +55,14 @@ Stick position at moment of SELECT release selects the move:
 | Full right (X=255) | 7: swing right only |
 | Full down (Y=255) | 8: boom down only |
 
-- **Cancel:** press R3 at any time to stop timelapse and reset
+- **Cancel:** press `R3` (press the right joystick inward) at any time to stop timelapse and reset
 
 ### Bounce / MoCo Modes (START release)
 
 Same stick positions as timelapse modes above, triggered with START instead of SELECT.
 - **Stage 0:** rig moves in the initial direction; press L3 to mark the travel distance
 - **Stage 1:** rig bounces back and forth over the recorded distance automatically
-- **Cancel:** press R3 at any time to stop bounce and reset
+- **Cancel:** press `R3` (press the right joystick inward) at any time to stop bounce and reset
 
 ## New Features
 
@@ -107,10 +107,10 @@ You can now change the timelapse interval directly from the controller while no 
 - **Limit feedback:** trying to go below/above range gives a distinct double-short rumble
 - **Lockout feedback:** trying this combo while timelapse or bounce is active gives a distinct triple-short deny rumble
 - **R3 behavior priority:**
-	- If timelapse is active, R3 cancels timelapse
-	- Else if bounce is active, R3 cancels bounce
-	- Else (idle), R3 cancels interval rumble feedback
-	- A distinct single medium cancel rumble confirms any R3 cancel action
+	- If timelapse is active, `R3` (press the right joystick inward) cancels timelapse
+	- Else if bounce is active, `R3` cancels bounce
+	- Else (idle), `R3` cancels interval rumble feedback
+	- A distinct single medium cancel rumble confirms any `R3` cancel action
 
 When changed, the Mega prints the value over Serial as:
 
@@ -135,6 +135,18 @@ Interpretation guide:
 - Count the number of short rumbles next (ones place)
 - Total seconds = `(long count × 10) + short count`
 - If you switch from interval adjustment to `stepDist` adjustment (or back), a brief silent separator pause is inserted before the new rumble pattern starts
+
+### Settings replay
+
+Replay the current interval and `stepDist` rumble patterns on demand (read-only, no values change):
+
+- Hold **L1 + L2 + CIRCLE** together to replay
+- This triggers:
+	- The interval rumble pattern (current `timelapseIntervalSeconds` encoded as long/short rumbles)
+	- Followed immediately by the `stepDist` rumble pattern (current `stepDist` encoded as long pulses)
+	- Serial prints: `Settings replay: interval=Xs, stepDist=Yms` (e.g., `Settings replay: interval=15s, stepDist=50ms`)
+- **Use case:** verify your current settings without adjusting them; useful when switching between different rigs or recalls
+- **Safety:** this is purely informational; no motion or configuration changes occur
 
 ### Controller-adjustable timelapse move time (`stepDist`) (no reflash needed)
 
