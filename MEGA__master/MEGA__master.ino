@@ -119,6 +119,7 @@ constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 10000;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 200;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 1000;
+constexpr unsigned long STEP_DIST_RUMBLE_MS = 200;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -129,6 +130,9 @@ bool lastIntervalAdjustUpComboActive = false;
 bool lastIntervalAdjustDownComboActive = false;
 bool lastStepDistAdjustUpComboActive = false;
 bool lastStepDistAdjustDownComboActive = false;
+bool lastEmergencyStopComboActive = false;
+bool stepDistRumbleActive = false;
+unsigned long stepDistRumbleStartMs = 0;
 
 void configureController() {
 
@@ -414,10 +418,15 @@ void stopIntervalRumbleFeedback() {
   intervalRumblePhaseStartMs = 0;
   intervalRumbleLongsRemaining = 0;
   intervalRumbleShortsRemaining = 0;
+  stepDistRumbleActive = false;
+  stepDistRumbleStartMs = 0;
   vibrate = 0;
 }
 
 void startIntervalRumbleFeedback() {
+  stepDistRumbleActive = false;
+  stepDistRumbleStartMs = 0;
+
   intervalRumbleLongsRemaining = timelapseIntervalSeconds / 10;
   intervalRumbleShortsRemaining = timelapseIntervalSeconds % 10;
 
@@ -434,7 +443,28 @@ void startIntervalRumbleFeedback() {
   vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
+void startStepDistRumbleFeedback() {
+  intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
+  intervalRumblePhaseStartMs = 0;
+  intervalRumbleLongsRemaining = 0;
+  intervalRumbleShortsRemaining = 0;
+
+  stepDistRumbleActive = true;
+  stepDistRumbleStartMs = millis();
+  vibrate = RUMBLE_ACTIVE_INTENSITY;
+}
+
 void handleIntervalRumbleFeedback(unsigned long now) {
+  if (stepDistRumbleActive) {
+    vibrate = RUMBLE_ACTIVE_INTENSITY;
+    if (now - stepDistRumbleStartMs >= STEP_DIST_RUMBLE_MS) {
+      stepDistRumbleActive = false;
+      stepDistRumbleStartMs = 0;
+      vibrate = 0;
+    }
+    return;
+  }
+
   switch (intervalRumblePhase) {
     case INTERVAL_RUMBLE_IDLE:
       vibrate = 0;
@@ -510,6 +540,7 @@ void adjustStepDist(int delta) {
   stepDist = newStepDist;
   Serial.print("Timelapse stepDist (ms) = ");
   Serial.println(stepDist);
+  startStepDistRumbleFeedback();
 }
 
 // START + PAD_UP increases timelapseIntervalSeconds.
@@ -584,10 +615,43 @@ void handleThumbstickCancel() {
     return;
   }
 
-  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE) {
+  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE || stepDistRumbleActive) {
     stopIntervalRumbleFeedback();
-    Serial.println("Interval rumble feedback canceled.");
+    Serial.println("Rumble feedback canceled.");
   }
+}
+
+void logEmergencyStopEvent() {
+  Serial.print("EMERGENCY STOP | timelapseMode=");
+  Serial.print(timelapseMode);
+  Serial.print(" bounce=");
+  Serial.print(bounce);
+  Serial.print(" intervalSeconds=");
+  Serial.print(timelapseIntervalSeconds);
+  Serial.print(" stepDistMs=");
+  Serial.println(stepDist);
+}
+
+// Emergency stop combo: L1 + L2 + R1 + R2
+// Immediately stops all motor outputs and clears active auto modes.
+bool handleEmergencyStop() {
+  bool emergencyStopComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_L2) && ps2x.Button(PSB_R1) && ps2x.Button(PSB_R2);
+
+  if (!emergencyStopComboActive) {
+    lastEmergencyStopComboActive = false;
+    return false;
+  }
+
+  if (!lastEmergencyStopComboActive) {
+    logEmergencyStopEvent();
+    resetTimelapseState();
+    resetBounceState();
+    stopIntervalRumbleFeedback();
+  }
+
+  stopAllMotors();
+  lastEmergencyStopComboActive = true;
+  return true;
 }
 
 const char* getTimelapseModeLabel(int mode) {
@@ -1056,6 +1120,10 @@ void loop() {
   rightStickXvalue = ps2x.Analog(PSS_RX);
   leftStickYvalue  = ps2x.Analog(PSS_LY);
   leftStickXvalue  = ps2x.Analog(PSS_LX);
+
+  if (handleEmergencyStop()) {
+    return;
+  }
 
   handleThumbstickCancel();
 
