@@ -60,7 +60,7 @@ int rightStickYvalue;
 
 // Timelapse Variables
 int timelapseMode = 0;
-int intervalSeconds = 15;
+int timelapseIntervalSeconds = 15;
 unsigned long timelapseIntervalMs;
 int stepDist = 100;
 const uint8_t trigger = 28;
@@ -401,7 +401,7 @@ void stopAllMotors() {
 }
 
 void updateIntervalMs() {
-  timelapseIntervalMs = static_cast<unsigned long>(intervalSeconds) * 1000UL;
+  timelapseIntervalMs = static_cast<unsigned long>(timelapseIntervalSeconds) * 1000UL;
 }
 
 void stopIntervalRumbleFeedback() {
@@ -413,8 +413,8 @@ void stopIntervalRumbleFeedback() {
 }
 
 void startIntervalRumbleFeedback() {
-  intervalRumbleLongsRemaining = intervalSeconds / 10;
-  intervalRumbleShortsRemaining = intervalSeconds % 10;
+  intervalRumbleLongsRemaining = timelapseIntervalSeconds / 10;
+  intervalRumbleShortsRemaining = timelapseIntervalSeconds % 10;
 
   if (intervalRumbleLongsRemaining > 0) {
     intervalRumblePhase = INTERVAL_RUMBLE_LONG_ACTIVE;
@@ -472,26 +472,26 @@ void handleIntervalRumbleFeedback(unsigned long now) {
 }
 
 void adjustIntervalSeconds(int delta) {
-  int newIntervalSeconds = intervalSeconds + delta;
+  int newIntervalSeconds = timelapseIntervalSeconds + delta;
   if (newIntervalSeconds < TIMELAPSE_INTERVAL_MIN_SECONDS) {
     newIntervalSeconds = TIMELAPSE_INTERVAL_MIN_SECONDS;
   }
   if (newIntervalSeconds > TIMELAPSE_INTERVAL_MAX_SECONDS) {
     newIntervalSeconds = TIMELAPSE_INTERVAL_MAX_SECONDS;
   }
-  if (newIntervalSeconds == intervalSeconds) {
+  if (newIntervalSeconds == timelapseIntervalSeconds) {
     return;
   }
 
-  intervalSeconds = newIntervalSeconds;
+  timelapseIntervalSeconds = newIntervalSeconds;
   updateIntervalMs();
-  Serial.print("Timelapse intervalSeconds = ");
-  Serial.println(intervalSeconds);
+  Serial.print("Timelapse interval (seconds) = ");
+  Serial.println(timelapseIntervalSeconds);
   startIntervalRumbleFeedback();
 }
 
-// START + PAD_UP increases intervalSeconds.
-// START + PAD_DOWN decreases intervalSeconds.
+// START + PAD_UP increases timelapseIntervalSeconds.
+// START + PAD_DOWN decreases timelapseIntervalSeconds.
 // This is only active while no auto mode is running so it does not conflict
 // with active timelapse or bounce motion.
 bool handleTimelapseIntervalAdjustment() {
@@ -951,7 +951,7 @@ void setup() {
   delay(CONTROLLER_STARTUP_DELAY_MS);
   configureController();
   detectControllerType();
-  Serial.println("START + PAD_UP/DOWN adjusts timelapse intervalSeconds.");
+  Serial.println("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds.");
 }
 
 void loop() {
