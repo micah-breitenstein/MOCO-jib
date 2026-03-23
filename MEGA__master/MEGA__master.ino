@@ -205,6 +205,8 @@ bool rumbleMuted = false;
 bool suppressNextSelectRelease = false;
 bool suppressNextStartRelease = false;
 bool lastSettingsReplayComboActive = false;
+bool lastDronePrecisionModeActive = false;
+bool lastDroneBoostModeActive = false;
 bool chainStepDistAfterInterval = false;
 unsigned long lastControllerRetryMs = 0;
 bool unsupportedControllerWarningShown = false;
@@ -349,9 +351,26 @@ void enterDroneMode() {
 
 void exitDroneMode() {
   droneMode = false;
+  lastDronePrecisionModeActive = false;
+  lastDroneBoostModeActive = false;
   stopAllMotors();
   Serial.println("DRONE MODE DEACTIVATED");
   startDroneModeExitRumbleFeedback();
+}
+
+void logDroneSpeedModifierStateIfChanged() {
+  bool precisionModeActive = ps2x.Button(PSB_L2);
+  bool boostModeActive = ps2x.Button(PSB_R2);
+
+  if (precisionModeActive != lastDronePrecisionModeActive || boostModeActive != lastDroneBoostModeActive) {
+    Serial.print("Drone speed modifier | precision=");
+    Serial.print(precisionModeActive ? "ON" : "OFF");
+    Serial.print(" boost=");
+    Serial.println(boostModeActive ? "ON" : "OFF");
+
+    lastDronePrecisionModeActive = precisionModeActive;
+    lastDroneBoostModeActive = boostModeActive;
+  }
 }
 
 void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, int& modeState) {
@@ -570,6 +589,8 @@ void applyDroneAxisControl(int stickValue, bool isReversed,
 }
 
 void handleDroneStickControl() {
+  logDroneSpeedModifierStateIfChanged();
+
   // Left stick controls swing (X) and lift (Y)
   applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND, DRONE_SWING_MAX_SPEED_TIER, DRONE_SWING_EXPO_PERCENT);
   applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND, DRONE_LIFT_MAX_SPEED_TIER, DRONE_LIFT_EXPO_PERCENT);
