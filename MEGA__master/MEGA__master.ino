@@ -190,6 +190,8 @@ constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
+constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
+constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -307,8 +309,8 @@ void applySpeedPinsForTier(uint8_t speedTier, uint8_t upPin, uint8_t downPin) {
 }
 
 uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) {
-  bool precisionModeActive = ps2x.Button(PSB_L2);
-  bool boostModeActive = ps2x.Button(PSB_R2);
+  bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
+  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2);
 
   if (precisionModeActive && speedTier > DRONE_SPEED_TIER_STOP) {
     speedTier--;
@@ -361,8 +363,8 @@ void exitDroneMode() {
 }
 
 void logDroneSpeedModifierStateIfChanged() {
-  bool precisionModeActive = ps2x.Button(PSB_L2);
-  bool boostModeActive = ps2x.Button(PSB_R2);
+  bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
+  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2);
 
   if (precisionModeActive != lastDronePrecisionModeActive || boostModeActive != lastDroneBoostModeActive) {
     Serial.print("Drone speed modifier | precision=");
