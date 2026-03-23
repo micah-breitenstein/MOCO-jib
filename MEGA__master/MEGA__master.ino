@@ -1319,7 +1319,9 @@ void handleActiveTimelapseMode(unsigned long now) {
 
   switch (timelapsePhase) {
     case TIMELAPSE_PHASE_IDLE:
-      Serial.println(modeLabel);
+      if (timelapsePhaseStartMs == 0) {
+        Serial.println(modeLabel);
+      }
       digitalWrite(trigger, LOW);
       timelapsePhase = TIMELAPSE_PHASE_TRIGGER_LOW;
       timelapsePhaseStartMs = now;
