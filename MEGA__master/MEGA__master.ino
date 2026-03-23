@@ -171,12 +171,19 @@ constexpr uint8_t DRONE_MODE_ENTER_RUMBLE_PULSES = 1;
 constexpr unsigned long DRONE_MODE_EXIT_RUMBLE_ON_MS = 150;
 constexpr unsigned long DRONE_MODE_EXIT_RUMBLE_TOTAL_MS = 300;
 constexpr uint8_t DRONE_MODE_EXIT_RUMBLE_PULSES = 2;
+constexpr uint8_t DRONE_SPEED_TIER_STOP = 0;
+constexpr uint8_t DRONE_SPEED_TIER_MED = 1;
+constexpr uint8_t DRONE_SPEED_TIER_HIGH = 2;
 constexpr int DRONE_STICK_MAX_DEFLECTION = 127;
 constexpr uint8_t DRONE_EXPO_PERCENT = 65;
 constexpr int DRONE_SWING_DEADBAND = 12;
 constexpr int DRONE_LIFT_DEADBAND = 14;
 constexpr int DRONE_PAN_DEADBAND = 10;
 constexpr int DRONE_TILT_DEADBAND = 10;
+constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
+constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
+constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
+constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -265,19 +272,40 @@ int getExpoDeflectionMagnitude(int linearMagnitude) {
   return blendedMagnitude;
 }
 
-void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin) {
+uint8_t getProportionalSpeedTier(int magnitude) {
   int expoMagnitude = getExpoDeflectionMagnitude(magnitude);
 
   if (expoMagnitude < 43) {
+    return DRONE_SPEED_TIER_STOP;
+  } else if (expoMagnitude < 86) {
+    return DRONE_SPEED_TIER_MED;
+  }
+
+  return DRONE_SPEED_TIER_HIGH;
+}
+
+void applySpeedPinsForTier(uint8_t speedTier, uint8_t upPin, uint8_t downPin) {
+  if (speedTier == DRONE_SPEED_TIER_STOP) {
     digitalWrite(upPin, LOW);
     digitalWrite(downPin, LOW);
-  } else if (expoMagnitude < 86) {
+  } else if (speedTier == DRONE_SPEED_TIER_MED) {
     digitalWrite(upPin, LOW);
     digitalWrite(downPin, HIGH);
   } else {
     digitalWrite(upPin, HIGH);
     digitalWrite(downPin, LOW);
   }
+}
+
+void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin, uint8_t maxSpeedTier) {
+  uint8_t speedTier = getProportionalSpeedTier(magnitude);
+  int clampedMaxTier = constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH);
+
+  if (speedTier > clampedMaxTier) {
+    speedTier = static_cast<uint8_t>(clampedMaxTier);
+  }
+
+  applySpeedPinsForTier(speedTier, upPin, downPin);
 }
 
 void startDroneModeEnterRumbleFeedback() {
@@ -499,12 +527,12 @@ void handleFocusAxis() {
 void applyDroneAxisControl(int stickValue, bool isReversed,
                            uint8_t negativeDirectionPin, uint8_t positiveDirectionPin,
                            uint8_t speedUpPin, uint8_t speedDownPin,
-                           int axisDeadband) {
+                           int axisDeadband, uint8_t maxSpeedTier) {
   digitalWrite(negativeDirectionPin, LOW);
   digitalWrite(positiveDirectionPin, LOW);
 
   int magnitude = getStickDeflectionMagnitude(stickValue);
-  applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin);
+  applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin, maxSpeedTier);
 
   if (stickValue < STICK_CENTER - axisDeadband) {
     setDirectionalOutput(isReversed, negativeDirectionPin, positiveDirectionPin, HIGH);
@@ -515,12 +543,12 @@ void applyDroneAxisControl(int stickValue, bool isReversed,
 
 void handleDroneStickControl() {
   // Left stick controls swing (X) and lift (Y)
-  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND);
-  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND);
+  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND, DRONE_SWING_MAX_SPEED_TIER);
+  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND, DRONE_LIFT_MAX_SPEED_TIER);
 
   // Right stick controls pan (X) and tilt (Y)
-  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND);
-  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND);
+  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND, DRONE_PAN_MAX_SPEED_TIER);
+  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND, DRONE_TILT_MAX_SPEED_TIER);
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
