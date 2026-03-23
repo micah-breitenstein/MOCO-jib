@@ -63,7 +63,7 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
 | L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1). A double medium pulse confirms the endpoint was locked. |
-| **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out.** |
+| **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out, and both joysticks control motion at multiple speed levels based on stick deflection.** |
 
 ### Timelapse Modes (SELECT release)
 
@@ -130,6 +130,7 @@ Use this for dual-stick flying-drone style control.
 - Enter feedback: **1 medium pulse**
 - Exit feedback: **2 medium pulses**
 - Enter behavior: active timelapse/bounce are reset and locked out while Drone Mode is active
+- Both left and right sticks support multiple speed levels based on stick deflection (low / medium / high)
 - Left stick in Drone Mode:
 	- X controls swing direction + proportional speed
 	- Y controls lift direction + proportional speed
