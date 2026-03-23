@@ -357,9 +357,9 @@ void stopPanOnlyMotionAtCenter() {
 void handlePanAxis() {
   if (!swingInMotion) {
     if (rightStickXvalue == STICK_MIN) {
-      activatePanOnlyMotion(panLeft, panRight, "panleftnonly with top speed");
+      activatePanOnlyMotion(panLeft, panRight, "pan left only with top speed");
     } else if (rightStickXvalue == STICK_MAX) {
-      activatePanOnlyMotion(panRight, panLeft, "panrightonly with top speed");
+      activatePanOnlyMotion(panRight, panLeft, "pan right only with top speed");
     }
   }
 
