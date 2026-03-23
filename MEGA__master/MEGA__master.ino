@@ -7,7 +7,7 @@ constexpr uint8_t PS2_CLK = 11;
 
 constexpr bool PRESSURES = false;
 constexpr bool RUMBLE = true;
-constexpr bool DEBUG_EDGE_EVENTS = true;
+constexpr bool DEBUG_EDGE_EVENTS = false;
 
 PS2X ps2x;
 int error = 0;
