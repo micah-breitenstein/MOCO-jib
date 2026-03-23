@@ -138,6 +138,9 @@ Use this for dual-stick flying-drone style control.
 	- X controls pan direction + proportional speed
 	- Y controls tilt direction + proportional speed
 - Focus stays on Triangle/Cross with Square/Circle speed control
+- Drone speed modifiers while in Drone Mode:
+	- Hold `L2` for temporary precision mode (one speed tier slower)
+	- Hold `R2` for temporary boost mode (one speed tier faster, never above per-axis cap)
 
 #### Drone mode direction reference
 
@@ -160,7 +163,11 @@ Speed level is based on how far you push either stick from center (small deflect
 
 These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control Drone Mode feel:
 
-- `DRONE_EXPO_PERCENT` (currently `65`)
+- Per-axis expo curves:
+	- `DRONE_SWING_EXPO_PERCENT` (currently `65`)
+	- `DRONE_LIFT_EXPO_PERCENT` (currently `65`)
+	- `DRONE_PAN_EXPO_PERCENT` (currently `65`)
+	- `DRONE_TILT_EXPO_PERCENT` (currently `65`)
 	- Higher = softer response near center, more ramp near edge
 	- Lower = more linear response
 - Per-axis deadbands:
@@ -168,6 +175,7 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_LIFT_DEADBAND` (currently `14`)
 	- `DRONE_PAN_DEADBAND` (currently `10`)
 	- `DRONE_TILT_DEADBAND` (currently `10`)
+	- Inside deadband, both direction and speed are forced to stop for that axis
 - Per-axis max speed caps:
 	- `DRONE_SWING_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
 	- `DRONE_LIFT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
@@ -178,16 +186,20 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 Quick tuning guide:
 
 - If an axis drifts at center, increase that axis deadband by `1-2`
-- If stick response feels too twitchy near center, increase `DRONE_EXPO_PERCENT`
-- If controls feel sluggish, decrease `DRONE_EXPO_PERCENT` or reduce deadband on that axis
+- If stick response feels too twitchy near center, increase that axis `DRONE_*_EXPO_PERCENT`
+- If controls feel sluggish, decrease that axis `DRONE_*_EXPO_PERCENT` or reduce deadband on that axis
 - If an axis is too aggressive at full stick, lower that axis `DRONE_*_MAX_SPEED_TIER`
+- On boot, Serial now prints expo/deadband/max-tier summaries so you can confirm the active profile
 
 #### Starter profiles (copy these values)
 
 Pick one profile and set the constants in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino):
 
 - **Safe / Indoor (slow + smooth):**
-	- `DRONE_EXPO_PERCENT = 75`
+	- `DRONE_SWING_EXPO_PERCENT = 75`
+	- `DRONE_LIFT_EXPO_PERCENT = 75`
+	- `DRONE_PAN_EXPO_PERCENT = 75`
+	- `DRONE_TILT_EXPO_PERCENT = 75`
 	- `DRONE_SWING_DEADBAND = 14`
 	- `DRONE_LIFT_DEADBAND = 16`
 	- `DRONE_PAN_DEADBAND = 12`
@@ -198,7 +210,10 @@ Pick one profile and set the constants in [MEGA__master/MEGA__master.ino](MEGA__
 	- `DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
 
 - **Balanced (default feel):**
-	- `DRONE_EXPO_PERCENT = 65`
+	- `DRONE_SWING_EXPO_PERCENT = 65`
+	- `DRONE_LIFT_EXPO_PERCENT = 65`
+	- `DRONE_PAN_EXPO_PERCENT = 65`
+	- `DRONE_TILT_EXPO_PERCENT = 65`
 	- `DRONE_SWING_DEADBAND = 12`
 	- `DRONE_LIFT_DEADBAND = 14`
 	- `DRONE_PAN_DEADBAND = 10`
@@ -209,7 +224,10 @@ Pick one profile and set the constants in [MEGA__master/MEGA__master.ino](MEGA__
 	- `DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
 
 - **Fast / Outdoor (more aggressive):**
-	- `DRONE_EXPO_PERCENT = 50`
+	- `DRONE_SWING_EXPO_PERCENT = 50`
+	- `DRONE_LIFT_EXPO_PERCENT = 50`
+	- `DRONE_PAN_EXPO_PERCENT = 50`
+	- `DRONE_TILT_EXPO_PERCENT = 50`
 	- `DRONE_SWING_DEADBAND = 10`
 	- `DRONE_LIFT_DEADBAND = 12`
 	- `DRONE_PAN_DEADBAND = 8`
