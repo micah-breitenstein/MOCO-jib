@@ -193,6 +193,7 @@ constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
+constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 30000UL; // 0 = disabled
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -212,6 +213,7 @@ bool suppressNextStartRelease = false;
 bool lastSettingsReplayComboActive = false;
 bool lastDronePrecisionModeActive = false;
 bool lastDroneBoostModeActive = false;
+unsigned long droneLastActivityMs = 0;
 bool chainStepDistAfterInterval = false;
 unsigned long lastControllerRetryMs = 0;
 bool unsupportedControllerWarningShown = false;
@@ -354,6 +356,7 @@ void enterDroneMode() {
   resetBounceState();
   stopIntervalRumbleFeedback();
   droneMode = true;
+  droneLastActivityMs = millis();
   Serial.println("DRONE MODE ACTIVATED - timelapse/bounce locked out");
   startDroneModeEnterRumbleFeedback();
 }
@@ -362,6 +365,7 @@ void exitDroneMode() {
   droneMode = false;
   lastDronePrecisionModeActive = false;
   lastDroneBoostModeActive = false;
+  droneLastActivityMs = 0;
   stopAllMotors();
   Serial.println("DRONE MODE DEACTIVATED");
   startDroneModeExitRumbleFeedback();
@@ -598,6 +602,16 @@ void applyDroneAxisControl(int stickValue, bool isReversed,
 }
 
 void handleDroneStickControl() {
+  bool anyAxisActive =
+    abs(leftStickXvalue  - STICK_CENTER) > DRONE_SWING_DEADBAND ||
+    abs(leftStickYvalue  - STICK_CENTER) > DRONE_LIFT_DEADBAND  ||
+    abs(rightStickXvalue - STICK_CENTER) > DRONE_PAN_DEADBAND   ||
+    abs(rightStickYvalue - STICK_CENTER) > DRONE_TILT_DEADBAND;
+
+  if (anyAxisActive) {
+    droneLastActivityMs = millis();
+  }
+
   logDroneSpeedModifierStateIfChanged();
 
   // Left stick controls swing (X) and lift (Y)
@@ -1592,6 +1606,13 @@ void printDroneTuningProfile() {
   Serial.print(DRONE_SPEED_TIER_MED_THRESHOLD);
   Serial.print("/");
   Serial.println(DRONE_SPEED_TIER_HIGH_THRESHOLD);
+
+  Serial.print("Drone tuning | idle timeout ms=");
+  if (DRONE_IDLE_TIMEOUT_MS == 0) {
+    Serial.println("disabled");
+  } else {
+    Serial.println(DRONE_IDLE_TIMEOUT_MS);
+  }
 }
 
 void setup() {
@@ -1729,6 +1750,11 @@ void loop() {
   }
 
   if (droneMode) {
+    if (DRONE_IDLE_TIMEOUT_MS > 0 && millis() - droneLastActivityMs >= DRONE_IDLE_TIMEOUT_MS) {
+      Serial.println("Drone idle timeout - auto-exiting drone mode");
+      exitDroneMode();
+      return;
+    }
     handleDroneStickControl();
     handleFocusAxis();
     return;
