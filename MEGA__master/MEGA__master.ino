@@ -194,6 +194,7 @@ constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 30000UL; // 0 = disabled
+constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -381,9 +382,11 @@ void exitDroneMode() {
 
 void logDroneAxisStateIfChanged(bool current, bool& last, const char* axisName) {
   if (current != last) {
-    Serial.print("Drone axis | ");
-    Serial.print(axisName);
-    Serial.println(current ? " MOVING" : " STOPPED");
+    if (DRONE_SERIAL_LOG_ENABLED) {
+      Serial.print("Drone axis | ");
+      Serial.print(axisName);
+      Serial.println(current ? " MOVING" : " STOPPED");
+    }
     last = current;
   }
 }
@@ -393,11 +396,12 @@ void logDroneSpeedModifierStateIfChanged() {
   bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2);
 
   if (precisionModeActive != lastDronePrecisionModeActive || boostModeActive != lastDroneBoostModeActive) {
-    Serial.print("Drone speed modifier | precision=");
-    Serial.print(precisionModeActive ? "ON" : "OFF");
-    Serial.print(" boost=");
-    Serial.println(boostModeActive ? "ON" : "OFF");
-
+    if (DRONE_SERIAL_LOG_ENABLED) {
+      Serial.print("Drone speed modifier | precision=");
+      Serial.print(precisionModeActive ? "ON" : "OFF");
+      Serial.print(" boost=");
+      Serial.println(boostModeActive ? "ON" : "OFF");
+    }
     lastDronePrecisionModeActive = precisionModeActive;
     lastDroneBoostModeActive = boostModeActive;
   }
@@ -1637,6 +1641,9 @@ void printDroneTuningProfile() {
   } else {
     Serial.println(DRONE_IDLE_TIMEOUT_MS);
   }
+
+  Serial.print("Drone tuning | serial log enabled=");
+  Serial.println(DRONE_SERIAL_LOG_ENABLED ? "Y" : "N");
 }
 
 void setup() {
