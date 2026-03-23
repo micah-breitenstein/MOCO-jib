@@ -784,6 +784,14 @@ bool isAutoModeActive() {
   return (timelapseMode != 0 || bounce != 0);
 }
 
+bool isRumbleFeedbackActive() {
+  return (intervalRumblePhase != INTERVAL_RUMBLE_IDLE
+      || stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE
+      || rumbleSeparatorActive
+      || feedbackRumblePhase != FEEDBACK_RUMBLE_IDLE
+      || pendingRumblePattern != PENDING_RUMBLE_NONE);
+}
+
 // START + PAD_UP increases timelapseIntervalSeconds.
 // START + PAD_DOWN decreases timelapseIntervalSeconds.
 // This is only active while no auto mode is running so it does not conflict
@@ -926,11 +934,7 @@ void handleThumbstickCancel() {
     return;
   }
 
-  if (intervalRumblePhase != INTERVAL_RUMBLE_IDLE
-      || stepDistRumblePhase != STEP_DIST_RUMBLE_IDLE
-      || rumbleSeparatorActive
-      || feedbackRumblePhase != FEEDBACK_RUMBLE_IDLE
-      || pendingRumblePattern != PENDING_RUMBLE_NONE) {
+  if (isRumbleFeedbackActive()) {
     stopIntervalRumbleFeedback();
     startR3CancelRumbleFeedback();
     Serial.println("Rumble feedback canceled.");
