@@ -176,6 +176,10 @@ constexpr uint8_t DRONE_SPEED_TIER_MED = 1;
 constexpr uint8_t DRONE_SPEED_TIER_HIGH = 2;
 constexpr int DRONE_STICK_MAX_DEFLECTION = 127;
 constexpr uint8_t DRONE_EXPO_PERCENT = 65;
+constexpr uint8_t DRONE_SWING_EXPO_PERCENT = DRONE_EXPO_PERCENT;
+constexpr uint8_t DRONE_LIFT_EXPO_PERCENT = DRONE_EXPO_PERCENT;
+constexpr uint8_t DRONE_PAN_EXPO_PERCENT = DRONE_EXPO_PERCENT;
+constexpr uint8_t DRONE_TILT_EXPO_PERCENT = DRONE_EXPO_PERCENT;
 constexpr int DRONE_SWING_DEADBAND = 12;
 constexpr int DRONE_LIFT_DEADBAND = 14;
 constexpr int DRONE_PAN_DEADBAND = 10;
@@ -265,15 +269,16 @@ int getStickDeflectionMagnitude(int stickValue) {
   return abs(stickValue - STICK_CENTER);
 }
 
-int getExpoDeflectionMagnitude(int linearMagnitude) {
+int getExpoDeflectionMagnitude(int linearMagnitude, uint8_t expoPercent) {
   int clampedMagnitude = constrain(linearMagnitude, 0, DRONE_STICK_MAX_DEFLECTION);
+  int clampedExpoPercent = constrain(static_cast<int>(expoPercent), 0, 100);
   int quadraticComponent = (clampedMagnitude * clampedMagnitude) / DRONE_STICK_MAX_DEFLECTION;
-  int blendedMagnitude = ((100 - DRONE_EXPO_PERCENT) * clampedMagnitude + DRONE_EXPO_PERCENT * quadraticComponent) / 100;
+  int blendedMagnitude = ((100 - clampedExpoPercent) * clampedMagnitude + clampedExpoPercent * quadraticComponent) / 100;
   return blendedMagnitude;
 }
 
-uint8_t getProportionalSpeedTier(int magnitude) {
-  int expoMagnitude = getExpoDeflectionMagnitude(magnitude);
+uint8_t getProportionalSpeedTier(int magnitude, uint8_t expoPercent) {
+  int expoMagnitude = getExpoDeflectionMagnitude(magnitude, expoPercent);
 
   if (expoMagnitude < 43) {
     return DRONE_SPEED_TIER_STOP;
@@ -297,8 +302,8 @@ void applySpeedPinsForTier(uint8_t speedTier, uint8_t upPin, uint8_t downPin) {
   }
 }
 
-void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin, uint8_t maxSpeedTier) {
-  uint8_t speedTier = getProportionalSpeedTier(magnitude);
+void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin, uint8_t maxSpeedTier, uint8_t expoPercent) {
+  uint8_t speedTier = getProportionalSpeedTier(magnitude, expoPercent);
   int clampedMaxTier = constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH);
 
   if (speedTier > clampedMaxTier) {
@@ -527,12 +532,12 @@ void handleFocusAxis() {
 void applyDroneAxisControl(int stickValue, bool isReversed,
                            uint8_t negativeDirectionPin, uint8_t positiveDirectionPin,
                            uint8_t speedUpPin, uint8_t speedDownPin,
-                           int axisDeadband, uint8_t maxSpeedTier) {
+                           int axisDeadband, uint8_t maxSpeedTier, uint8_t expoPercent) {
   digitalWrite(negativeDirectionPin, LOW);
   digitalWrite(positiveDirectionPin, LOW);
 
   int magnitude = getStickDeflectionMagnitude(stickValue);
-  applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin, maxSpeedTier);
+  applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin, maxSpeedTier, expoPercent);
 
   if (stickValue < STICK_CENTER - axisDeadband) {
     setDirectionalOutput(isReversed, negativeDirectionPin, positiveDirectionPin, HIGH);
@@ -543,12 +548,12 @@ void applyDroneAxisControl(int stickValue, bool isReversed,
 
 void handleDroneStickControl() {
   // Left stick controls swing (X) and lift (Y)
-  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND, DRONE_SWING_MAX_SPEED_TIER);
-  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND, DRONE_LIFT_MAX_SPEED_TIER);
+  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND, DRONE_SWING_MAX_SPEED_TIER, DRONE_SWING_EXPO_PERCENT);
+  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND, DRONE_LIFT_MAX_SPEED_TIER, DRONE_LIFT_EXPO_PERCENT);
 
   // Right stick controls pan (X) and tilt (Y)
-  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND, DRONE_PAN_MAX_SPEED_TIER);
-  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND, DRONE_TILT_MAX_SPEED_TIER);
+  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND, DRONE_PAN_MAX_SPEED_TIER, DRONE_PAN_EXPO_PERCENT);
+  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND, DRONE_TILT_MAX_SPEED_TIER, DRONE_TILT_EXPO_PERCENT);
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
