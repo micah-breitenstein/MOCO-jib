@@ -156,6 +156,25 @@ Use this quick map while flying manually (assuming DIP reverse switches are OFF)
 
 Speed level is based on how far you push either stick from center (small deflection = slower, large deflection = faster).
 
+#### Drone mode tuning constants (firmware)
+
+These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control Drone Mode feel:
+
+- `DRONE_EXPO_PERCENT` (currently `65`)
+	- Higher = softer response near center, more ramp near edge
+	- Lower = more linear response
+- Per-axis deadbands:
+	- `DRONE_SWING_DEADBAND` (currently `12`)
+	- `DRONE_LIFT_DEADBAND` (currently `14`)
+	- `DRONE_PAN_DEADBAND` (currently `10`)
+	- `DRONE_TILT_DEADBAND` (currently `10`)
+
+Quick tuning guide:
+
+- If an axis drifts at center, increase that axis deadband by `1-2`
+- If stick response feels too twitchy near center, increase `DRONE_EXPO_PERCENT`
+- If controls feel sluggish, decrease `DRONE_EXPO_PERCENT` or reduce deadband on that axis
+
 ### Controller-adjustable timelapse interval (no reflash needed)
 
 You can now change the timelapse interval directly from the controller while no auto mode is active.
