@@ -520,15 +520,6 @@ void startSettingsReplayRumble() {
   Serial.println("ms");
 }
 
-void startSettingsReplayRumble() {
-  startIntervalRumbleFeedback();
-  Serial.print("Settings replay: interval=");
-  Serial.print(timelapseIntervalSeconds);
-  Serial.print("s, stepDist=");
-  Serial.print(stepDist);
-  Serial.println("ms");
-}
-
 void startIntervalRumbleFeedbackNow() {
   stepDistRumblePhase = STEP_DIST_RUMBLE_IDLE;
   stepDistRumblePhaseStartMs = 0;
