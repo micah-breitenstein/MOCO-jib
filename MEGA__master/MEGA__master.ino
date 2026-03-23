@@ -213,6 +213,10 @@ bool suppressNextStartRelease = false;
 bool lastSettingsReplayComboActive = false;
 bool lastDronePrecisionModeActive = false;
 bool lastDroneBoostModeActive = false;
+bool lastDroneSwingActive = false;
+bool lastDroneLiftActive = false;
+bool lastDronePanActive = false;
+bool lastDroneTiltActive = false;
 unsigned long droneLastActivityMs = 0;
 bool chainStepDistAfterInterval = false;
 unsigned long lastControllerRetryMs = 0;
@@ -365,10 +369,23 @@ void exitDroneMode() {
   droneMode = false;
   lastDronePrecisionModeActive = false;
   lastDroneBoostModeActive = false;
+  lastDroneSwingActive = false;
+  lastDroneLiftActive = false;
+  lastDronePanActive = false;
+  lastDroneTiltActive = false;
   droneLastActivityMs = 0;
   stopAllMotors();
   Serial.println("DRONE MODE DEACTIVATED");
   startDroneModeExitRumbleFeedback();
+}
+
+void logDroneAxisStateIfChanged(bool current, bool& last, const char* axisName) {
+  if (current != last) {
+    Serial.print("Drone axis | ");
+    Serial.print(axisName);
+    Serial.println(current ? " MOVING" : " STOPPED");
+    last = current;
+  }
 }
 
 void logDroneSpeedModifierStateIfChanged() {
@@ -617,12 +634,17 @@ void handleDroneStickControl() {
   logDroneSpeedModifierStateIfChanged();
 
   // Left stick controls swing (X) and lift (Y)
-  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND, DRONE_SWING_MAX_SPEED_TIER, DRONE_SWING_EXPO_PERCENT);
-  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND, DRONE_LIFT_MAX_SPEED_TIER, DRONE_LIFT_EXPO_PERCENT);
+  bool swingActive = applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND, DRONE_SWING_MAX_SPEED_TIER, DRONE_SWING_EXPO_PERCENT);
+  bool liftActive  = applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND, DRONE_LIFT_MAX_SPEED_TIER, DRONE_LIFT_EXPO_PERCENT);
 
   // Right stick controls pan (X) and tilt (Y)
-  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND, DRONE_PAN_MAX_SPEED_TIER, DRONE_PAN_EXPO_PERCENT);
-  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND, DRONE_TILT_MAX_SPEED_TIER, DRONE_TILT_EXPO_PERCENT);
+  bool panActive  = applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND, DRONE_PAN_MAX_SPEED_TIER, DRONE_PAN_EXPO_PERCENT);
+  bool tiltActive = applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND, DRONE_TILT_MAX_SPEED_TIER, DRONE_TILT_EXPO_PERCENT);
+
+  logDroneAxisStateIfChanged(swingActive, lastDroneSwingActive, "swing");
+  logDroneAxisStateIfChanged(liftActive,  lastDroneLiftActive,  "lift");
+  logDroneAxisStateIfChanged(panActive,   lastDronePanActive,   "pan");
+  logDroneAxisStateIfChanged(tiltActive,  lastDroneTiltActive,  "tilt");
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
