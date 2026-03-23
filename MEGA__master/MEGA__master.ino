@@ -1084,6 +1084,10 @@ void updateTimelapseModeSelection() {
     return;
   }
   timelapseMode = stickPositionToMode(leftStickXvalue, leftStickYvalue);
+  if (timelapseMode == 0) {
+    Serial.println("Timelapse: stick near center at SELECT release, no mode started.");
+    return;
+  }
   const char* tlLabel = getTimelapseModeLabel(timelapseMode);
   if (tlLabel != nullptr) {
     Serial.println(tlLabel);
@@ -1116,6 +1120,10 @@ void updateBounceModeSelection() {
     return;
   }
   bounce = stickPositionToMode(leftStickXvalue, leftStickYvalue);
+  if (bounce == 0) {
+    Serial.println("Bounce: stick near center at START release, no mode started.");
+    return;
+  }
   const char* bounceLabel = getBounceModeSerialLabel(bounce);
   if (bounceLabel != nullptr) {
     Serial.println(bounceLabel);
