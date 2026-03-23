@@ -128,6 +128,7 @@ constexpr uint8_t DIP_SWITCH_3 = 37;
 constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
+constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
 constexpr int STICK_MIN = 0;
 constexpr int STICK_CENTER = 128;
 constexpr int STICK_MAX = 255;
@@ -181,6 +182,7 @@ bool suppressNextSelectRelease = false;
 bool suppressNextStartRelease = false;
 bool lastSettingsReplayComboActive = false;
 bool chainStepDistAfterInterval = false;
+unsigned long lastControllerRetryMs = 0;
 
 void configureController() {
 
@@ -1427,8 +1429,19 @@ void setup() {
 
 void loop() {
 
-  if (error != 0) // skip loop on controller config error
+  unsigned long now = millis();
+
+  if (error != 0) {
+    if (now - lastControllerRetryMs >= CONTROLLER_RETRY_INTERVAL_MS) {
+      lastControllerRetryMs = now;
+      Serial.println("Controller init failed. Retrying config...");
+      configureController();
+      if (error == 0) {
+        detectControllerType();
+      }
+    }
     return;
+  }
 
   if (controllerType == 2) // skip Guitar Hero controller
     return;
@@ -1437,10 +1450,8 @@ void loop() {
   if (!isDualShockType) // skip unsupported controller types
     return;
 
-  handleIntervalRumbleFeedback(millis());
+  handleIntervalRumbleFeedback(now);
   ps2x.read_gamepad(false, rumbleMuted ? 0 : vibrate); // rumble can be muted without affecting serial logs or internal feedback state
-
-  unsigned long now = millis();
 
   // Read DIP-switch reversal settings
   isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
