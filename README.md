@@ -52,8 +52,8 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | D-pad up/down | Lift axis (solo, no tilt) |
 | D-pad up/down + SELECT held | (reserved for solo lift — see solo mode logic) |
 | D-pad up/down (no SELECT) | Lift + tilt combined |
-| Right stick X | Pan trim (during swing) or pan-only at extremes |
-| Right stick Y | Tilt trim (during lift) or tilt-only at extremes |
+| Right stick X | Pan trim (during swing) or pan-only at extremes (left stick = pan left, right stick = pan right) |
+| Right stick Y | Tilt trim (during lift) or tilt-only at extremes (stick up = tilt up, stick down = tilt down) |
 | Triangle / Cross | Focus left / right |
 | Square / Circle | Focus speed down / up |
 | L1 / L2 | Pan + swing speed up / down |
@@ -138,6 +138,23 @@ Use this for dual-stick flying-drone style control.
 	- X controls pan direction + proportional speed
 	- Y controls tilt direction + proportional speed
 - Focus stays on Triangle/Cross with Square/Circle speed control
+
+#### Drone mode direction reference
+
+Use this quick map while flying manually (assuming DIP reverse switches are OFF):
+
+| Stick movement | Axis result |
+|---|---|
+| Left stick LEFT | Swing left |
+| Left stick RIGHT | Swing right |
+| Left stick UP | Lift up |
+| Left stick DOWN | Lift down |
+| Right stick LEFT | Pan left |
+| Right stick RIGHT | Pan right |
+| Right stick UP | Tilt up |
+| Right stick DOWN | Tilt down |
+
+Speed level is based on how far you push either stick from center (small deflection = slower, large deflection = faster).
 
 ### Controller-adjustable timelapse interval (no reflash needed)
 
