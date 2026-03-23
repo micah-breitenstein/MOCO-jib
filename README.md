@@ -141,6 +141,7 @@ Use this for dual-stick flying-drone style control.
 - Drone speed modifiers while in Drone Mode:
 	- Hold `L2` for temporary precision mode (one speed tier slower)
 	- Hold `R2` for temporary boost mode (one speed tier faster, never above per-axis cap)
+	- If both `L2` and `R2` are held together, they resolve to neutral (no modifier)
 
 #### Drone mode direction reference
 
@@ -182,6 +183,13 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_PAN_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
 	- `DRONE_TILT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
 	- Available tiers: `DRONE_SPEED_TIER_STOP`, `DRONE_SPEED_TIER_MED`, `DRONE_SPEED_TIER_HIGH`
+- Speed tier thresholds (expo-space):
+	- `DRONE_SPEED_TIER_MED_THRESHOLD` (currently `43`)
+	- `DRONE_SPEED_TIER_HIGH_THRESHOLD` (currently `86`)
+- Modifier toggles:
+	- `DRONE_ENABLE_PRECISION_MODIFIER` (currently `true`)
+	- `DRONE_ENABLE_BOOST_MODIFIER` (currently `true`)
+	- `DRONE_L2_R2_NEUTRAL_MODE` (currently `true`)
 
 Quick tuning guide:
 
@@ -189,7 +197,7 @@ Quick tuning guide:
 - If stick response feels too twitchy near center, increase that axis `DRONE_*_EXPO_PERCENT`
 - If controls feel sluggish, decrease that axis `DRONE_*_EXPO_PERCENT` or reduce deadband on that axis
 - If an axis is too aggressive at full stick, lower that axis `DRONE_*_MAX_SPEED_TIER`
-- On boot, Serial now prints expo/deadband/max-tier summaries so you can confirm the active profile
+- On boot, Serial now prints expo/deadband/max-tier/modifier/threshold summaries so you can confirm the active profile
 
 #### Starter profiles (copy these values)
 
