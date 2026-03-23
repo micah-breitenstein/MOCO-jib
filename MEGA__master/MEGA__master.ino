@@ -174,6 +174,8 @@ constexpr uint8_t DRONE_MODE_EXIT_RUMBLE_PULSES = 2;
 constexpr uint8_t DRONE_SPEED_TIER_STOP = 0;
 constexpr uint8_t DRONE_SPEED_TIER_MED = 1;
 constexpr uint8_t DRONE_SPEED_TIER_HIGH = 2;
+constexpr int DRONE_SPEED_TIER_MED_THRESHOLD = 43;
+constexpr int DRONE_SPEED_TIER_HIGH_THRESHOLD = 86;
 constexpr int DRONE_STICK_MAX_DEFLECTION = 127;
 constexpr uint8_t DRONE_EXPO_PERCENT = 65;
 constexpr uint8_t DRONE_SWING_EXPO_PERCENT = DRONE_EXPO_PERCENT;
@@ -282,9 +284,9 @@ int getExpoDeflectionMagnitude(int linearMagnitude, uint8_t expoPercent) {
 uint8_t getProportionalSpeedTier(int magnitude, uint8_t expoPercent) {
   int expoMagnitude = getExpoDeflectionMagnitude(magnitude, expoPercent);
 
-  if (expoMagnitude < 43) {
+  if (expoMagnitude < DRONE_SPEED_TIER_MED_THRESHOLD) {
     return DRONE_SPEED_TIER_STOP;
-  } else if (expoMagnitude < 86) {
+  } else if (expoMagnitude < DRONE_SPEED_TIER_HIGH_THRESHOLD) {
     return DRONE_SPEED_TIER_MED;
   }
 
