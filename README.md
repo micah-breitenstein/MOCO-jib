@@ -182,6 +182,43 @@ Quick tuning guide:
 - If controls feel sluggish, decrease `DRONE_EXPO_PERCENT` or reduce deadband on that axis
 - If an axis is too aggressive at full stick, lower that axis `DRONE_*_MAX_SPEED_TIER`
 
+#### Starter profiles (copy these values)
+
+Pick one profile and set the constants in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino):
+
+- **Safe / Indoor (slow + smooth):**
+	- `DRONE_EXPO_PERCENT = 75`
+	- `DRONE_SWING_DEADBAND = 14`
+	- `DRONE_LIFT_DEADBAND = 16`
+	- `DRONE_PAN_DEADBAND = 12`
+	- `DRONE_TILT_DEADBAND = 12`
+	- `DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+	- `DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+	- `DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+	- `DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+
+- **Balanced (default feel):**
+	- `DRONE_EXPO_PERCENT = 65`
+	- `DRONE_SWING_DEADBAND = 12`
+	- `DRONE_LIFT_DEADBAND = 14`
+	- `DRONE_PAN_DEADBAND = 10`
+	- `DRONE_TILT_DEADBAND = 10`
+	- `DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+	- `DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+	- `DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH`
+	- `DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+
+- **Fast / Outdoor (more aggressive):**
+	- `DRONE_EXPO_PERCENT = 50`
+	- `DRONE_SWING_DEADBAND = 10`
+	- `DRONE_LIFT_DEADBAND = 12`
+	- `DRONE_PAN_DEADBAND = 8`
+	- `DRONE_TILT_DEADBAND = 8`
+	- `DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH`
+	- `DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED`
+	- `DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH`
+	- `DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH`
+
 ### Controller-adjustable timelapse interval (no reflash needed)
 
 You can now change the timelapse interval directly from the controller while no auto mode is active.
