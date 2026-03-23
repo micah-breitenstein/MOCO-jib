@@ -177,6 +177,7 @@ bool rumbleMuted = false;
 bool suppressNextSelectRelease = false;
 bool suppressNextStartRelease = false;
 bool lastSettingsReplayComboActive = false;
+bool chainStepDistAfterInterval = false;
 
 void configureController() {
 
@@ -473,6 +474,7 @@ void stopIntervalRumbleFeedback() {
   feedbackRumblePulsesRemaining = 0;
   feedbackRumbleOnMs = 0;
   feedbackRumbleTotalMs = 0;
+  chainStepDistAfterInterval = false;
   vibrate = 0;
 }
 
@@ -512,6 +514,7 @@ void startRumbleUnmuteFeedback() {
 }
 
 void startSettingsReplayRumble() {
+  chainStepDistAfterInterval = true;
   startIntervalRumbleFeedback();
   Serial.print("Settings replay: interval=");
   Serial.print(timelapseIntervalSeconds);
@@ -688,7 +691,12 @@ void handleIntervalRumbleFeedback(unsigned long now) {
           intervalRumblePhase = INTERVAL_RUMBLE_SHORT_ACTIVE;
           intervalRumblePhaseStartMs = now;
         } else {
-          stopIntervalRumbleFeedback();
+          if (chainStepDistAfterInterval) {
+            chainStepDistAfterInterval = false;
+            startRumbleSeparator(PENDING_RUMBLE_STEP_DIST);
+          } else {
+            stopIntervalRumbleFeedback();
+          }
         }
       }
       break;
@@ -708,7 +716,12 @@ void handleIntervalRumbleFeedback(unsigned long now) {
           intervalRumblePhase = INTERVAL_RUMBLE_SHORT_ACTIVE;
           intervalRumblePhaseStartMs = now;
         } else {
-          stopIntervalRumbleFeedback();
+          if (chainStepDistAfterInterval) {
+            chainStepDistAfterInterval = false;
+            startRumbleSeparator(PENDING_RUMBLE_STEP_DIST);
+          } else {
+            stopIntervalRumbleFeedback();
+          }
         }
       }
       break;
