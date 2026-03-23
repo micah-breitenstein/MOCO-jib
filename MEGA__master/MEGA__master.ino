@@ -1404,7 +1404,11 @@ void setup() {
   Serial.println("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms.");
   Serial.println("START + SELECT + SQUARE toggles controller rumble mute.");
   Serial.println("L1 + L2 + CIRCLE replays current settings as rumble patterns.");
-}
+  Serial.print("Boot settings: interval=");
+  Serial.print(timelapseIntervalSeconds);
+  Serial.print("s, stepDist=");
+  Serial.print(stepDist);
+  Serial.println("ms");
 }
 
 void loop() {
