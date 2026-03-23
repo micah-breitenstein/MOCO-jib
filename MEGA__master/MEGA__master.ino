@@ -302,13 +302,30 @@ void applySpeedPinsForTier(uint8_t speedTier, uint8_t upPin, uint8_t downPin) {
   }
 }
 
+uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) {
+  bool precisionModeActive = ps2x.Button(PSB_L2);
+  bool boostModeActive = ps2x.Button(PSB_R2);
+
+  if (precisionModeActive && speedTier > DRONE_SPEED_TIER_STOP) {
+    speedTier--;
+  }
+
+  if (boostModeActive && speedTier < maxAllowedTier) {
+    speedTier++;
+  }
+
+  return speedTier;
+}
+
 void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin, uint8_t maxSpeedTier, uint8_t expoPercent) {
   uint8_t speedTier = getProportionalSpeedTier(magnitude, expoPercent);
-  int clampedMaxTier = constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH);
+  uint8_t clampedMaxTier = static_cast<uint8_t>(constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH));
 
   if (speedTier > clampedMaxTier) {
-    speedTier = static_cast<uint8_t>(clampedMaxTier);
+    speedTier = clampedMaxTier;
   }
+
+  speedTier = applyDroneSpeedTierModifiers(speedTier, clampedMaxTier);
 
   applySpeedPinsForTier(speedTier, upPin, downPin);
 }
