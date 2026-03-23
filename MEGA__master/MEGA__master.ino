@@ -192,6 +192,7 @@ constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
+constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -311,6 +312,10 @@ void applySpeedPinsForTier(uint8_t speedTier, uint8_t upPin, uint8_t downPin) {
 uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) {
   bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
   bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2);
+
+  if (DRONE_L2_R2_NEUTRAL_MODE && precisionModeActive && boostModeActive) {
+    return speedTier;
+  }
 
   if (precisionModeActive && speedTier > DRONE_SPEED_TIER_STOP) {
     speedTier--;
