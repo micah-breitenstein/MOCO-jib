@@ -63,7 +63,7 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
 | L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1). A double medium pulse confirms the endpoint was locked. |
-| **R3 (press right joystick inward / right stick click)** | **Cancel active timelapse/bounce (stops motors + resets). If no auto mode is active, it cancels rumble feedback. A distinct single medium cancel rumble confirms the action.** |
+| **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out.** |
 
 ### Timelapse Modes (SELECT release)
 
@@ -80,14 +80,14 @@ Stick position at moment of SELECT release selects the move:
 | Full right (X=255) | 7: swing right only |
 | Full down (Y=255) | 8: boom down only |
 
-- **Cancel:** press `R3` (press the right joystick inward) at any time to stop timelapse and reset
+- **Stop/reset:** hold **L1 + L2 + R1 + R2** for emergency stop
 
 ### Bounce / MoCo Modes (START release)
 
 Same stick positions as timelapse modes above, triggered with START instead of SELECT.
 - **Stage 0:** rig moves in the initial direction; press L3 to mark the travel distance — a double medium pulse confirms the endpoint is locked
 - **Stage 1:** rig bounces back and forth over the recorded distance automatically
-- **Cancel:** press `R3` (press the right joystick inward) at any time to stop bounce and reset
+- **Stop/reset:** hold **L1 + L2 + R1 + R2** for emergency stop
 - **Minimum endpoint duration:** L3 endpoint capture requires at least `150 ms` of stage-0 travel; shorter taps are rejected with deny rumble + Serial warning
 
 ## New Features
@@ -117,10 +117,26 @@ Use this when you want quiet operation but still want Serial feedback:
 - When muted:
 	- controller vibration output is disabled
 	- Serial log messages still print normally
-	- interval / `stepDist` / limit / deny / cancel / release rumble patterns are suppressed on the controller
+	- interval / `stepDist` / limit / deny / drone-mode / release rumble patterns are suppressed on the controller
 - When unmuted:
 	- controller rumble output resumes normally
 	- a short confirmation rumble plays when rumble is turned back on
+
+### Drone mode (R3 toggle)
+
+Use this for dual-stick flying-drone style control.
+
+- Press **R3** to toggle Drone Mode ON/OFF
+- Enter feedback: **1 medium pulse**
+- Exit feedback: **2 medium pulses**
+- Enter behavior: active timelapse/bounce are reset and locked out while Drone Mode is active
+- Left stick in Drone Mode:
+	- X controls swing direction + proportional speed
+	- Y controls lift direction + proportional speed
+- Right stick in Drone Mode:
+	- X controls pan direction + proportional speed
+	- Y controls tilt direction + proportional speed
+- Focus stays on Triangle/Cross with Square/Circle speed control
 
 ### Controller-adjustable timelapse interval (no reflash needed)
 
@@ -132,11 +148,7 @@ You can now change the timelapse interval directly from the controller while no 
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
 - **Limit feedback:** trying to go below/above range gives a distinct double-short rumble
 - **Lockout feedback:** trying this combo while timelapse or bounce is active gives a distinct triple-short deny rumble
-- **R3 behavior priority:**
-	- If timelapse is active, `R3` (press the right joystick inward) cancels timelapse
-	- Else if bounce is active, `R3` cancels bounce
-	- Else (idle), `R3` cancels interval rumble feedback
-	- A distinct single medium cancel rumble confirms any `R3` cancel action
+- **R3 behavior:** toggles Drone Mode ON/OFF (does not cancel timelapse/bounce directly)
 
 When changed, the Mega prints the value over Serial as:
 
