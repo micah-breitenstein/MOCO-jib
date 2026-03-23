@@ -187,31 +187,17 @@ void configureController() {
   error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, PRESSURES, RUMBLE);
 
   if (error == 0) {
-    Serial.print("Found Controller, configured successful ");
-    Serial.print("pressures = ");
-    if (PRESSURES)
-      Serial.println("true ");
-    else
-      Serial.println("false");
-    Serial.print("rumble = ");
-    if (RUMBLE)
-      Serial.println("true)");
-    else
-      Serial.println("false");
-    Serial.println("Try out all the buttons, X will vibrate the controller, faster as you press harder;");
-    Serial.println("holding L1 or R1 will print out the analog stick values.");
-    Serial.println("Note: Go to www.billporter.info for updates and to report bugs.");
+    Serial.print("Controller configured. pressures=");
+    Serial.print(PRESSURES ? "true" : "false");
+    Serial.print(", rumble=");
+    Serial.println(RUMBLE ? "true" : "false");
   }
   else if (error == 1)
-    Serial.println("No controller found, check wiring, see readme.txt to enable debug. visit www.billporter.info for troubleshooting tips");
-
+    Serial.println("No controller found, check wiring.");
   else if (error == 2)
-    Serial.println("Controller found but not accepting commands. see readme.txt to enable debug. Visit www.billporter.info for troubleshooting tips");
-
+    Serial.println("Controller found but not accepting commands.");
   else if (error == 3)
-    Serial.println("Controller refusing to enter Pressures mode, may not support it. ");
-
-  //  Serial.print(ps2x.Analog(1), HEX);
+    Serial.println("Controller refusing Pressures mode, may not support it.");
 }
 
 void detectControllerType() {
