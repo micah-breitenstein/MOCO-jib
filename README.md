@@ -168,12 +168,19 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_LIFT_DEADBAND` (currently `14`)
 	- `DRONE_PAN_DEADBAND` (currently `10`)
 	- `DRONE_TILT_DEADBAND` (currently `10`)
+- Per-axis max speed caps:
+	- `DRONE_SWING_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
+	- `DRONE_LIFT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
+	- `DRONE_PAN_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
+	- `DRONE_TILT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
+	- Available tiers: `DRONE_SPEED_TIER_STOP`, `DRONE_SPEED_TIER_MED`, `DRONE_SPEED_TIER_HIGH`
 
 Quick tuning guide:
 
 - If an axis drifts at center, increase that axis deadband by `1-2`
 - If stick response feels too twitchy near center, increase `DRONE_EXPO_PERCENT`
 - If controls feel sluggish, decrease `DRONE_EXPO_PERCENT` or reduce deadband on that axis
+- If an axis is too aggressive at full stick, lower that axis `DRONE_*_MAX_SPEED_TIER`
 
 ### Controller-adjustable timelapse interval (no reflash needed)
 
