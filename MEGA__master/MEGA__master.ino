@@ -780,12 +780,16 @@ void adjustStepDist(int delta) {
   startStepDistRumbleFeedback();
 }
 
+bool isAutoModeActive() {
+  return (timelapseMode != 0 || bounce != 0);
+}
+
 // START + PAD_UP increases timelapseIntervalSeconds.
 // START + PAD_DOWN decreases timelapseIntervalSeconds.
 // This is only active while no auto mode is running so it does not conflict
 // with active timelapse or bounce motion.
 bool handleTimelapseIntervalAdjustment() {
-  bool adjustmentAllowed = (timelapseMode == 0 && bounce == 0);
+  bool adjustmentAllowed = !isAutoModeActive();
   bool intervalAdjustUpComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_UP);
   bool intervalAdjustDownComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_DOWN);
 
@@ -826,7 +830,7 @@ bool handleTimelapseIntervalAdjustment() {
 // This is only active while no auto mode is running so it does not conflict
 // with active timelapse or bounce motion.
 bool handleTimelapseStepDistAdjustment() {
-  bool adjustmentAllowed = (timelapseMode == 0 && bounce == 0);
+  bool adjustmentAllowed = !isAutoModeActive();
   bool stepDistAdjustUpComboRawActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
   bool stepDistAdjustDownComboRawActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT);
 
@@ -887,7 +891,7 @@ bool handleRumbleMuteToggle() {
 // L1 + L2 + CIRCLE replays current interval and stepDist rumble patterns.
 // This is read-only; no values change.
 bool handleSettingsReplay() {
-  bool replayAllowed = (timelapseMode == 0 && bounce == 0);
+  bool replayAllowed = !isAutoModeActive();
   bool settingsReplayComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_L2) && ps2x.Button(PSB_CIRCLE);
 
   if (settingsReplayComboActive && !lastSettingsReplayComboActive) {
