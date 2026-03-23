@@ -886,10 +886,16 @@ bool handleRumbleMuteToggle() {
 // L1 + L2 + CIRCLE replays current interval and stepDist rumble patterns.
 // This is read-only; no values change.
 bool handleSettingsReplay() {
+  bool replayAllowed = (timelapseMode == 0 && bounce == 0);
   bool settingsReplayComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_L2) && ps2x.Button(PSB_CIRCLE);
 
   if (settingsReplayComboActive && !lastSettingsReplayComboActive) {
-    startSettingsReplayRumble();
+    if (replayAllowed) {
+      startSettingsReplayRumble();
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Settings replay blocked: auto mode active.");
+    }
   }
 
   lastSettingsReplayComboActive = settingsReplayComboActive;

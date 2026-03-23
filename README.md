@@ -147,6 +147,7 @@ Replay the current interval and `stepDist` rumble patterns on demand (read-only,
 	- Serial prints: `Settings replay: interval=Xs, stepDist=Yms` (e.g., `Settings replay: interval=15s, stepDist=50ms`)
 - **Use case:** verify your current settings without adjusting them; useful when switching between different rigs or recalls
 - **Safety:** this is purely informational; no motion or configuration changes occur
+- **Idle-only lockout:** replay is blocked while timelapse or bounce is active; a triple-short deny rumble + Serial message confirms lockout
 
 ### Controller-adjustable timelapse move time (`stepDist`) (no reflash needed)
 
