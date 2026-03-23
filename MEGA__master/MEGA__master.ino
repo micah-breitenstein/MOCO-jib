@@ -445,16 +445,28 @@ void handleFocusAxis() {
 void stopAllMotors() {
   digitalWrite(swingLeft, LOW);
   digitalWrite(swingRight, LOW);
+  digitalWrite(swingSpeedUp, LOW);
+  digitalWrite(swingSpeedDown, LOW);
   digitalWrite(panLeft, LOW);
   digitalWrite(panRight, LOW);
+  digitalWrite(panSpeedUp, LOW);
+  digitalWrite(panSpeedDown, LOW);
   digitalWrite(panSpeedUpOnly, LOW);
   digitalWrite(panSpeedDownOnly, LOW);
   digitalWrite(liftUp, LOW);
   digitalWrite(liftDown, LOW);
+  digitalWrite(liftSpeedUp, LOW);
+  digitalWrite(liftSpeedDown, LOW);
   digitalWrite(tiltUp, LOW);
   digitalWrite(tiltDown, LOW);
+  digitalWrite(tiltSpeedUp, LOW);
+  digitalWrite(tiltSpeedDown, LOW);
   digitalWrite(tiltSpeedUpOnly, LOW);
   digitalWrite(tiltSpeedDownOnly, LOW);
+  digitalWrite(focusLeft, LOW);
+  digitalWrite(focusRight, LOW);
+  digitalWrite(focusSpeedUp, LOW);
+  digitalWrite(focusSpeedDown, LOW);
 }
 
 void updateIntervalMs() {
