@@ -37,7 +37,7 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 | **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** |
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
-| L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1) |
+| L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1). A double medium pulse confirms the endpoint was locked. |
 | **R3 (press right joystick inward / right stick click)** | **Cancel active timelapse/bounce (stops motors + resets). If no auto mode is active, it cancels rumble feedback. A distinct single medium cancel rumble confirms the action.** |
 
 ### Timelapse Modes (SELECT release)
@@ -60,7 +60,7 @@ Stick position at moment of SELECT release selects the move:
 ### Bounce / MoCo Modes (START release)
 
 Same stick positions as timelapse modes above, triggered with START instead of SELECT.
-- **Stage 0:** rig moves in the initial direction; press L3 to mark the travel distance
+- **Stage 0:** rig moves in the initial direction; press L3 to mark the travel distance — a double medium pulse confirms the endpoint is locked
 - **Stage 1:** rig bounces back and forth over the recorded distance automatically
 - **Cancel:** press `R3` (press the right joystick inward) at any time to stop bounce and reset
 

@@ -161,6 +161,9 @@ constexpr uint8_t EMERGENCY_RELEASE_RUMBLE_PULSES = 1;
 constexpr unsigned long R3_CANCEL_RUMBLE_ON_MS = 300;
 constexpr unsigned long R3_CANCEL_RUMBLE_TOTAL_MS = 450;
 constexpr uint8_t R3_CANCEL_RUMBLE_PULSES = 1;
+constexpr unsigned long L3_ENDPOINT_RUMBLE_ON_MS = 200;
+constexpr unsigned long L3_ENDPOINT_RUMBLE_TOTAL_MS = 350;
+constexpr uint8_t L3_ENDPOINT_RUMBLE_PULSES = 2;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -507,6 +510,10 @@ void startEmergencyReleaseRumbleFeedback() {
 
 void startR3CancelRumbleFeedback() {
   startFeedbackRumble(R3_CANCEL_RUMBLE_PULSES, R3_CANCEL_RUMBLE_ON_MS, R3_CANCEL_RUMBLE_TOTAL_MS);
+}
+
+void startL3EndpointRumbleFeedback() {
+  startFeedbackRumble(L3_ENDPOINT_RUMBLE_PULSES, L3_ENDPOINT_RUMBLE_ON_MS, L3_ENDPOINT_RUMBLE_TOTAL_MS);
 }
 
 void startRumbleUnmuteFeedback() {
@@ -1262,6 +1269,10 @@ void advanceBounceToStage1() {
   bounceMoveDurationMs = now - bouncePhaseStartMs;
   bouncePhaseStartMs = now;
   stage = 1;
+  startL3EndpointRumbleFeedback();
+  Serial.print("Bounce endpoint set: ");
+  Serial.print(bounceMoveDurationMs);
+  Serial.println("ms travel time");
 }
 
 void handleBounceStage0(unsigned long now) {
