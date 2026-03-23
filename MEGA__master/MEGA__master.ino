@@ -165,6 +165,7 @@ constexpr uint8_t R3_CANCEL_RUMBLE_PULSES = 1;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_ON_MS = 200;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_TOTAL_MS = 350;
 constexpr uint8_t L3_ENDPOINT_RUMBLE_PULSES = 2;
+constexpr unsigned long BOUNCE_MIN_MOVE_DURATION_MS = 150;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -1277,8 +1278,18 @@ void stopBounceModeOutputs(int mode) {
 
 void advanceBounceToStage1() {
   unsigned long now = millis();
+  unsigned long measuredMoveDurationMs = now - bouncePhaseStartMs;
+
+  if (measuredMoveDurationMs < BOUNCE_MIN_MOVE_DURATION_MS) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.print("Bounce endpoint rejected: minimum move time is ");
+    Serial.print(BOUNCE_MIN_MOVE_DURATION_MS);
+    Serial.println("ms.");
+    return;
+  }
+
   stopBounceModeOutputs(bounce);
-  bounceMoveDurationMs = now - bouncePhaseStartMs;
+  bounceMoveDurationMs = measuredMoveDurationMs;
   bouncePhaseStartMs = now;
   stage = 1;
   startL3EndpointRumbleFeedback();

@@ -63,6 +63,7 @@ Same stick positions as timelapse modes above, triggered with START instead of S
 - **Stage 0:** rig moves in the initial direction; press L3 to mark the travel distance — a double medium pulse confirms the endpoint is locked
 - **Stage 1:** rig bounces back and forth over the recorded distance automatically
 - **Cancel:** press `R3` (press the right joystick inward) at any time to stop bounce and reset
+- **Minimum endpoint duration:** L3 endpoint capture requires at least `150 ms` of stage-0 travel; shorter taps are rejected with deny rumble + Serial warning
 
 ## New Features
 
