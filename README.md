@@ -17,6 +17,14 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 - Upload the corresponding sketch to each target board (Mega master or Nano slave).
 - Keep serial/communication settings synchronized between master and all slaves.
 
+## Dependencies
+
+- Required Arduino library: `PS2X_lib` (for `#include <PS2X_lib.h>` in the Mega sketch)
+- Source: https://github.com/madsci1016/Arduino-PS2X.git
+- Install location (macOS): `~/Documents/Arduino/libraries/PS2X_lib/`
+- Expected header path after install: `~/Documents/Arduino/libraries/PS2X_lib/PS2X_lib.h`
+- Restart Arduino IDE after installing so the library index refreshes
+
 ## Controller Buttons (DualShock)
 
 | Button | Function |
