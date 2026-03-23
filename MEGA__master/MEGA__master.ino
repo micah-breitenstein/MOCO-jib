@@ -1086,28 +1086,23 @@ void updateTimelapseModeSelection() {
     return;
   }
   timelapseMode = stickPositionToMode(leftStickXvalue, leftStickYvalue);
+  const char* tlLabel = getTimelapseModeLabel(timelapseMode);
+  if (tlLabel != nullptr) {
+    Serial.println(tlLabel);
+  }
 }
 
 const char* getBounceModeSerialLabel(int mode) {
   switch (mode) {
-    case 1:
-      return "bounce 1";
-    case 2:
-      return "bounce 2";
-    case 3:
-      return "bounce 3";
-    case 4:
-      return "bounce 4";
-    case 5:
-      return "bounce 5";
-    case 6:
-      return "bounce 6";
-    case 7:
-      return "bounce 7";
-    case 8:
-      return "bounce 8";
-    default:
-      return nullptr;
+    case 1: return "Bounce Mode 1: Swing left, boom down";
+    case 2: return "Bounce Mode 2: Swing left, boom up";
+    case 3: return "Bounce Mode 3: Swing right, boom up";
+    case 4: return "Bounce Mode 4: Swing right, boom down";
+    case 5: return "Bounce Mode 5: Swing left";
+    case 6: return "Bounce Mode 6: Boom up";
+    case 7: return "Bounce Mode 7: Swing right";
+    case 8: return "Bounce Mode 8: Boom down";
+    default: return nullptr;
   }
 }
 
