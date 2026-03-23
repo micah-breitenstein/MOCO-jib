@@ -578,7 +578,8 @@ void handleFocusAxis() {
   if (ps2x.ButtonReleased(PSB_CIRCLE)) digitalWrite(focusSpeedUp, LOW);
 }
 
-void applyDroneAxisControl(int stickValue, bool isReversed,
+// Returns true if the axis is active (outside deadband), false if stopped.
+bool applyDroneAxisControl(int stickValue, bool isReversed,
                            uint8_t negativeDirectionPin, uint8_t positiveDirectionPin,
                            uint8_t speedUpPin, uint8_t speedDownPin,
                            int axisDeadband, uint8_t maxSpeedTier, uint8_t expoPercent) {
@@ -588,7 +589,7 @@ void applyDroneAxisControl(int stickValue, bool isReversed,
   int signedOffsetFromCenter = stickValue - STICK_CENTER;
   if (abs(signedOffsetFromCenter) <= axisDeadband) {
     applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, speedUpPin, speedDownPin);
-    return;
+    return false;
   }
 
   int magnitude = getStickDeflectionMagnitude(stickValue);
@@ -599,6 +600,7 @@ void applyDroneAxisControl(int stickValue, bool isReversed,
   } else if (stickValue > STICK_CENTER + axisDeadband) {
     setDirectionalOutput(isReversed, positiveDirectionPin, negativeDirectionPin, HIGH);
   }
+  return true;
 }
 
 void handleDroneStickControl() {
