@@ -1579,6 +1579,19 @@ void printDroneTuningProfile() {
   Serial.print(DRONE_PAN_MAX_SPEED_TIER);
   Serial.print("/");
   Serial.println(DRONE_TILT_MAX_SPEED_TIER);
+
+  Serial.print("Drone tuning | modifier precision/boost enabled=");
+  Serial.print(DRONE_ENABLE_PRECISION_MODIFIER ? "Y" : "N");
+  Serial.print("/");
+  Serial.println(DRONE_ENABLE_BOOST_MODIFIER ? "Y" : "N");
+
+  Serial.print("Drone tuning | L2+R2 neutral mode=");
+  Serial.println(DRONE_L2_R2_NEUTRAL_MODE ? "Y" : "N");
+
+  Serial.print("Drone tuning | tier thresholds med/high=");
+  Serial.print(DRONE_SPEED_TIER_MED_THRESHOLD);
+  Serial.print("/");
+  Serial.println(DRONE_SPEED_TIER_HIGH_THRESHOLD);
 }
 
 void setup() {
