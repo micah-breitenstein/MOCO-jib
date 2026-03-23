@@ -1353,6 +1353,7 @@ void handleActiveTimelapseMode(unsigned long now) {
 
 void setup() {
 
+  Serial.begin(9600);
   updateIntervalMs();
 
   const uint8_t outputPins[] = {
