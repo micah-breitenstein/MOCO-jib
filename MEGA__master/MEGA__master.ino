@@ -171,6 +171,8 @@ constexpr uint8_t DRONE_MODE_ENTER_RUMBLE_PULSES = 1;
 constexpr unsigned long DRONE_MODE_EXIT_RUMBLE_ON_MS = 150;
 constexpr unsigned long DRONE_MODE_EXIT_RUMBLE_TOTAL_MS = 300;
 constexpr uint8_t DRONE_MODE_EXIT_RUMBLE_PULSES = 2;
+constexpr int DRONE_STICK_MAX_DEFLECTION = 127;
+constexpr uint8_t DRONE_EXPO_PERCENT = 65;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -252,11 +254,20 @@ int getStickDeflectionMagnitude(int stickValue) {
   return abs(stickValue - STICK_CENTER);
 }
 
+int getExpoDeflectionMagnitude(int linearMagnitude) {
+  int clampedMagnitude = constrain(linearMagnitude, 0, DRONE_STICK_MAX_DEFLECTION);
+  int quadraticComponent = (clampedMagnitude * clampedMagnitude) / DRONE_STICK_MAX_DEFLECTION;
+  int blendedMagnitude = ((100 - DRONE_EXPO_PERCENT) * clampedMagnitude + DRONE_EXPO_PERCENT * quadraticComponent) / 100;
+  return blendedMagnitude;
+}
+
 void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin) {
-  if (magnitude < 43) {
+  int expoMagnitude = getExpoDeflectionMagnitude(magnitude);
+
+  if (expoMagnitude < 43) {
     digitalWrite(upPin, LOW);
     digitalWrite(downPin, LOW);
-  } else if (magnitude < 86) {
+  } else if (expoMagnitude < 86) {
     digitalWrite(upPin, LOW);
     digitalWrite(downPin, HIGH);
   } else {
