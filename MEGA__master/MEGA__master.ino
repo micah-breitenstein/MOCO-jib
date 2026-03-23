@@ -173,6 +173,10 @@ constexpr unsigned long DRONE_MODE_EXIT_RUMBLE_TOTAL_MS = 300;
 constexpr uint8_t DRONE_MODE_EXIT_RUMBLE_PULSES = 2;
 constexpr int DRONE_STICK_MAX_DEFLECTION = 127;
 constexpr uint8_t DRONE_EXPO_PERCENT = 65;
+constexpr int DRONE_SWING_DEADBAND = 12;
+constexpr int DRONE_LIFT_DEADBAND = 14;
+constexpr int DRONE_PAN_DEADBAND = 10;
+constexpr int DRONE_TILT_DEADBAND = 10;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
@@ -494,28 +498,29 @@ void handleFocusAxis() {
 
 void applyDroneAxisControl(int stickValue, bool isReversed,
                            uint8_t negativeDirectionPin, uint8_t positiveDirectionPin,
-                           uint8_t speedUpPin, uint8_t speedDownPin) {
+                           uint8_t speedUpPin, uint8_t speedDownPin,
+                           int axisDeadband) {
   digitalWrite(negativeDirectionPin, LOW);
   digitalWrite(positiveDirectionPin, LOW);
 
   int magnitude = getStickDeflectionMagnitude(stickValue);
   applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin);
 
-  if (stickValue < STICK_CENTER - 12) {
+  if (stickValue < STICK_CENTER - axisDeadband) {
     setDirectionalOutput(isReversed, negativeDirectionPin, positiveDirectionPin, HIGH);
-  } else if (stickValue > STICK_CENTER + 12) {
+  } else if (stickValue > STICK_CENTER + axisDeadband) {
     setDirectionalOutput(isReversed, positiveDirectionPin, negativeDirectionPin, HIGH);
   }
 }
 
 void handleDroneStickControl() {
   // Left stick controls swing (X) and lift (Y)
-  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown);
-  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown);
+  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND);
+  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND);
 
   // Right stick controls pan (X) and tilt (Y)
-  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown);
-  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown);
+  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND);
+  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND);
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
