@@ -27,6 +27,21 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 - Restart Arduino IDE after installing so the library index refreshes
 - The vendored copy is kept in-repo for traceability, but Arduino IDE may still prefer the sketchbook-installed library unless your build tooling is configured to use the repo copy directly
 
+### Build with Arduino CLI
+
+This project has been verified to build from the terminal/VS Code using:
+
+- `arduino-cli compile --fqbn arduino:avr:mega "/Users/micahbreitenstein/Downloads/to Micah/MEGA__master"`
+
+This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master sketch without needing to open Arduino IDE.
+
+### Build with VS Code
+
+- Install an Arduino extension in VS Code (workspace recommendations are in `.vscode/extensions.json`)
+- Use the default build task in `.vscode/tasks.json`
+- Run build with `Cmd+Shift+B` and choose `Arduino CLI: Build Mega master` (or let it run as the default build task)
+- The task uses the same verified command above (`arduino-cli compile --fqbn arduino:avr:mega ...`)
+
 ## Controller Buttons (DualShock)
 
 | Button | Function |
