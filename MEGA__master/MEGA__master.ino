@@ -1522,6 +1522,35 @@ void handleActiveTimelapseMode(unsigned long now) {
   }
 }
 
+void printDroneTuningProfile() {
+  Serial.print("Drone tuning | expo S/L/P/T=");
+  Serial.print(DRONE_SWING_EXPO_PERCENT);
+  Serial.print("/");
+  Serial.print(DRONE_LIFT_EXPO_PERCENT);
+  Serial.print("/");
+  Serial.print(DRONE_PAN_EXPO_PERCENT);
+  Serial.print("/");
+  Serial.println(DRONE_TILT_EXPO_PERCENT);
+
+  Serial.print("Drone tuning | deadband S/L/P/T=");
+  Serial.print(DRONE_SWING_DEADBAND);
+  Serial.print("/");
+  Serial.print(DRONE_LIFT_DEADBAND);
+  Serial.print("/");
+  Serial.print(DRONE_PAN_DEADBAND);
+  Serial.print("/");
+  Serial.println(DRONE_TILT_DEADBAND);
+
+  Serial.print("Drone tuning | max tier S/L/P/T=");
+  Serial.print(DRONE_SWING_MAX_SPEED_TIER);
+  Serial.print("/");
+  Serial.print(DRONE_LIFT_MAX_SPEED_TIER);
+  Serial.print("/");
+  Serial.print(DRONE_PAN_MAX_SPEED_TIER);
+  Serial.print("/");
+  Serial.println(DRONE_TILT_MAX_SPEED_TIER);
+}
+
 void setup() {
 
   Serial.begin(9600);
@@ -1585,6 +1614,7 @@ void setup() {
   Serial.print("s, stepDist=");
   Serial.print(stepDist);
   Serial.println("ms");
+  printDroneTuningProfile();
 }
 
 void loop() {
