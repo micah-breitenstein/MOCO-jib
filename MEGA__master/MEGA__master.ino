@@ -183,6 +183,7 @@ bool suppressNextStartRelease = false;
 bool lastSettingsReplayComboActive = false;
 bool chainStepDistAfterInterval = false;
 unsigned long lastControllerRetryMs = 0;
+bool unsupportedControllerWarningShown = false;
 
 void configureController() {
 
@@ -1447,8 +1448,16 @@ void loop() {
     return;
 
   const bool isDualShockType = (controllerType == 1 || controllerType == 3);
-  if (!isDualShockType) // skip unsupported controller types
+  if (!isDualShockType) {
+    if (!unsupportedControllerWarningShown) {
+      Serial.print("Unsupported controller type: ");
+      Serial.println(controllerType);
+      unsupportedControllerWarningShown = true;
+    }
     return;
+  }
+
+  unsupportedControllerWarningShown = false;
 
   handleIntervalRumbleFeedback(now);
   ps2x.read_gamepad(false, rumbleMuted ? 0 : vibrate); // rumble can be muted without affecting serial logs or internal feedback state
