@@ -142,6 +142,7 @@ Use this for dual-stick flying-drone style control.
 	- Hold `L2` for temporary precision mode (one speed tier slower)
 	- Hold `R2` for temporary boost mode (one speed tier faster, never above per-axis cap)
 	- If both `L2` and `R2` are held together, they resolve to neutral (no modifier)
+- Idle auto-exit: if no axis is moved for `DRONE_IDLE_TIMEOUT_MS` (default 30 seconds), Drone Mode exits automatically and all motors stop. Set to `0` to disable.
 
 #### Drone mode direction reference
 
@@ -190,6 +191,9 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_ENABLE_PRECISION_MODIFIER` (currently `true`)
 	- `DRONE_ENABLE_BOOST_MODIFIER` (currently `true`)
 	- `DRONE_L2_R2_NEUTRAL_MODE` (currently `true`)
+- Idle timeout and logging:
+	- `DRONE_IDLE_TIMEOUT_MS` (currently `30000` ms, set `0` to disable)
+	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
 
 Quick tuning guide:
 
@@ -197,7 +201,8 @@ Quick tuning guide:
 - If stick response feels too twitchy near center, increase that axis `DRONE_*_EXPO_PERCENT`
 - If controls feel sluggish, decrease that axis `DRONE_*_EXPO_PERCENT` or reduce deadband on that axis
 - If an axis is too aggressive at full stick, lower that axis `DRONE_*_MAX_SPEED_TIER`
-- On boot, Serial now prints expo/deadband/max-tier/modifier/threshold summaries so you can confirm the active profile
+- On boot, Serial prints expo/deadband/max-tier/modifier/threshold/idle-timeout/log-flag summaries so you can confirm the active profile
+- When `DRONE_SERIAL_LOG_ENABLED = true`, the Mega prints edge-triggered events: per-axis start/stop movement and L2/R2 modifier state changes
 
 #### Starter profiles (copy these values)
 
