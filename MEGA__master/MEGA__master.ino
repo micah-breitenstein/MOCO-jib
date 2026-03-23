@@ -159,19 +159,25 @@ constexpr uint8_t LOCKOUT_DENIED_RUMBLE_PULSES = 3;
 constexpr unsigned long EMERGENCY_RELEASE_RUMBLE_ON_MS = 100;
 constexpr unsigned long EMERGENCY_RELEASE_RUMBLE_TOTAL_MS = 180;
 constexpr uint8_t EMERGENCY_RELEASE_RUMBLE_PULSES = 1;
-constexpr unsigned long R3_CANCEL_RUMBLE_ON_MS = 300;
-constexpr unsigned long R3_CANCEL_RUMBLE_TOTAL_MS = 450;
-constexpr uint8_t R3_CANCEL_RUMBLE_PULSES = 1;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_ON_MS = 200;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_TOTAL_MS = 350;
 constexpr uint8_t L3_ENDPOINT_RUMBLE_PULSES = 2;
 constexpr unsigned long BOUNCE_MIN_MOVE_DURATION_MS = 150;
+
+// Drone mode constants
+constexpr unsigned long DRONE_MODE_ENTER_RUMBLE_ON_MS = 200;
+constexpr unsigned long DRONE_MODE_ENTER_RUMBLE_TOTAL_MS = 350;
+constexpr uint8_t DRONE_MODE_ENTER_RUMBLE_PULSES = 1;
+constexpr unsigned long DRONE_MODE_EXIT_RUMBLE_ON_MS = 150;
+constexpr unsigned long DRONE_MODE_EXIT_RUMBLE_TOTAL_MS = 300;
+constexpr uint8_t DRONE_MODE_EXIT_RUMBLE_PULSES = 2;
 
 bool isSwingReversed = false;
 bool isPanReversed = false;
 bool isLiftReversed = false;
 bool isTiltReversed = false;
 bool isFocusReversed = false;
+bool droneMode = false;
 bool lastIntervalAdjustUpComboActive = false;
 bool lastIntervalAdjustDownComboActive = false;
 bool lastStepDistAdjustUpComboActive = false;
@@ -240,6 +246,47 @@ void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPi
   } else {
     digitalWrite(reversedPin, state);
   }
+}
+
+int getStickDeflectionMagnitude(int stickValue) {
+  return abs(stickValue - STICK_CENTER);
+}
+
+void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin) {
+  if (magnitude < 43) {
+    digitalWrite(upPin, LOW);
+    digitalWrite(downPin, LOW);
+  } else if (magnitude < 86) {
+    digitalWrite(upPin, LOW);
+    digitalWrite(downPin, HIGH);
+  } else {
+    digitalWrite(upPin, HIGH);
+    digitalWrite(downPin, LOW);
+  }
+}
+
+void startDroneModeEnterRumbleFeedback() {
+  startFeedbackRumble(DRONE_MODE_ENTER_RUMBLE_PULSES, DRONE_MODE_ENTER_RUMBLE_ON_MS, DRONE_MODE_ENTER_RUMBLE_TOTAL_MS);
+}
+
+void startDroneModeExitRumbleFeedback() {
+  startFeedbackRumble(DRONE_MODE_EXIT_RUMBLE_PULSES, DRONE_MODE_EXIT_RUMBLE_ON_MS, DRONE_MODE_EXIT_RUMBLE_TOTAL_MS);
+}
+
+void enterDroneMode() {
+  resetTimelapseState();
+  resetBounceState();
+  stopIntervalRumbleFeedback();
+  droneMode = true;
+  Serial.println("DRONE MODE ACTIVATED - timelapse/bounce locked out");
+  startDroneModeEnterRumbleFeedback();
+}
+
+void exitDroneMode() {
+  droneMode = false;
+  stopAllMotors();
+  Serial.println("DRONE MODE DEACTIVATED");
+  startDroneModeExitRumbleFeedback();
 }
 
 void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, int& modeState) {
@@ -434,6 +481,38 @@ void handleFocusAxis() {
   if (ps2x.ButtonReleased(PSB_CIRCLE)) digitalWrite(focusSpeedUp, LOW);
 }
 
+void applyDroneAxisControl(int stickValue, bool isReversed,
+                           uint8_t negativeDirectionPin, uint8_t positiveDirectionPin,
+                           uint8_t speedUpPin, uint8_t speedDownPin) {
+  digitalWrite(negativeDirectionPin, LOW);
+  digitalWrite(positiveDirectionPin, LOW);
+
+  int magnitude = getStickDeflectionMagnitude(stickValue);
+  applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin);
+
+  if (stickValue < STICK_CENTER - 12) {
+    setDirectionalOutput(isReversed, negativeDirectionPin, positiveDirectionPin, HIGH);
+  } else if (stickValue > STICK_CENTER + 12) {
+    setDirectionalOutput(isReversed, positiveDirectionPin, negativeDirectionPin, HIGH);
+  }
+}
+
+void handleDroneStickControl() {
+  // Left stick controls swing (X) and lift (Y)
+  applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown);
+  applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown);
+
+  // Right stick controls pan (X) and tilt (Y)
+  applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown);
+  applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown);
+
+  // Disable trim-only speed pins in drone mode
+  digitalWrite(panSpeedUpOnly, LOW);
+  digitalWrite(panSpeedDownOnly, LOW);
+  digitalWrite(tiltSpeedUpOnly, LOW);
+  digitalWrite(tiltSpeedDownOnly, LOW);
+}
+
 void stopAllMotors() {
   digitalWrite(swingLeft, LOW);
   digitalWrite(swingRight, LOW);
@@ -510,10 +589,6 @@ void startLockoutDeniedRumbleFeedback() {
 
 void startEmergencyReleaseRumbleFeedback() {
   startFeedbackRumble(EMERGENCY_RELEASE_RUMBLE_PULSES, EMERGENCY_RELEASE_RUMBLE_ON_MS, EMERGENCY_RELEASE_RUMBLE_TOTAL_MS);
-}
-
-void startR3CancelRumbleFeedback() {
-  startFeedbackRumble(R3_CANCEL_RUMBLE_PULSES, R3_CANCEL_RUMBLE_ON_MS, R3_CANCEL_RUMBLE_TOTAL_MS);
 }
 
 void startL3EndpointRumbleFeedback() {
@@ -915,29 +990,15 @@ bool handleSettingsReplay() {
   return settingsReplayComboActive;
 }
 
-void handleThumbstickCancel() {
+void handleDroneModeToggle() {
   if (!ps2x.ButtonReleased(PSB_R3)) {
     return;
   }
 
-  if (timelapseMode != 0) {
-    resetTimelapseState();
-    startR3CancelRumbleFeedback();
-    Serial.println("R3 cancel: timelapse reset.");
-    return;
-  }
-
-  if (bounce != 0) {
-    resetBounceState();
-    startR3CancelRumbleFeedback();
-    Serial.println("R3 cancel: bounce reset.");
-    return;
-  }
-
-  if (isRumbleFeedbackActive()) {
-    stopIntervalRumbleFeedback();
-    startR3CancelRumbleFeedback();
-    Serial.println("Rumble feedback canceled.");
+  if (droneMode) {
+    exitDroneMode();
+  } else {
+    enterDroneMode();
   }
 }
 
@@ -961,6 +1022,7 @@ bool handleEmergencyStop() {
     if (lastEmergencyStopComboActive) {
       Serial.println("EMERGENCY STOP RELEASED | controls re-enabled");
       startEmergencyReleaseRumbleFeedback();
+      stopIntervalRumbleFeedback();
     }
     lastEmergencyStopComboActive = false;
     return false;
@@ -1469,8 +1531,9 @@ void loop() {
     return;
   }
 
-  if (controllerType == 2) // skip Guitar Hero controller
+  if (controllerType == 2) {
     return;
+  }
 
   const bool isDualShockType = (controllerType == 1 || controllerType == 3);
   if (!isDualShockType) {
@@ -1485,26 +1548,24 @@ void loop() {
   unsupportedControllerWarningShown = false;
 
   handleIntervalRumbleFeedback(now);
-  ps2x.read_gamepad(false, rumbleMuted ? 0 : vibrate); // rumble can be muted without affecting serial logs or internal feedback state
+  ps2x.read_gamepad(false, rumbleMuted ? 0 : vibrate);
 
-  // Read DIP-switch reversal settings
   isSwingReversed = (digitalRead(DIP_SWITCH_1) == HIGH);
   isPanReversed = (digitalRead(DIP_SWITCH_2) == HIGH);
   isLiftReversed = (digitalRead(DIP_SWITCH_3) == HIGH);
   isTiltReversed = (digitalRead(DIP_SWITCH_4) == HIGH);
   isFocusReversed = (digitalRead(DIP_SWITCH_5) == HIGH);
 
-  // Read analog stick values
   rightStickYvalue = ps2x.Analog(PSS_RY);
   rightStickXvalue = ps2x.Analog(PSS_RX);
-  leftStickYvalue  = ps2x.Analog(PSS_LY);
-  leftStickXvalue  = ps2x.Analog(PSS_LX);
+  leftStickYvalue = ps2x.Analog(PSS_LY);
+  leftStickXvalue = ps2x.Analog(PSS_LX);
 
   if (handleEmergencyStop()) {
     return;
   }
 
-  handleThumbstickCancel();
+  handleDroneModeToggle();
 
   if (handleTimelapseIntervalAdjustment()) {
     return;
@@ -1522,63 +1583,38 @@ void loop() {
     return;
   }
 
-  // Lift and Tilt speed control (R1/R2 buttons)
+  if (droneMode) {
+    handleDroneStickControl();
+    handleFocusAxis();
+    return;
+  }
+
   handleAxisSpeedControl(PSB_R1, liftSpeedUp, tiltSpeedUp);
   handleAxisSpeedControl(PSB_R2, liftSpeedDown, tiltSpeedDown);
-
-  // Pan and Swing speed control (L1/L2 buttons)
   handleAxisSpeedControl(PSB_L1, panSpeedUp, swingSpeedUp);
   handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown);
 
-  // 1st AXIS (BOOM SWING)
-  // swingLeft (no pan)
   handleSwingOnly(PSB_PAD_LEFT, swingLeft, swingRight);
-
-  // swingRight (no pan)
   handleSwingOnly(PSB_PAD_RIGHT, swingRight, swingLeft);
-
-  // swingLeft + panRight
   handleSwingAndPan(PSB_PAD_LEFT, swingLeft, swingRight, panRight, panLeft);
-
-  // swingRight + panLeft
   handleSwingAndPan(PSB_PAD_RIGHT, swingRight, swingLeft, panLeft, panRight);
 
   handlePanTrimAxis();
-
-  // 2nd AXIS (CAMERA PAN)
   handlePanAxis();
 
-  // 3rd AXIS (BOOM LIFT)
-  // lift UP (no tilt)
   handleLiftOnly(PSB_PAD_UP, liftUp, liftDown);
-
-  // lift DOWN (no tilt)
   handleLiftOnly(PSB_PAD_DOWN, liftDown, liftUp);
-
-  // lift UP + tilt DOWN
   handleLiftAndTilt(PSB_PAD_UP, liftUp, liftDown, tiltDown, tiltUp);
-
-  // lift DOWN + tilt UP
   handleLiftAndTilt(PSB_PAD_DOWN, liftDown, liftUp, tiltUp, tiltDown);
 
   handleTiltTrimAxis();
-
-  // 4th AXIS (CAMERA TILT)
   handleTiltAxis();
-
-  // 5th AXIS (CAMERA FOCUS)
   handleFocusAxis();
-
-  // Timelapse
 
   updateTimelapseModeSelection();
   handleActiveTimelapseMode(now);
 
-  // MOCO Moves (bounce)
-
   updateBounceModeSelection();
-
   handleBounceStage0(now);
-
   handleBounceStage1(now);
 }
