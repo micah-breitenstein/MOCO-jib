@@ -536,6 +536,12 @@ void applyDroneAxisControl(int stickValue, bool isReversed,
   digitalWrite(negativeDirectionPin, LOW);
   digitalWrite(positiveDirectionPin, LOW);
 
+  int signedOffsetFromCenter = stickValue - STICK_CENTER;
+  if (abs(signedOffsetFromCenter) <= axisDeadband) {
+    applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, speedUpPin, speedDownPin);
+    return;
+  }
+
   int magnitude = getStickDeflectionMagnitude(stickValue);
   applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin, maxSpeedTier, expoPercent);
 
