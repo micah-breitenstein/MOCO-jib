@@ -518,6 +518,13 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
     progressPercent = static_cast<uint8_t>((static_cast<unsigned long>(completedSegments) * 100UL) / totalSegments);
   }
 
+  unsigned long estimatedPerSegmentMs = timelapseIntervalMs + static_cast<unsigned long>(stepDist) + flowlapseDwellMs;
+  unsigned long remainingSegments = 0;
+  if (totalSegments >= completedSegments) {
+    remainingSegments = static_cast<unsigned long>(totalSegments - completedSegments);
+  }
+  unsigned long etaSeconds = (remainingSegments * estimatedPerSegmentMs) / 1000UL;
+
   Serial.print("Flowlapse capture | waypoint ");
   Serial.print(flowlapseTargetWaypointIndex + 1);
   Serial.print("/");
@@ -526,7 +533,9 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
   Serial.print(getFlowlapseCapturePhaseLabel(flowlapseCapturePhase));
   Serial.print(" progress=");
   Serial.print(progressPercent);
-  Serial.println("%");
+  Serial.print("% eta=");
+  Serial.print(etaSeconds);
+  Serial.println("s");
 }
 
 float getFlowlapseDeltaSeconds(unsigned long now) {
