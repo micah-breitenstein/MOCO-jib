@@ -1226,7 +1226,15 @@ void adjustFlowlapseDwell(long delta) {
   flowlapseDwellMs = static_cast<unsigned long>(newDwell);
   Serial.print("Flowlapse dwell (ms) = ");
   Serial.println(flowlapseDwellMs);
-  startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+  if (flowlapseDwellMs == 0) {
+    startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+    Serial.println("Flowlapse dwell disabled (0 ms).");
+    return;
+  }
+
+  uint8_t dwellStepCount = static_cast<uint8_t>(constrain(
+      static_cast<int>(flowlapseDwellMs / FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS), 1, 20));
+  startFeedbackRumble(dwellStepCount, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
 }
 
 void handleDroneFlowlapseButtons(unsigned long now) {
