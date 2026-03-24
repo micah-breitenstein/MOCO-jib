@@ -1319,6 +1319,10 @@ void handleDroneFlowlapseButtons(unsigned long now) {
       resetFlowlapseAxisTierState(now);
       Serial.print("Flowlapse: jog -> waypoint ");
       Serial.println(flowlapseJogIndex + 1);
+      Serial.print("Flowlapse: jog target ");
+      Serial.print(flowlapseJogIndex + 1);
+      Serial.print("/");
+      Serial.println(flowlapseWaypointCount);
     } else {
       startLockoutDeniedRumbleFeedback();
       Serial.println("Flowlapse: already at last waypoint.");
@@ -1332,6 +1336,10 @@ void handleDroneFlowlapseButtons(unsigned long now) {
       resetFlowlapseAxisTierState(now);
       Serial.print("Flowlapse: jog -> waypoint ");
       Serial.println(flowlapseJogIndex + 1);
+      Serial.print("Flowlapse: jog target ");
+      Serial.print(flowlapseJogIndex + 1);
+      Serial.print("/");
+      Serial.println(flowlapseWaypointCount);
     } else {
       startLockoutDeniedRumbleFeedback();
       Serial.println("Flowlapse: already at first waypoint.");
@@ -1409,7 +1417,9 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
         flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
         startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
         Serial.print("Flowlapse: jog reached waypoint ");
-        Serial.println(flowlapseJogIndex + 1);
+        Serial.print(flowlapseJogIndex + 1);
+        Serial.print("/");
+        Serial.println(flowlapseWaypointCount);
       }
     } else {
       stopAllMotors();
