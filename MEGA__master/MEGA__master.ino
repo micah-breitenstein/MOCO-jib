@@ -202,13 +202,13 @@ constexpr unsigned long FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS = 180;
 constexpr uint8_t FLOWLAPSE_WAYPOINT_RUMBLE_PULSES = 1;
 constexpr unsigned long FLOWLAPSE_PREVIEW_POINT_HOLD_MS = 700;
 constexpr uint8_t FLOWLAPSE_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
-constexpr unsigned long FLOWLAPSE_TIER_RAMP_INTERVAL_MS = 250;
+constexpr unsigned long FLOWLAPSE_TIER_RAMP_INTERVAL_MS = 450;
 constexpr float FLOWLAPSE_AXIS_STOP_TOLERANCE = 1.0f;
 constexpr float FLOWLAPSE_AXIS_MED_ERROR = 4.0f;
 constexpr float FLOWLAPSE_AXIS_HIGH_ERROR = 12.0f;
-constexpr float FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC = 24.0f;
-constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 20.0f;
-constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 34.0f;
+constexpr float FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC = 14.0f;
+constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 10.0f;
+constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 18.0f;
 
 struct FlowlapseWaypoint {
   float swing;

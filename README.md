@@ -219,9 +219,9 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
 	- `FLOWLAPSE_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
-	- `FLOWLAPSE_TIER_RAMP_INTERVAL_MS` (currently `250`)
+	- `FLOWLAPSE_TIER_RAMP_INTERVAL_MS` (currently `450`)
 	- `FLOWLAPSE_AXIS_MED_ERROR` and `FLOWLAPSE_AXIS_HIGH_ERROR` (error bands for tier selection)
-	- `FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC` / `FLOWLAPSE_MED_RATE_UNITS_PER_SEC` / `FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC` (open-loop motion model rates)
+	- `FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC` / `FLOWLAPSE_MED_RATE_UNITS_PER_SEC` / `FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC` (currently `14` / `10` / `18`, open-loop motion model rates)
 
 Quick tuning guide:
 
