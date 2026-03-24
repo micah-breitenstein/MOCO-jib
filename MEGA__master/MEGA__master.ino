@@ -2399,6 +2399,17 @@ void setup() {
   Serial.print(stepDist);
   Serial.println("ms");
   printDroneTuningProfile();
+
+  Serial.print("Boot axis reversal | swing=");
+  Serial.print(digitalRead(DIP_SWITCH_1) == HIGH ? "Y" : "N");
+  Serial.print(" pan=");
+  Serial.print(digitalRead(DIP_SWITCH_2) == HIGH ? "Y" : "N");
+  Serial.print(" lift=");
+  Serial.print(digitalRead(DIP_SWITCH_3) == HIGH ? "Y" : "N");
+  Serial.print(" tilt=");
+  Serial.print(digitalRead(DIP_SWITCH_4) == HIGH ? "Y" : "N");
+  Serial.print(" focus=");
+  Serial.println(digitalRead(DIP_SWITCH_5) == HIGH ? "Y" : "N");
 }
 
 void loop() {
