@@ -584,6 +584,16 @@ void captureFlowlapseWaypoint() {
   Serial.print(flowlapseWaypointCount);
   Serial.print("/");
   Serial.println(FLOWLAPSE_MAX_WAYPOINTS);
+  if (DRONE_SERIAL_LOG_ENABLED) {
+    Serial.print("  swing=");
+    Serial.print(waypoint.swing, 2);
+    Serial.print(" lift=");
+    Serial.print(waypoint.lift, 2);
+    Serial.print(" pan=");
+    Serial.print(waypoint.pan, 2);
+    Serial.print(" tilt=");
+    Serial.println(waypoint.tilt, 2);
+  }
 }
 
 bool isFlowlapseTargetReached(const FlowlapseWaypoint& target) {
