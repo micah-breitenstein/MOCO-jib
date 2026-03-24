@@ -197,6 +197,7 @@ constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mod
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 
 constexpr uint8_t FLOWLAPSE_MAX_WAYPOINTS = 8;
+constexpr bool FLOWLAPSE_LOOP_CAPTURE = false; // if true, capture auto-restarts after completing
 constexpr unsigned long FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS = 90;
 constexpr unsigned long FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS = 180;
 constexpr uint8_t FLOWLAPSE_WAYPOINT_RUMBLE_PULSES = 1;
@@ -1036,12 +1037,22 @@ void completeFlowlapsePreview() {
 void completeFlowlapseCapture() {
   stopAllMotors();
   digitalWrite(trigger, HIGH);
-  flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
-  flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
-  flowlapseCapturePhaseStartMs = 0;
-  flowlapseCaptureAlignedToFirstWaypoint = false;
-  flowlapseTargetWaypointIndex = 0;
-  Serial.println("Flowlapse: capture complete.");
+  if (FLOWLAPSE_LOOP_CAPTURE) {
+    flowlapseCaptureAlignedToFirstWaypoint = false;
+    flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+    flowlapseCapturePhaseStartMs = millis();
+    flowlapseTargetWaypointIndex = 0;
+    flowlapseLastProgressLogMs = 0;
+    resetFlowlapseAxisTierState(millis());
+    Serial.println("Flowlapse: capture loop complete — restarting.");
+  } else {
+    flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
+    flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+    flowlapseCapturePhaseStartMs = 0;
+    flowlapseCaptureAlignedToFirstWaypoint = false;
+    flowlapseTargetWaypointIndex = 0;
+    Serial.println("Flowlapse: capture complete.");
+  }
 }
 
 void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
