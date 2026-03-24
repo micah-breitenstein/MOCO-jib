@@ -1243,6 +1243,7 @@ void handleDroneFlowlapseButtons(unsigned long now) {
       } else {
         flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
         stopAllMotors();
+        startFeedbackRumble(flowlapseWaypointCount, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
         Serial.println("Flowlapse: recording stopped. Press SELECT again for preview.");
       }
       droneLastActivityMs = now;
