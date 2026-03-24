@@ -3,6 +3,8 @@
 // Controls a stepper motor driver (DIR + PUL) for focus ring movement.
 // Simpler than other axes: 3 speed stages, all transitions require a rising edge.
 
+constexpr bool FOCUS_SERIAL_DEBUG = false;
+
 ///// PIN ASSIGNMENTS
 const int driverDIR    = 2;  // stepper driver direction pin
 const int driverPUL    = 4;  // stepper driver pulse pin
@@ -24,6 +26,19 @@ int pd;
 int lastSpeedUp   = 0;
 int lastSpeedDown = 0;
 
+void debugLog(const char* message) {
+  if (FOCUS_SERIAL_DEBUG) {
+    Serial.println(message);
+  }
+}
+
+void debugLogStage(int stageValue) {
+  if (FOCUS_SERIAL_DEBUG) {
+    Serial.print("STAGE");
+    Serial.println(stageValue);
+  }
+}
+
 ///// HELPERS
 
 // Send one step pulse to the stepper driver in the given direction.
@@ -43,13 +58,13 @@ void updateSpeedStage(int speedUpRead, int speedDownRead) {
   if (lastSpeedDown == 0 && speedDownRead == 1 && stage > 0) {
     stage--;
     count = STAGE_DELAYS[stage];
-    Serial.print("STAGE"); Serial.println(stage);
+    debugLogStage(stage);
   }
 
   if (lastSpeedUp == 0 && speedUpRead == 1 && stage < STAGE_COUNT - 1) {
     stage++;
     count = STAGE_DELAYS[stage];
-    Serial.print("STAGE"); Serial.println(stage);
+    debugLogStage(stage);
   }
 
   lastSpeedUp   = speedUpRead;
@@ -57,7 +72,9 @@ void updateSpeedStage(int speedUpRead, int speedDownRead) {
 }
 
 void setup() {
-  // Serial.begin(57600);
+  if (FOCUS_SERIAL_DEBUG) {
+    Serial.begin(57600);
+  }
   pinMode(driverDIR,    OUTPUT);
   pinMode(driverPUL,    OUTPUT);
   pinMode(speedUpPin,   INPUT);
@@ -82,12 +99,12 @@ void loop() {
 
   ///// MOTOR MOVEMENTS
   if (upRead == HIGH) {
-    Serial.println("FOCUS IN");
+    debugLog("FOCUS IN");
     stepMotor(true);
   }
 
   if (downRead == HIGH) {
-    Serial.println("FOCUS OUT");
+    debugLog("FOCUS OUT");
     stepMotor(false);
   }
 }
