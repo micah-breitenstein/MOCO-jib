@@ -25,6 +25,7 @@ int count = STAGE_DELAYS[0];
 int pd;
 int lastSpeedUp   = 0;
 int lastSpeedDown = 0;
+bool lastDirectionConflict = false;
 
 void debugLog(const char* message) {
   if (FOCUS_SERIAL_DEBUG) {
@@ -96,6 +97,16 @@ void loop() {
   updateSpeedStage(speedUp, speedDown);
 
   pd = count;
+
+  bool directionConflict = (upRead == HIGH && downRead == HIGH);
+  if (directionConflict) {
+    if (!lastDirectionConflict) {
+      debugLog("FOCUS CONFLICT: in + out command active; movement skipped");
+    }
+    lastDirectionConflict = true;
+    return;
+  }
+  lastDirectionConflict = false;
 
   ///// MOTOR MOVEMENTS
   if (upRead == HIGH) {
