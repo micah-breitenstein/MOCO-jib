@@ -215,6 +215,7 @@ constexpr unsigned long FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS = 2000;
 constexpr unsigned long FLOWLAPSE_WAYPOINT_DWELL_MS = 0UL; // ms to hold still at each waypoint before triggering; 0 = disabled
 constexpr unsigned long FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS = 250UL; // step size per SELECT+D-pad press in drone mode
 constexpr unsigned long FLOWLAPSE_DWELL_MAX_MS = 5000UL; // upper cap for controller adjustment
+constexpr float FLOWLAPSE_PREVIEW_SPEED_SCALE = 0.70f; // 1.0 = same as capture, <1 slower preview
 
 struct FlowlapseWaypoint {
   float swing;
@@ -1089,7 +1090,8 @@ void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
   }
 
   const FlowlapseWaypoint& target = flowlapseWaypoints[flowlapseTargetWaypointIndex];
-  applyFlowlapseMotionTowardWaypoint(target, now, deltaSeconds);
+  float scaledPreviewDeltaSeconds = deltaSeconds * FLOWLAPSE_PREVIEW_SPEED_SCALE;
+  applyFlowlapseMotionTowardWaypoint(target, now, scaledPreviewDeltaSeconds);
 
   if (isFlowlapseTargetReached(target)) {
     stopAllMotors();
@@ -2443,6 +2445,9 @@ void printDroneTuningProfile() {
 
   Serial.print("Flowlapse tuning | min waypoint separation=");
   Serial.println(FLOWLAPSE_MIN_WAYPOINT_SEPARATION);
+
+  Serial.print("Flowlapse tuning | preview speed scale=");
+  Serial.println(FLOWLAPSE_PREVIEW_SPEED_SCALE, 2);
 
   Serial.print("Flowlapse tuning | max speed tier=");
   Serial.println(FLOWLAPSE_MAX_SPEED_TIER);
