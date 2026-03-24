@@ -210,6 +210,7 @@ constexpr float FLOWLAPSE_MIN_WAYPOINT_SEPARATION = 2.5f;
 constexpr float FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC = 14.0f;
 constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 10.0f;
 constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 18.0f;
+constexpr unsigned long FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS = 2000;
 
 struct FlowlapseWaypoint {
   float swing;
@@ -263,6 +264,7 @@ FlowlapseCapturePhase flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
 unsigned long flowlapseCapturePhaseStartMs = 0;
 unsigned long flowlapsePreviewHoldUntilMs = 0;
 unsigned long flowlapseLastUpdateMs = 0;
+unsigned long flowlapseLastProgressLogMs = 0;
 uint8_t flowlapseTargetWaypointIndex = 0;
 bool flowlapseCaptureAlignedToFirstWaypoint = false;
 
@@ -448,6 +450,7 @@ void resetFlowlapseSession(bool resetEstimatedPosition) {
   flowlapseTargetWaypointIndex = 0;
   flowlapseCaptureAlignedToFirstWaypoint = false;
   flowlapseLastUpdateMs = millis();
+  flowlapseLastProgressLogMs = 0;
   resetFlowlapseAxisTierState(flowlapseLastUpdateMs);
   digitalWrite(trigger, HIGH);
 
@@ -457,6 +460,55 @@ void resetFlowlapseSession(bool resetEstimatedPosition) {
     flowlapseCurrentPanPos = 0.0f;
     flowlapseCurrentTiltPos = 0.0f;
   }
+}
+
+const char* getFlowlapseCapturePhaseLabel(FlowlapseCapturePhase phase) {
+  switch (phase) {
+    case FLOWLAPSE_CAPTURE_TRIGGER_LOW:
+      return "trigger-low";
+    case FLOWLAPSE_CAPTURE_TRIGGER_HIGH:
+      return "trigger-high";
+    case FLOWLAPSE_CAPTURE_MOVE_ACTIVE:
+      return "move";
+    default:
+      return "unknown";
+  }
+}
+
+void logFlowlapseCaptureProgressIfDue(unsigned long now) {
+  if (!DRONE_SERIAL_LOG_ENABLED || flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING) {
+    return;
+  }
+
+  if (flowlapseLastProgressLogMs != 0 && now - flowlapseLastProgressLogMs < FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS) {
+    return;
+  }
+
+  flowlapseLastProgressLogMs = now;
+
+  uint8_t totalSegments = (flowlapseWaypointCount > 1) ? static_cast<uint8_t>(flowlapseWaypointCount - 1) : 0;
+  uint8_t completedSegments = 0;
+  if (flowlapseCaptureAlignedToFirstWaypoint && flowlapseTargetWaypointIndex > 0) {
+    completedSegments = static_cast<uint8_t>(flowlapseTargetWaypointIndex - 1);
+    if (completedSegments > totalSegments) {
+      completedSegments = totalSegments;
+    }
+  }
+
+  uint8_t progressPercent = 0;
+  if (totalSegments > 0) {
+    progressPercent = static_cast<uint8_t>((static_cast<unsigned long>(completedSegments) * 100UL) / totalSegments);
+  }
+
+  Serial.print("Flowlapse capture | waypoint ");
+  Serial.print(flowlapseTargetWaypointIndex + 1);
+  Serial.print("/");
+  Serial.print(flowlapseWaypointCount);
+  Serial.print(" phase=");
+  Serial.print(getFlowlapseCapturePhaseLabel(flowlapseCapturePhase));
+  Serial.print(" progress=");
+  Serial.print(progressPercent);
+  Serial.println("%");
 }
 
 float getFlowlapseDeltaSeconds(unsigned long now) {
@@ -651,6 +703,7 @@ void startFlowlapseCapture(unsigned long now) {
   flowlapseCaptureAlignedToFirstWaypoint = false;
   flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
   flowlapseCapturePhaseStartMs = now;
+  flowlapseLastProgressLogMs = 0;
   resetFlowlapseAxisTierState(now);
   Serial.println("Flowlapse: capture run started.");
 }
@@ -1010,6 +1063,8 @@ void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
 }
 
 void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
+  logFlowlapseCaptureProgressIfDue(now);
+
   if (flowlapseWaypointCount < 2) {
     completeFlowlapseCapture();
     return;
