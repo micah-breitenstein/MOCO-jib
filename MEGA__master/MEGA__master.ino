@@ -193,7 +193,7 @@ constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
-constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 30000UL; // 0 = disabled
+constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mode with R3
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 
 constexpr uint8_t FLOWLAPSE_MAX_WAYPOINTS = 8;
@@ -2443,12 +2443,6 @@ void loop() {
   }
 
   if (droneMode) {
-    if (DRONE_IDLE_TIMEOUT_MS > 0 && millis() - droneLastActivityMs >= DRONE_IDLE_TIMEOUT_MS) {
-      Serial.println("Drone idle timeout - auto-exiting drone mode");
-      exitDroneMode();
-      return;
-    }
-
     float flowlapseDeltaSeconds = getFlowlapseDeltaSeconds(now);
     handleDroneFlowlapseWorkflow(now, flowlapseDeltaSeconds);
     return;

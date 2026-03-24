@@ -143,7 +143,7 @@ Use this for dual-stick flying-drone style control.
 	- Hold `L2` for temporary precision mode (one speed tier slower)
 	- Hold `R2` for temporary boost mode (one speed tier faster, never above per-axis cap)
 	- If both `L2` and `R2` are held together, they resolve to neutral (no modifier)
-- Idle auto-exit: if no axis is moved for `DRONE_IDLE_TIMEOUT_MS` (default 30 seconds), Drone Mode exits automatically and all motors stop. Set to `0` to disable.
+- Exit Drone Mode by pressing **R3** again (toggle off)
 
 #### Flowlapse (Drone Mode only)
 
@@ -216,8 +216,8 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_ENABLE_PRECISION_MODIFIER` (currently `true`)
 	- `DRONE_ENABLE_BOOST_MODIFIER` (currently `true`)
 	- `DRONE_L2_R2_NEUTRAL_MODE` (currently `true`)
-- Idle timeout and logging:
-	- `DRONE_IDLE_TIMEOUT_MS` (currently `30000` ms, set `0` to disable)
+- Logging:
+	- `DRONE_IDLE_TIMEOUT_MS` (disabled; idle auto-exit removed)
 	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
