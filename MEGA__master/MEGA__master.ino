@@ -206,6 +206,7 @@ constexpr unsigned long FLOWLAPSE_TIER_RAMP_INTERVAL_MS = 450;
 constexpr float FLOWLAPSE_AXIS_STOP_TOLERANCE = 1.0f;
 constexpr float FLOWLAPSE_AXIS_MED_ERROR = 4.0f;
 constexpr float FLOWLAPSE_AXIS_HIGH_ERROR = 12.0f;
+constexpr float FLOWLAPSE_MIN_WAYPOINT_SEPARATION = 2.5f;
 constexpr float FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC = 14.0f;
 constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 10.0f;
 constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 18.0f;
@@ -497,11 +498,29 @@ void captureFlowlapseWaypoint() {
     return;
   }
 
+  FlowlapseWaypoint candidateWaypoint;
+  candidateWaypoint.swing = flowlapseCurrentSwingPos;
+  candidateWaypoint.lift = flowlapseCurrentLiftPos;
+  candidateWaypoint.pan = flowlapseCurrentPanPos;
+  candidateWaypoint.tilt = flowlapseCurrentTiltPos;
+
+  if (flowlapseWaypointCount > 0) {
+    const FlowlapseWaypoint& previousWaypoint = flowlapseWaypoints[flowlapseWaypointCount - 1];
+    float deltaSwing = candidateWaypoint.swing - previousWaypoint.swing;
+    float deltaLift = candidateWaypoint.lift - previousWaypoint.lift;
+    float deltaPan = candidateWaypoint.pan - previousWaypoint.pan;
+    float deltaTilt = candidateWaypoint.tilt - previousWaypoint.tilt;
+    float separation = sqrt(deltaSwing * deltaSwing + deltaLift * deltaLift + deltaPan * deltaPan + deltaTilt * deltaTilt);
+
+    if (separation < FLOWLAPSE_MIN_WAYPOINT_SEPARATION) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: waypoint too close to previous point; move rig farther before recording.");
+      return;
+    }
+  }
+
   FlowlapseWaypoint& waypoint = flowlapseWaypoints[flowlapseWaypointCount];
-  waypoint.swing = flowlapseCurrentSwingPos;
-  waypoint.lift = flowlapseCurrentLiftPos;
-  waypoint.pan = flowlapseCurrentPanPos;
-  waypoint.tilt = flowlapseCurrentTiltPos;
+  waypoint = candidateWaypoint;
   flowlapseWaypointCount++;
 
   startFeedbackRumble(FLOWLAPSE_WAYPOINT_RUMBLE_PULSES, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
