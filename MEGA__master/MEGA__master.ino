@@ -213,6 +213,8 @@ constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 10.0f;
 constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 18.0f;
 constexpr unsigned long FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS = 2000;
 constexpr unsigned long FLOWLAPSE_WAYPOINT_DWELL_MS = 0UL; // ms to hold still at each waypoint before triggering; 0 = disabled
+constexpr unsigned long FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS = 250UL; // step size per SELECT+D-pad press in drone mode
+constexpr unsigned long FLOWLAPSE_DWELL_MAX_MS = 5000UL; // upper cap for controller adjustment
 
 struct FlowlapseWaypoint {
   float swing;
@@ -263,6 +265,10 @@ bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
 bool lastFlowlapseClearComboActive = false;
 bool lastFlowlapseDeleteLastComboActive = false;
+bool lastDwellAdjustUpComboActive = false;
+bool lastDwellAdjustDownComboActive = false;
+bool suppressDroneNextSelectRelease = false;
+unsigned long flowlapseDwellMs = FLOWLAPSE_WAYPOINT_DWELL_MS;
 unsigned long droneLastActivityMs = 0;
 FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
 uint8_t flowlapseWaypointCount = 0;
@@ -1154,7 +1160,7 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
 
       if (now - flowlapseCapturePhaseStartMs >= static_cast<unsigned long>(stepDist)) {
         stopAllMotors();
-        if (FLOWLAPSE_WAYPOINT_DWELL_MS > 0) {
+        if (flowlapseDwellMs > 0) {
           flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
         } else {
           flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
@@ -1165,7 +1171,7 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
 
     case FLOWLAPSE_CAPTURE_DWELL:
       stopAllMotors();
-      if (now - flowlapseCapturePhaseStartMs >= FLOWLAPSE_WAYPOINT_DWELL_MS) {
+      if (now - flowlapseCapturePhaseStartMs >= flowlapseDwellMs) {
         flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
         flowlapseCapturePhaseStartMs = now;
       }
@@ -1206,6 +1212,21 @@ void handleFlowlapseUndoStep(unsigned long now, float deltaSeconds) {
   Serial.print("Flowlapse: reached last waypoint ");
   Serial.print(flowlapseTargetWaypointIndex + 1);
   Serial.println(". Press L2+R2 again to delete it.");
+}
+
+void adjustFlowlapseDwell(long delta) {
+  long newDwell = static_cast<long>(flowlapseDwellMs) + delta;
+  if (newDwell < 0) newDwell = 0;
+  if (newDwell > static_cast<long>(FLOWLAPSE_DWELL_MAX_MS)) newDwell = static_cast<long>(FLOWLAPSE_DWELL_MAX_MS);
+  if (static_cast<unsigned long>(newDwell) == flowlapseDwellMs) {
+    startLimitReachedRumbleFeedback();
+    Serial.println("Flowlapse dwell limit reached.");
+    return;
+  }
+  flowlapseDwellMs = static_cast<unsigned long>(newDwell);
+  Serial.print("Flowlapse dwell (ms) = ");
+  Serial.println(flowlapseDwellMs);
+  startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
 }
 
 void handleDroneFlowlapseButtons(unsigned long now) {
@@ -1261,6 +1282,21 @@ void handleDroneFlowlapseButtons(unsigned long now) {
   }
   lastFlowlapseDeleteLastComboActive = flowlapseDeleteLastComboActive;
 
+  bool dwellAdjUpComboActive   = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP);
+  bool dwellAdjDownComboActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN);
+  if (dwellAdjUpComboActive && !lastDwellAdjustUpComboActive) {
+    adjustFlowlapseDwell(static_cast<long>(FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS));
+    suppressDroneNextSelectRelease = true;
+    droneLastActivityMs = now;
+  }
+  if (dwellAdjDownComboActive && !lastDwellAdjustDownComboActive) {
+    adjustFlowlapseDwell(-static_cast<long>(FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS));
+    suppressDroneNextSelectRelease = true;
+    droneLastActivityMs = now;
+  }
+  lastDwellAdjustUpComboActive   = dwellAdjUpComboActive;
+  lastDwellAdjustDownComboActive = dwellAdjDownComboActive;
+
   if (flowlapseState == FLOWLAPSE_STATE_RECORDING && ps2x.ButtonReleased(PSB_L3)) {
     captureFlowlapseWaypoint();
     droneLastActivityMs = now;
@@ -1296,6 +1332,9 @@ void handleDroneFlowlapseButtons(unsigned long now) {
   }
 
   if (ps2x.ButtonReleased(PSB_SELECT)) {
+    if (suppressDroneNextSelectRelease) {
+      suppressDroneNextSelectRelease = false;
+    } else {
     if (flowlapseState == FLOWLAPSE_STATE_RECORDING) {
       if (flowlapseWaypointCount < 2) {
         startLockoutDeniedRumbleFeedback();
@@ -1311,6 +1350,7 @@ void handleDroneFlowlapseButtons(unsigned long now) {
       startFlowlapsePreview();
       droneLastActivityMs = now;
     }
+  }
   }
 
   if (ps2x.ButtonReleased(PSB_START)) {
@@ -2403,10 +2443,10 @@ void printDroneTuningProfile() {
   Serial.println(FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS);
 
   Serial.print("Flowlapse tuning | waypoint dwell ms=");
-  if (FLOWLAPSE_WAYPOINT_DWELL_MS == 0) {
+  if (flowlapseDwellMs == 0) {
     Serial.println("disabled");
   } else {
-    Serial.println(FLOWLAPSE_WAYPOINT_DWELL_MS);
+    Serial.println(flowlapseDwellMs);
   }
 }
 
