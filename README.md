@@ -151,10 +151,10 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 
 - Waypoint recording (up to 8 points):
 	- Press **L3** to record the current location estimate as a waypoint
-	- Each waypoint record gives a short rumble confirmation
+	- Each waypoint record gives a short rumble confirmation; axis positions (swing/lift/pan/tilt) print to serial
 	- Waypoints are **session-only** (cleared on power cycle / drone mode restart)
 - Control flow:
-	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints)
+	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints); controller rumbles once per recorded waypoint as a count confirmation
 	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
 	- **START**: run actual Flowlapse capture after preview completes
 	- **L1 + R1**: wipe the full Flowlapse course and re-arm recording
@@ -164,6 +164,8 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
 	- Move slice uses `stepDist` (same move-duration concept as normal timelapse)
 	- Motion is interpolated per-axis between recorded waypoints over repeated frame cycles
+	- Set `FLOWLAPSE_LOOP_CAPTURE = true` to auto-restart capture from waypoint 0 after each full pass (default `false`)
+- While waiting in READY_FOR_PREVIEW or READY_FOR_CAPTURE, focus axis (Triangle/Cross/Square/Circle) stays fully responsive
 - Safety behavior:
 	- Playback speed is capped conservatively (no aggressive instant max-speed jumps)
 	- Speed tiers ramp gradually, including direction reversals (e.g., opposite endpoints)
@@ -221,6 +223,7 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
+	- `FLOWLAPSE_LOOP_CAPTURE` (currently `false`) — set `true` to loop capture continuously from start after each pass
 	- `FLOWLAPSE_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
 	- `FLOWLAPSE_TIER_RAMP_INTERVAL_MS` (currently `450`)
 	- `FLOWLAPSE_AXIS_MED_ERROR` and `FLOWLAPSE_AXIS_HIGH_ERROR` (error bands for tier selection)
@@ -233,6 +236,7 @@ Quick tuning guide:
 - If controls feel sluggish, decrease that axis `DRONE_*_EXPO_PERCENT` or reduce deadband on that axis
 - If an axis is too aggressive at full stick, lower that axis `DRONE_*_MAX_SPEED_TIER`
 - On boot, Serial prints expo/deadband/max-tier/modifier/threshold/idle-timeout/log-flag summaries so you can confirm the active profile
+- On boot, Serial also prints DIP axis reversal state for all 5 axes: `Boot axis reversal | swing=N pan=N lift=N tilt=N focus=N` (`Y` = reversed, `N` = normal)
 - When `DRONE_SERIAL_LOG_ENABLED = true`, the Mega prints edge-triggered events: per-axis start/stop movement and L2/R2 modifier state changes
 
 #### Starter profiles (copy these values)
