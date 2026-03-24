@@ -255,7 +255,7 @@ bool lastDroneSwingActive = false;
 bool lastDroneLiftActive = false;
 bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
-bool lastFlowlapseClearComboActive = false;
+bool lastFlowlapseDeleteLastComboActive = false;
 unsigned long droneLastActivityMs = 0;
 FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
 uint8_t flowlapseWaypointCount = 0;
@@ -716,7 +716,7 @@ void enterDroneMode() {
   droneMode = true;
   droneLastActivityMs = millis();
   Serial.println("DRONE MODE ACTIVATED - timelapse/bounce locked out");
-  Serial.println("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record.");
+  Serial.println("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L2+R2=delete last waypoint.");
   startDroneModeEnterRumbleFeedback();
 }
 
@@ -1131,15 +1131,38 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
 }
 
 void handleDroneFlowlapseButtons(unsigned long now) {
-  bool flowlapseClearComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_R1);
-  if (flowlapseClearComboActive && !lastFlowlapseClearComboActive) {
-    resetFlowlapseSession(false);
-    stopAllMotors();
-    startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-    Serial.println("Flowlapse: waypoints cleared. Recording re-armed.");
+  bool flowlapseDeleteLastComboActive = ps2x.Button(PSB_L2) && ps2x.Button(PSB_R2);
+  if (flowlapseDeleteLastComboActive && !lastFlowlapseDeleteLastComboActive) {
+    if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: cannot delete waypoint while preview/capture is running.");
+    } else if (flowlapseWaypointCount == 0) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: no waypoint to delete.");
+    } else {
+      flowlapseWaypointCount--;
+      stopAllMotors();
+      startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+
+      if (flowlapseWaypointCount < 2) {
+        flowlapseState = FLOWLAPSE_STATE_RECORDING;
+        Serial.print("Flowlapse: deleted last waypoint. Remaining ");
+        Serial.print(flowlapseWaypointCount);
+        Serial.println(" waypoint(s); keep recording.");
+      } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
+        flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
+        Serial.print("Flowlapse: deleted last waypoint. Remaining ");
+        Serial.print(flowlapseWaypointCount);
+        Serial.println(" waypoints; run SELECT preview again before START.");
+      } else {
+        Serial.print("Flowlapse: deleted last waypoint. Remaining ");
+        Serial.println(flowlapseWaypointCount);
+      }
+    }
+
     droneLastActivityMs = now;
   }
-  lastFlowlapseClearComboActive = flowlapseClearComboActive;
+  lastFlowlapseDeleteLastComboActive = flowlapseDeleteLastComboActive;
 
   if (flowlapseState == FLOWLAPSE_STATE_RECORDING && ps2x.ButtonReleased(PSB_L3)) {
     captureFlowlapseWaypoint();

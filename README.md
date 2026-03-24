@@ -157,6 +157,7 @@ Flowlapse is a waypoint timelapse path run using the four Drone axes (swing/lift
 	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints)
 	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
 	- **START**: run actual Flowlapse capture after preview completes
+	- **L2 + R2**: delete only the **last** recorded waypoint (does not clear full course)
 - Capture behavior:
 	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
 	- Move slice uses `stepDist` (same move-duration concept as normal timelapse)
