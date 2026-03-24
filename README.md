@@ -62,7 +62,7 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** |
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) |
-| L3 (left stick click) | Set bounce distance endpoint (ends stage 0, starts stage 1). A double medium pulse confirms the endpoint was locked. |
+| L3 (left stick click) | **Normal mode:** set bounce distance endpoint (ends stage 0, starts stage 1); double medium pulse confirms lock. **Drone Mode:** record current axis positions as a Flowlapse waypoint; short rumble confirms. |
 | **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out, and both joysticks control motion at multiple speed levels based on stick deflection.** |
 
 ### Timelapse Modes (SELECT release)
@@ -145,9 +145,9 @@ Use this for dual-stick flying-drone style control.
 	- If both `L2` and `R2` are held together, they resolve to neutral (no modifier)
 - Exit Drone Mode by pressing **R3** again (toggle off)
 
-#### Flowlapse (Drone Mode only)
+### Flowlapse (Drone Mode only)
 
-Flowlapse is a waypoint timelapse path run using the four Drone axes (swing/lift/pan/tilt).
+Flowlapse is a waypoint timelapse system for recording a multi-axis camera path and replaying it as a timelapse. It runs using the four Drone Mode axes (swing/lift/pan/tilt).
 
 - Waypoint recording (up to 8 points):
 	- Press **L3** to record the current location estimate as a waypoint
