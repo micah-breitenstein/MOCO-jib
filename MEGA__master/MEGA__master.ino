@@ -1299,6 +1299,13 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
     return;
   }
 
+  if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW
+      || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
+    stopAllMotors();
+    handleFocusAxis();
+    return;
+  }
+
   stopAllMotors();
 }
 
