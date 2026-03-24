@@ -227,7 +227,8 @@ enum FlowlapseState {
   FLOWLAPSE_STATE_READY_FOR_CAPTURE,
   FLOWLAPSE_STATE_CAPTURE_RUNNING,
   FLOWLAPSE_STATE_UNDO_RUNNING,
-  FLOWLAPSE_STATE_UNDO_READY_DELETE
+  FLOWLAPSE_STATE_UNDO_READY_DELETE,
+  FLOWLAPSE_STATE_JOG_RUNNING
 };
 
 enum FlowlapseCapturePhase {
@@ -270,6 +271,7 @@ unsigned long flowlapsePreviewHoldUntilMs = 0;
 unsigned long flowlapseLastUpdateMs = 0;
 unsigned long flowlapseLastProgressLogMs = 0;
 uint8_t flowlapseTargetWaypointIndex = 0;
+uint8_t flowlapseJogIndex = 0;
 bool flowlapseCaptureAlignedToFirstWaypoint = false;
 
 float flowlapseCurrentSwingPos = 0.0f;
@@ -447,6 +449,7 @@ void resetFlowlapseAxisTierState(unsigned long now) {
 
 void resetFlowlapseSession(bool resetEstimatedPosition) {
   flowlapseWaypointCount = 0;
+  flowlapseJogIndex = 0;
   flowlapseState = FLOWLAPSE_STATE_RECORDING;
   flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
   flowlapseCapturePhaseStartMs = 0;
@@ -1194,9 +1197,10 @@ void handleDroneFlowlapseButtons(unsigned long now) {
   if (flowlapseClearComboActive && !lastFlowlapseClearComboActive) {
     if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
-        || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING) {
+        || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_JOG_RUNNING) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: cannot wipe while preview/capture/undo is running.");
+      Serial.println("Flowlapse: cannot wipe while preview/capture/undo/jog is running.");
     } else {
       resetFlowlapseSession(false);
       stopAllMotors();
@@ -1243,6 +1247,35 @@ void handleDroneFlowlapseButtons(unsigned long now) {
 
   if (flowlapseState == FLOWLAPSE_STATE_RECORDING && ps2x.ButtonReleased(PSB_L3)) {
     captureFlowlapseWaypoint();
+    droneLastActivityMs = now;
+  }
+
+  bool jogReadyState = (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW
+                     || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE);
+  if (jogReadyState && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
+    if (flowlapseJogIndex < static_cast<uint8_t>(flowlapseWaypointCount - 1)) {
+      flowlapseJogIndex++;
+      flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
+      resetFlowlapseAxisTierState(now);
+      Serial.print("Flowlapse: jog -> waypoint ");
+      Serial.println(flowlapseJogIndex + 1);
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: already at last waypoint.");
+    }
+    droneLastActivityMs = now;
+  }
+  if (jogReadyState && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
+    if (flowlapseJogIndex > 0) {
+      flowlapseJogIndex--;
+      flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
+      resetFlowlapseAxisTierState(now);
+      Serial.print("Flowlapse: jog -> waypoint ");
+      Serial.println(flowlapseJogIndex + 1);
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: already at first waypoint.");
+    }
     droneLastActivityMs = now;
   }
 
@@ -1299,6 +1332,25 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
 
   if (flowlapseState == FLOWLAPSE_STATE_UNDO_READY_DELETE) {
     stopAllMotors();
+    droneLastActivityMs = now;
+    return;
+  }
+
+  if (flowlapseState == FLOWLAPSE_STATE_JOG_RUNNING) {
+    if (flowlapseJogIndex < flowlapseWaypointCount) {
+      const FlowlapseWaypoint& jogTarget = flowlapseWaypoints[flowlapseJogIndex];
+      applyFlowlapseMotionTowardWaypoint(jogTarget, now, deltaSeconds);
+      if (isFlowlapseTargetReached(jogTarget)) {
+        stopAllMotors();
+        flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
+        startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+        Serial.print("Flowlapse: jog reached waypoint ");
+        Serial.println(flowlapseJogIndex + 1);
+      }
+    } else {
+      stopAllMotors();
+      flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
+    }
     droneLastActivityMs = now;
     return;
   }
