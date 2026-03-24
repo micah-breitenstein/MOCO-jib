@@ -138,11 +138,33 @@ Use this for dual-stick flying-drone style control.
 	- X controls pan direction + proportional speed
 	- Y controls tilt direction + proportional speed
 - Focus stays on Triangle/Cross with Square/Circle speed control
+- In Drone Mode, **SELECT/START are remapped to Flowlapse controls** (timelapse/bounce mode selection is ignored while Drone Mode is active)
 - Drone speed modifiers while in Drone Mode:
 	- Hold `L2` for temporary precision mode (one speed tier slower)
 	- Hold `R2` for temporary boost mode (one speed tier faster, never above per-axis cap)
 	- If both `L2` and `R2` are held together, they resolve to neutral (no modifier)
 - Idle auto-exit: if no axis is moved for `DRONE_IDLE_TIMEOUT_MS` (default 30 seconds), Drone Mode exits automatically and all motors stop. Set to `0` to disable.
+
+#### Flowlapse (Drone Mode only)
+
+Flowlapse is a waypoint timelapse path run using the four Drone axes (swing/lift/pan/tilt).
+
+- Waypoint recording (up to 8 points):
+	- Press **L3** to record the current location estimate as a waypoint
+	- Each waypoint record gives a short rumble confirmation
+	- Waypoints are **session-only** (cleared on power cycle / drone mode restart)
+- Control flow:
+	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints)
+	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
+	- **START**: run actual Flowlapse capture after preview completes
+- Capture behavior:
+	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
+	- Move slice uses `stepDist` (same move-duration concept as normal timelapse)
+	- Motion is interpolated per-axis between recorded waypoints over repeated frame cycles
+- Safety behavior:
+	- Playback speed is capped conservatively (no aggressive instant max-speed jumps)
+	- Speed tiers ramp gradually, including direction reversals (e.g., opposite endpoints)
+	- Emergency stop (**L1 + L2 + R1 + R2**) immediately cancels Flowlapse motion
 
 #### Drone mode direction reference
 
@@ -194,6 +216,12 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 - Idle timeout and logging:
 	- `DRONE_IDLE_TIMEOUT_MS` (currently `30000` ms, set `0` to disable)
 	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
+- Flowlapse safety constants:
+	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
+	- `FLOWLAPSE_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
+	- `FLOWLAPSE_TIER_RAMP_INTERVAL_MS` (currently `250`)
+	- `FLOWLAPSE_AXIS_MED_ERROR` and `FLOWLAPSE_AXIS_HIGH_ERROR` (error bands for tier selection)
+	- `FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC` / `FLOWLAPSE_MED_RATE_UNITS_PER_SEC` / `FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC` (open-loop motion model rates)
 
 Quick tuning guide:
 
