@@ -30,6 +30,7 @@ int count = STAGE_DELAYS[0];
 int pd;
 int lastSpeedUp   = 0;
 int lastSpeedDown = 0;
+bool lastDirectionConflict = false;
 
 void debugLog(const char* message) {
   if (TILT_SERIAL_DEBUG) {
@@ -132,6 +133,16 @@ void loop() {
 
   ///// SPEED ADJUSTMENTS + HIGH SPEED MODE
   pd = applySpeedAdjust(adjUp, adjDown);
+
+  bool directionConflict = (upRead == HIGH && downRead == HIGH);
+  if (directionConflict) {
+    if (!lastDirectionConflict) {
+      debugLog("TILT CONFLICT: up + down command active; movement skipped");
+    }
+    lastDirectionConflict = true;
+    return;
+  }
+  lastDirectionConflict = false;
 
   ///// MOTOR MOVEMENTS
   if (upRead == HIGH) {
