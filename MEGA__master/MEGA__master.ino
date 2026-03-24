@@ -2191,6 +2191,28 @@ void printDroneTuningProfile() {
 
   Serial.print("Drone tuning | serial log enabled=");
   Serial.println(DRONE_SERIAL_LOG_ENABLED ? "Y" : "N");
+
+  Serial.print("Flowlapse tuning | max points=");
+  Serial.println(FLOWLAPSE_MAX_WAYPOINTS);
+
+  Serial.print("Flowlapse tuning | min waypoint separation=");
+  Serial.println(FLOWLAPSE_MIN_WAYPOINT_SEPARATION);
+
+  Serial.print("Flowlapse tuning | max speed tier=");
+  Serial.println(FLOWLAPSE_MAX_SPEED_TIER);
+
+  Serial.print("Flowlapse tuning | ramp interval ms=");
+  Serial.println(FLOWLAPSE_TIER_RAMP_INTERVAL_MS);
+
+  Serial.print("Flowlapse tuning | rates manual/med/high=");
+  Serial.print(FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC);
+  Serial.print("/");
+  Serial.print(FLOWLAPSE_MED_RATE_UNITS_PER_SEC);
+  Serial.print("/");
+  Serial.println(FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC);
+
+  Serial.print("Flowlapse tuning | capture progress log ms=");
+  Serial.println(FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS);
 }
 
 void setup() {
