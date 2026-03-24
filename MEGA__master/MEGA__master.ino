@@ -212,6 +212,7 @@ constexpr float FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC = 14.0f;
 constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 10.0f;
 constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 18.0f;
 constexpr unsigned long FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS = 2000;
+constexpr unsigned long FLOWLAPSE_WAYPOINT_DWELL_MS = 0UL; // ms to hold still at each waypoint before triggering; 0 = disabled
 
 struct FlowlapseWaypoint {
   float swing;
@@ -234,7 +235,8 @@ enum FlowlapseState {
 enum FlowlapseCapturePhase {
   FLOWLAPSE_CAPTURE_TRIGGER_LOW,
   FLOWLAPSE_CAPTURE_TRIGGER_HIGH,
-  FLOWLAPSE_CAPTURE_MOVE_ACTIVE
+  FLOWLAPSE_CAPTURE_MOVE_ACTIVE,
+  FLOWLAPSE_CAPTURE_DWELL
 };
 
 bool isSwingReversed = false;
@@ -477,6 +479,8 @@ const char* getFlowlapseCapturePhaseLabel(FlowlapseCapturePhase phase) {
       return "trigger-high";
     case FLOWLAPSE_CAPTURE_MOVE_ACTIVE:
       return "move";
+    case FLOWLAPSE_CAPTURE_DWELL:
+      return "dwell";
     default:
       return "unknown";
   }
@@ -1150,6 +1154,18 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
 
       if (now - flowlapseCapturePhaseStartMs >= static_cast<unsigned long>(stepDist)) {
         stopAllMotors();
+        if (FLOWLAPSE_WAYPOINT_DWELL_MS > 0) {
+          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
+        } else {
+          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+        }
+        flowlapseCapturePhaseStartMs = now;
+      }
+      break;
+
+    case FLOWLAPSE_CAPTURE_DWELL:
+      stopAllMotors();
+      if (now - flowlapseCapturePhaseStartMs >= FLOWLAPSE_WAYPOINT_DWELL_MS) {
         flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
         flowlapseCapturePhaseStartMs = now;
       }
@@ -2385,6 +2401,13 @@ void printDroneTuningProfile() {
 
   Serial.print("Flowlapse tuning | capture progress log ms=");
   Serial.println(FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS);
+
+  Serial.print("Flowlapse tuning | waypoint dwell ms=");
+  if (FLOWLAPSE_WAYPOINT_DWELL_MS == 0) {
+    Serial.println("disabled");
+  } else {
+    Serial.println(FLOWLAPSE_WAYPOINT_DWELL_MS);
+  }
 }
 
 void setup() {
