@@ -224,7 +224,9 @@ enum FlowlapseState {
   FLOWLAPSE_STATE_READY_FOR_PREVIEW,
   FLOWLAPSE_STATE_PREVIEW_RUNNING,
   FLOWLAPSE_STATE_READY_FOR_CAPTURE,
-  FLOWLAPSE_STATE_CAPTURE_RUNNING
+  FLOWLAPSE_STATE_CAPTURE_RUNNING,
+  FLOWLAPSE_STATE_UNDO_RUNNING,
+  FLOWLAPSE_STATE_UNDO_READY_DELETE
 };
 
 enum FlowlapseCapturePhase {
@@ -255,6 +257,7 @@ bool lastDroneSwingActive = false;
 bool lastDroneLiftActive = false;
 bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
+bool lastFlowlapseClearComboActive = false;
 bool lastFlowlapseDeleteLastComboActive = false;
 unsigned long droneLastActivityMs = 0;
 FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
@@ -716,7 +719,7 @@ void enterDroneMode() {
   droneMode = true;
   droneLastActivityMs = millis();
   Serial.println("DRONE MODE ACTIVATED - timelapse/bounce locked out");
-  Serial.println("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L2+R2=delete last waypoint.");
+  Serial.println("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L1+R1=wipe, L2+R2=undo last.");
   startDroneModeEnterRumbleFeedback();
 }
 
@@ -1130,34 +1133,87 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
   }
 }
 
+void startFlowlapseUndoLastWaypoint(unsigned long now) {
+  if (flowlapseWaypointCount == 0) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.println("Flowlapse: no waypoint to undo.");
+    return;
+  }
+
+  flowlapseState = FLOWLAPSE_STATE_UNDO_RUNNING;
+  flowlapseTargetWaypointIndex = static_cast<uint8_t>(flowlapseWaypointCount - 1);
+  resetFlowlapseAxisTierState(now);
+  Serial.print("Flowlapse: undo moving to waypoint ");
+  Serial.println(flowlapseTargetWaypointIndex + 1);
+}
+
+void handleFlowlapseUndoStep(unsigned long now, float deltaSeconds) {
+  if (flowlapseWaypointCount == 0 || flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+    flowlapseState = FLOWLAPSE_STATE_RECORDING;
+    stopAllMotors();
+    return;
+  }
+
+  const FlowlapseWaypoint& target = flowlapseWaypoints[flowlapseTargetWaypointIndex];
+  applyFlowlapseMotionTowardWaypoint(target, now, deltaSeconds);
+
+  if (!isFlowlapseTargetReached(target)) {
+    return;
+  }
+
+  stopAllMotors();
+  flowlapseState = FLOWLAPSE_STATE_UNDO_READY_DELETE;
+  Serial.print("Flowlapse: reached last waypoint ");
+  Serial.print(flowlapseTargetWaypointIndex + 1);
+  Serial.println(". Press L2+R2 again to delete it.");
+}
+
 void handleDroneFlowlapseButtons(unsigned long now) {
+  bool flowlapseClearComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_R1);
+  if (flowlapseClearComboActive && !lastFlowlapseClearComboActive) {
+    if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: cannot wipe while preview/capture/undo is running.");
+    } else {
+      resetFlowlapseSession(false);
+      stopAllMotors();
+      startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      Serial.println("Flowlapse: full course wiped. Recording re-armed.");
+    }
+
+    droneLastActivityMs = now;
+  }
+  lastFlowlapseClearComboActive = flowlapseClearComboActive;
+
   bool flowlapseDeleteLastComboActive = ps2x.Button(PSB_L2) && ps2x.Button(PSB_R2);
   if (flowlapseDeleteLastComboActive && !lastFlowlapseDeleteLastComboActive) {
-    if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
+    if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: cannot delete waypoint while preview/capture is running.");
+      Serial.println("Flowlapse: cannot undo while preview/capture/undo is running.");
     } else if (flowlapseWaypointCount == 0) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: no waypoint to delete.");
-    } else {
+      Serial.println("Flowlapse: no waypoint to undo.");
+    } else if (flowlapseState == FLOWLAPSE_STATE_UNDO_READY_DELETE) {
       flowlapseWaypointCount--;
-      stopAllMotors();
       startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
 
       if (flowlapseWaypointCount < 2) {
         flowlapseState = FLOWLAPSE_STATE_RECORDING;
-        Serial.print("Flowlapse: deleted last waypoint. Remaining ");
+        Serial.print("Flowlapse: last waypoint deleted. Remaining ");
         Serial.print(flowlapseWaypointCount);
         Serial.println(" waypoint(s); keep recording.");
-      } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
-        flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
-        Serial.print("Flowlapse: deleted last waypoint. Remaining ");
-        Serial.print(flowlapseWaypointCount);
-        Serial.println(" waypoints; run SELECT preview again before START.");
       } else {
-        Serial.print("Flowlapse: deleted last waypoint. Remaining ");
-        Serial.println(flowlapseWaypointCount);
+        flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
+        Serial.print("Flowlapse: last waypoint deleted. Remaining ");
+        Serial.print(flowlapseWaypointCount);
+        Serial.println(" waypoints; run SELECT preview again.");
       }
+    } else {
+      startFlowlapseUndoLastWaypoint(now);
     }
 
     droneLastActivityMs = now;
@@ -1209,6 +1265,18 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
 
   if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
     handleFlowlapseCaptureStep(now, deltaSeconds);
+    droneLastActivityMs = now;
+    return;
+  }
+
+  if (flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING) {
+    handleFlowlapseUndoStep(now, deltaSeconds);
+    droneLastActivityMs = now;
+    return;
+  }
+
+  if (flowlapseState == FLOWLAPSE_STATE_UNDO_READY_DELETE) {
+    stopAllMotors();
     droneLastActivityMs = now;
     return;
   }
