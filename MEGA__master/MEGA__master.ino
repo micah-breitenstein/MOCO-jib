@@ -196,6 +196,41 @@ constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 30000UL; // 0 = disabled
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 
+constexpr uint8_t FLOWLAPSE_MAX_WAYPOINTS = 8;
+constexpr unsigned long FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS = 90;
+constexpr unsigned long FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS = 180;
+constexpr uint8_t FLOWLAPSE_WAYPOINT_RUMBLE_PULSES = 1;
+constexpr unsigned long FLOWLAPSE_PREVIEW_POINT_HOLD_MS = 700;
+constexpr uint8_t FLOWLAPSE_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
+constexpr unsigned long FLOWLAPSE_TIER_RAMP_INTERVAL_MS = 250;
+constexpr float FLOWLAPSE_AXIS_STOP_TOLERANCE = 1.0f;
+constexpr float FLOWLAPSE_AXIS_MED_ERROR = 4.0f;
+constexpr float FLOWLAPSE_AXIS_HIGH_ERROR = 12.0f;
+constexpr float FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC = 24.0f;
+constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 20.0f;
+constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 34.0f;
+
+struct FlowlapseWaypoint {
+  float swing;
+  float lift;
+  float pan;
+  float tilt;
+};
+
+enum FlowlapseState {
+  FLOWLAPSE_STATE_RECORDING,
+  FLOWLAPSE_STATE_READY_FOR_PREVIEW,
+  FLOWLAPSE_STATE_PREVIEW_RUNNING,
+  FLOWLAPSE_STATE_READY_FOR_CAPTURE,
+  FLOWLAPSE_STATE_CAPTURE_RUNNING
+};
+
+enum FlowlapseCapturePhase {
+  FLOWLAPSE_CAPTURE_TRIGGER_LOW,
+  FLOWLAPSE_CAPTURE_TRIGGER_HIGH,
+  FLOWLAPSE_CAPTURE_MOVE_ACTIVE
+};
+
 bool isSwingReversed = false;
 bool isPanReversed = false;
 bool isLiftReversed = false;
@@ -219,6 +254,30 @@ bool lastDroneLiftActive = false;
 bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
 unsigned long droneLastActivityMs = 0;
+FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
+uint8_t flowlapseWaypointCount = 0;
+FlowlapseState flowlapseState = FLOWLAPSE_STATE_RECORDING;
+FlowlapseCapturePhase flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+unsigned long flowlapseCapturePhaseStartMs = 0;
+unsigned long flowlapsePreviewHoldUntilMs = 0;
+unsigned long flowlapseLastUpdateMs = 0;
+uint8_t flowlapseTargetWaypointIndex = 0;
+bool flowlapseCaptureAlignedToFirstWaypoint = false;
+
+float flowlapseCurrentSwingPos = 0.0f;
+float flowlapseCurrentLiftPos = 0.0f;
+float flowlapseCurrentPanPos = 0.0f;
+float flowlapseCurrentTiltPos = 0.0f;
+
+uint8_t flowlapseSwingTier = DRONE_SPEED_TIER_STOP;
+uint8_t flowlapseLiftTier = DRONE_SPEED_TIER_STOP;
+uint8_t flowlapsePanTier = DRONE_SPEED_TIER_STOP;
+uint8_t flowlapseTiltTier = DRONE_SPEED_TIER_STOP;
+unsigned long flowlapseSwingTierLastChangeMs = 0;
+unsigned long flowlapseLiftTierLastChangeMs = 0;
+unsigned long flowlapsePanTierLastChangeMs = 0;
+unsigned long flowlapseTiltTierLastChangeMs = 0;
+
 bool chainStepDistAfterInterval = false;
 unsigned long lastControllerRetryMs = 0;
 bool unsupportedControllerWarningShown = false;
@@ -356,13 +415,235 @@ void startDroneModeExitRumbleFeedback() {
   startFeedbackRumble(DRONE_MODE_EXIT_RUMBLE_PULSES, DRONE_MODE_EXIT_RUMBLE_ON_MS, DRONE_MODE_EXIT_RUMBLE_TOTAL_MS);
 }
 
+float getFlowlapseTierRateUnitsPerSecond(uint8_t tier) {
+  if (tier == DRONE_SPEED_TIER_MED) {
+    return FLOWLAPSE_MED_RATE_UNITS_PER_SEC;
+  }
+  if (tier == DRONE_SPEED_TIER_HIGH) {
+    return FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC;
+  }
+  return 0.0f;
+}
+
+void resetFlowlapseAxisTierState(unsigned long now) {
+  flowlapseSwingTier = DRONE_SPEED_TIER_STOP;
+  flowlapseLiftTier = DRONE_SPEED_TIER_STOP;
+  flowlapsePanTier = DRONE_SPEED_TIER_STOP;
+  flowlapseTiltTier = DRONE_SPEED_TIER_STOP;
+
+  flowlapseSwingTierLastChangeMs = now;
+  flowlapseLiftTierLastChangeMs = now;
+  flowlapsePanTierLastChangeMs = now;
+  flowlapseTiltTierLastChangeMs = now;
+}
+
+void resetFlowlapseSession(bool resetEstimatedPosition) {
+  flowlapseWaypointCount = 0;
+  flowlapseState = FLOWLAPSE_STATE_RECORDING;
+  flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+  flowlapseCapturePhaseStartMs = 0;
+  flowlapsePreviewHoldUntilMs = 0;
+  flowlapseTargetWaypointIndex = 0;
+  flowlapseCaptureAlignedToFirstWaypoint = false;
+  flowlapseLastUpdateMs = millis();
+  resetFlowlapseAxisTierState(flowlapseLastUpdateMs);
+  digitalWrite(trigger, HIGH);
+
+  if (resetEstimatedPosition) {
+    flowlapseCurrentSwingPos = 0.0f;
+    flowlapseCurrentLiftPos = 0.0f;
+    flowlapseCurrentPanPos = 0.0f;
+    flowlapseCurrentTiltPos = 0.0f;
+  }
+}
+
+float getFlowlapseDeltaSeconds(unsigned long now) {
+  if (flowlapseLastUpdateMs == 0 || now <= flowlapseLastUpdateMs) {
+    flowlapseLastUpdateMs = now;
+    return 0.0f;
+  }
+
+  unsigned long deltaMs = now - flowlapseLastUpdateMs;
+  flowlapseLastUpdateMs = now;
+  return static_cast<float>(deltaMs) / 1000.0f;
+}
+
+void updateFlowlapseEstimatedAxisFromStick(int stickValue, bool isAxisReversed, int axisDeadband, float& axisPosition, float deltaSeconds) {
+  int signedOffset = stickValue - STICK_CENTER;
+  if (abs(signedOffset) <= axisDeadband || deltaSeconds <= 0.0f) {
+    return;
+  }
+
+  float normalizedOffset = static_cast<float>(signedOffset) / static_cast<float>(DRONE_STICK_MAX_DEFLECTION);
+  float physicalSignedRate = normalizedOffset;
+  if (isAxisReversed) {
+    physicalSignedRate *= -1.0f;
+  }
+
+  axisPosition += physicalSignedRate * FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC * deltaSeconds;
+}
+
+void updateFlowlapseEstimatedPositionFromManualSticks(float deltaSeconds) {
+  updateFlowlapseEstimatedAxisFromStick(leftStickXvalue, isSwingReversed, DRONE_SWING_DEADBAND, flowlapseCurrentSwingPos, deltaSeconds);
+  updateFlowlapseEstimatedAxisFromStick(leftStickYvalue, isLiftReversed, DRONE_LIFT_DEADBAND, flowlapseCurrentLiftPos, deltaSeconds);
+  updateFlowlapseEstimatedAxisFromStick(rightStickXvalue, isPanReversed, DRONE_PAN_DEADBAND, flowlapseCurrentPanPos, deltaSeconds);
+  updateFlowlapseEstimatedAxisFromStick(rightStickYvalue, isTiltReversed, DRONE_TILT_DEADBAND, flowlapseCurrentTiltPos, deltaSeconds);
+}
+
+void captureFlowlapseWaypoint() {
+  if (flowlapseWaypointCount >= FLOWLAPSE_MAX_WAYPOINTS) {
+    startLimitReachedRumbleFeedback();
+    Serial.println("Flowlapse: waypoint limit reached (8).");
+    return;
+  }
+
+  FlowlapseWaypoint& waypoint = flowlapseWaypoints[flowlapseWaypointCount];
+  waypoint.swing = flowlapseCurrentSwingPos;
+  waypoint.lift = flowlapseCurrentLiftPos;
+  waypoint.pan = flowlapseCurrentPanPos;
+  waypoint.tilt = flowlapseCurrentTiltPos;
+  flowlapseWaypointCount++;
+
+  startFeedbackRumble(FLOWLAPSE_WAYPOINT_RUMBLE_PULSES, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+  Serial.print("Flowlapse: waypoint recorded ");
+  Serial.print(flowlapseWaypointCount);
+  Serial.print("/");
+  Serial.println(FLOWLAPSE_MAX_WAYPOINTS);
+}
+
+bool isFlowlapseTargetReached(const FlowlapseWaypoint& target) {
+  return fabs(target.swing - flowlapseCurrentSwingPos) <= FLOWLAPSE_AXIS_STOP_TOLERANCE
+      && fabs(target.lift  - flowlapseCurrentLiftPos)  <= FLOWLAPSE_AXIS_STOP_TOLERANCE
+      && fabs(target.pan   - flowlapseCurrentPanPos)   <= FLOWLAPSE_AXIS_STOP_TOLERANCE
+      && fabs(target.tilt  - flowlapseCurrentTiltPos)  <= FLOWLAPSE_AXIS_STOP_TOLERANCE;
+}
+
+void applyFlowlapseAxisTowardTarget(float targetPosition, float& estimatedPosition,
+                                    bool isAxisReversed,
+                                    uint8_t negativeDirectionPin, uint8_t positiveDirectionPin,
+                                    uint8_t speedUpPin, uint8_t speedDownPin,
+                                    uint8_t& currentTier, unsigned long& tierLastChangeMs,
+                                    unsigned long now, float deltaSeconds) {
+  digitalWrite(negativeDirectionPin, LOW);
+  digitalWrite(positiveDirectionPin, LOW);
+
+  float signedError = targetPosition - estimatedPosition;
+  float absError = fabs(signedError);
+
+  uint8_t desiredTier = DRONE_SPEED_TIER_STOP;
+  if (absError > FLOWLAPSE_AXIS_MED_ERROR) {
+    desiredTier = DRONE_SPEED_TIER_MED;
+  }
+  if (absError > FLOWLAPSE_AXIS_HIGH_ERROR && FLOWLAPSE_MAX_SPEED_TIER >= DRONE_SPEED_TIER_HIGH) {
+    desiredTier = DRONE_SPEED_TIER_HIGH;
+  }
+
+  if (desiredTier > FLOWLAPSE_MAX_SPEED_TIER) {
+    desiredTier = FLOWLAPSE_MAX_SPEED_TIER;
+  }
+
+  if (now - tierLastChangeMs >= FLOWLAPSE_TIER_RAMP_INTERVAL_MS) {
+    if (currentTier < desiredTier) {
+      currentTier++;
+      tierLastChangeMs = now;
+    } else if (currentTier > desiredTier) {
+      currentTier--;
+      tierLastChangeMs = now;
+    }
+  }
+
+  if (currentTier == DRONE_SPEED_TIER_STOP) {
+    applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, speedUpPin, speedDownPin);
+    return;
+  }
+
+  if (signedError < 0.0f) {
+    setDirectionalOutput(isAxisReversed, negativeDirectionPin, positiveDirectionPin, HIGH);
+  } else {
+    setDirectionalOutput(isAxisReversed, positiveDirectionPin, negativeDirectionPin, HIGH);
+  }
+
+  applySpeedPinsForTier(currentTier, speedUpPin, speedDownPin);
+
+  float signedRate = getFlowlapseTierRateUnitsPerSecond(currentTier);
+  if (signedError < 0.0f) {
+    signedRate *= -1.0f;
+  }
+
+  estimatedPosition += signedRate * deltaSeconds;
+
+  if ((signedError > 0.0f && estimatedPosition > targetPosition)
+      || (signedError < 0.0f && estimatedPosition < targetPosition)) {
+    estimatedPosition = targetPosition;
+  }
+}
+
+void applyFlowlapseMotionTowardWaypoint(const FlowlapseWaypoint& target, unsigned long now, float deltaSeconds) {
+  applyFlowlapseAxisTowardTarget(target.swing, flowlapseCurrentSwingPos, isSwingReversed,
+                                 swingLeft, swingRight, swingSpeedUp, swingSpeedDown,
+                                 flowlapseSwingTier, flowlapseSwingTierLastChangeMs,
+                                 now, deltaSeconds);
+
+  applyFlowlapseAxisTowardTarget(target.lift, flowlapseCurrentLiftPos, isLiftReversed,
+                                 liftUp, liftDown, liftSpeedUp, liftSpeedDown,
+                                 flowlapseLiftTier, flowlapseLiftTierLastChangeMs,
+                                 now, deltaSeconds);
+
+  applyFlowlapseAxisTowardTarget(target.pan, flowlapseCurrentPanPos, isPanReversed,
+                                 panLeft, panRight, panSpeedUp, panSpeedDown,
+                                 flowlapsePanTier, flowlapsePanTierLastChangeMs,
+                                 now, deltaSeconds);
+
+  applyFlowlapseAxisTowardTarget(target.tilt, flowlapseCurrentTiltPos, isTiltReversed,
+                                 tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown,
+                                 flowlapseTiltTier, flowlapseTiltTierLastChangeMs,
+                                 now, deltaSeconds);
+
+  digitalWrite(panSpeedUpOnly, LOW);
+  digitalWrite(panSpeedDownOnly, LOW);
+  digitalWrite(tiltSpeedUpOnly, LOW);
+  digitalWrite(tiltSpeedDownOnly, LOW);
+}
+
+void startFlowlapsePreview() {
+  if (flowlapseWaypointCount < 2) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.println("Flowlapse: need at least 2 waypoints for preview.");
+    return;
+  }
+
+  flowlapseState = FLOWLAPSE_STATE_PREVIEW_RUNNING;
+  flowlapseTargetWaypointIndex = 0;
+  flowlapsePreviewHoldUntilMs = 0;
+  resetFlowlapseAxisTierState(millis());
+  Serial.println("Flowlapse: preview started.");
+}
+
+void startFlowlapseCapture(unsigned long now) {
+  if (flowlapseWaypointCount < 2) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.println("Flowlapse: need at least 2 waypoints to run capture.");
+    return;
+  }
+
+  flowlapseState = FLOWLAPSE_STATE_CAPTURE_RUNNING;
+  flowlapseTargetWaypointIndex = 0;
+  flowlapseCaptureAlignedToFirstWaypoint = false;
+  flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+  flowlapseCapturePhaseStartMs = now;
+  resetFlowlapseAxisTierState(now);
+  Serial.println("Flowlapse: capture run started.");
+}
+
 void enterDroneMode() {
   resetTimelapseState();
   resetBounceState();
   stopIntervalRumbleFeedback();
+  resetFlowlapseSession(true);
   droneMode = true;
   droneLastActivityMs = millis();
   Serial.println("DRONE MODE ACTIVATED - timelapse/bounce locked out");
+  Serial.println("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record.");
   startDroneModeEnterRumbleFeedback();
 }
 
@@ -374,6 +655,7 @@ void exitDroneMode() {
   lastDroneLiftActive = false;
   lastDronePanActive = false;
   lastDroneTiltActive = false;
+  resetFlowlapseSession(true);
   droneLastActivityMs = 0;
   stopAllMotors();
   Serial.println("DRONE MODE DEACTIVATED");
@@ -655,6 +937,182 @@ void handleDroneStickControl() {
   digitalWrite(panSpeedDownOnly, LOW);
   digitalWrite(tiltSpeedUpOnly, LOW);
   digitalWrite(tiltSpeedDownOnly, LOW);
+}
+
+void completeFlowlapsePreview() {
+  stopAllMotors();
+  flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
+  flowlapseTargetWaypointIndex = 0;
+  flowlapsePreviewHoldUntilMs = 0;
+  Serial.println("Flowlapse: preview complete. Press START to run capture.");
+}
+
+void completeFlowlapseCapture() {
+  stopAllMotors();
+  digitalWrite(trigger, HIGH);
+  flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
+  flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+  flowlapseCapturePhaseStartMs = 0;
+  flowlapseCaptureAlignedToFirstWaypoint = false;
+  flowlapseTargetWaypointIndex = 0;
+  Serial.println("Flowlapse: capture complete.");
+}
+
+void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
+  if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+    completeFlowlapsePreview();
+    return;
+  }
+
+  if (flowlapsePreviewHoldUntilMs != 0) {
+    stopAllMotors();
+    if (now < flowlapsePreviewHoldUntilMs) {
+      return;
+    }
+
+    flowlapsePreviewHoldUntilMs = 0;
+    flowlapseTargetWaypointIndex++;
+    if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+      completeFlowlapsePreview();
+      return;
+    }
+  }
+
+  const FlowlapseWaypoint& target = flowlapseWaypoints[flowlapseTargetWaypointIndex];
+  applyFlowlapseMotionTowardWaypoint(target, now, deltaSeconds);
+
+  if (isFlowlapseTargetReached(target)) {
+    stopAllMotors();
+    flowlapsePreviewHoldUntilMs = now + FLOWLAPSE_PREVIEW_POINT_HOLD_MS;
+    Serial.print("Flowlapse preview reached waypoint ");
+    Serial.println(flowlapseTargetWaypointIndex + 1);
+  }
+}
+
+void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
+  if (flowlapseWaypointCount < 2) {
+    completeFlowlapseCapture();
+    return;
+  }
+
+  if (!flowlapseCaptureAlignedToFirstWaypoint) {
+    const FlowlapseWaypoint& firstWaypoint = flowlapseWaypoints[0];
+    applyFlowlapseMotionTowardWaypoint(firstWaypoint, now, deltaSeconds);
+
+    if (isFlowlapseTargetReached(firstWaypoint)) {
+      stopAllMotors();
+      flowlapseCaptureAlignedToFirstWaypoint = true;
+      flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+      flowlapseCapturePhaseStartMs = now;
+      flowlapseTargetWaypointIndex = 1;
+      Serial.println("Flowlapse: aligned to first waypoint. Capture triggering started.");
+    }
+    return;
+  }
+
+  switch (flowlapseCapturePhase) {
+    case FLOWLAPSE_CAPTURE_TRIGGER_LOW:
+      stopAllMotors();
+      digitalWrite(trigger, LOW);
+      if (now - flowlapseCapturePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
+        digitalWrite(trigger, HIGH);
+        flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_HIGH;
+        flowlapseCapturePhaseStartMs = now;
+      }
+      break;
+
+    case FLOWLAPSE_CAPTURE_TRIGGER_HIGH:
+      stopAllMotors();
+      digitalWrite(trigger, HIGH);
+      if (now - flowlapseCapturePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
+        flowlapseCapturePhase = FLOWLAPSE_CAPTURE_MOVE_ACTIVE;
+        flowlapseCapturePhaseStartMs = now;
+      }
+      break;
+
+    case FLOWLAPSE_CAPTURE_MOVE_ACTIVE:
+      if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+        completeFlowlapseCapture();
+        return;
+      }
+
+      applyFlowlapseMotionTowardWaypoint(flowlapseWaypoints[flowlapseTargetWaypointIndex], now, deltaSeconds);
+
+      if (isFlowlapseTargetReached(flowlapseWaypoints[flowlapseTargetWaypointIndex])) {
+        flowlapseTargetWaypointIndex++;
+        if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+          completeFlowlapseCapture();
+          return;
+        }
+      }
+
+      if (now - flowlapseCapturePhaseStartMs >= static_cast<unsigned long>(stepDist)) {
+        stopAllMotors();
+        flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+        flowlapseCapturePhaseStartMs = now;
+      }
+      break;
+  }
+}
+
+void handleDroneFlowlapseButtons(unsigned long now) {
+  if (flowlapseState == FLOWLAPSE_STATE_RECORDING && ps2x.ButtonReleased(PSB_L3)) {
+    captureFlowlapseWaypoint();
+    droneLastActivityMs = now;
+  }
+
+  if (ps2x.ButtonReleased(PSB_SELECT)) {
+    if (flowlapseState == FLOWLAPSE_STATE_RECORDING) {
+      if (flowlapseWaypointCount < 2) {
+        startLockoutDeniedRumbleFeedback();
+        Serial.println("Flowlapse: record at least 2 waypoints before stopping record.");
+      } else {
+        flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
+        stopAllMotors();
+        Serial.println("Flowlapse: recording stopped. Press SELECT again for preview.");
+      }
+      droneLastActivityMs = now;
+    } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
+      startFlowlapsePreview();
+      droneLastActivityMs = now;
+    }
+  }
+
+  if (ps2x.ButtonReleased(PSB_START)) {
+    if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
+      startFlowlapseCapture(now);
+      droneLastActivityMs = now;
+    } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: run preview first (SELECT), then press START for capture.");
+      droneLastActivityMs = now;
+    }
+  }
+}
+
+void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
+  handleDroneFlowlapseButtons(now);
+
+  if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING) {
+    handleFlowlapsePreviewStep(now, deltaSeconds);
+    droneLastActivityMs = now;
+    return;
+  }
+
+  if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
+    handleFlowlapseCaptureStep(now, deltaSeconds);
+    droneLastActivityMs = now;
+    return;
+  }
+
+  if (flowlapseState == FLOWLAPSE_STATE_RECORDING) {
+    handleDroneStickControl();
+    updateFlowlapseEstimatedPositionFromManualSticks(deltaSeconds);
+    handleFocusAxis();
+    return;
+  }
+
+  stopAllMotors();
 }
 
 void stopAllMotors() {
@@ -1176,6 +1634,10 @@ bool handleEmergencyStop() {
     logEmergencyStopEvent();
     resetTimelapseState();
     resetBounceState();
+    if (droneMode) {
+      resetFlowlapseSession(false);
+      Serial.println("Flowlapse: canceled by emergency stop.");
+    }
     stopIntervalRumbleFeedback();
   }
 
@@ -1764,20 +2226,22 @@ void loop() {
 
   handleDroneModeToggle();
 
-  if (handleTimelapseIntervalAdjustment()) {
-    return;
-  }
+  if (!droneMode) {
+    if (handleTimelapseIntervalAdjustment()) {
+      return;
+    }
 
-  if (handleTimelapseStepDistAdjustment()) {
-    return;
-  }
+    if (handleTimelapseStepDistAdjustment()) {
+      return;
+    }
 
-  if (handleRumbleMuteToggle()) {
-    return;
-  }
+    if (handleRumbleMuteToggle()) {
+      return;
+    }
 
-  if (handleSettingsReplay()) {
-    return;
+    if (handleSettingsReplay()) {
+      return;
+    }
   }
 
   if (droneMode) {
@@ -1786,8 +2250,9 @@ void loop() {
       exitDroneMode();
       return;
     }
-    handleDroneStickControl();
-    handleFocusAxis();
+
+    float flowlapseDeltaSeconds = getFlowlapseDeltaSeconds(now);
+    handleDroneFlowlapseWorkflow(now, flowlapseDeltaSeconds);
     return;
   }
 
