@@ -254,6 +254,7 @@ bool lastDroneSwingActive = false;
 bool lastDroneLiftActive = false;
 bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
+bool lastFlowlapseClearComboActive = false;
 unsigned long droneLastActivityMs = 0;
 FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
 uint8_t flowlapseWaypointCount = 0;
@@ -1075,6 +1076,16 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
 }
 
 void handleDroneFlowlapseButtons(unsigned long now) {
+  bool flowlapseClearComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_R1);
+  if (flowlapseClearComboActive && !lastFlowlapseClearComboActive) {
+    resetFlowlapseSession(false);
+    stopAllMotors();
+    startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+    Serial.println("Flowlapse: waypoints cleared. Recording re-armed.");
+    droneLastActivityMs = now;
+  }
+  lastFlowlapseClearComboActive = flowlapseClearComboActive;
+
   if (flowlapseState == FLOWLAPSE_STATE_RECORDING && ps2x.ButtonReleased(PSB_L3)) {
     captureFlowlapseWaypoint();
     droneLastActivityMs = now;
