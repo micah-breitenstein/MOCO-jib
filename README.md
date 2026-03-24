@@ -156,17 +156,20 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 - Control flow:
 	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints); controller rumbles once per recorded waypoint as a count confirmation
 	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
-	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward
+	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward (`current/total` waypoint index prints to Serial)
 	- **SELECT + D-pad UP/DOWN** (Drone Mode) increases/decreases Flowlapse dwell by 250 ms per press (0 to 5000 ms)
+	- Dwell adjustment rumble encodes current dwell in 250 ms steps (e.g., `1000 ms` = 4 pulses); `0 ms` plays a double pulse (disabled)
 	- **START**: run actual Flowlapse capture after preview completes
 	- **L1 + R1**: wipe the full Flowlapse course and re-arm recording
 	- **L2 + R2 (1st press)**: move the rig back to the **last** recorded waypoint
 	- **L2 + R2 (2nd press)**: rumble + delete that last point (repeat this two-step cycle to walk the path backward)
+	- Hold **L3** for `FLOWLAPSE_L3_RESET_HOLD_MS` to quick-reset: clear course + re-arm recording
 - Capture behavior:
 	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
 	- Move slice uses `stepDist` (same move-duration concept as normal timelapse)
 	- Motion is interpolated per-axis between recorded waypoints over repeated frame cycles
 	- Optional dwell/settle pause before each trigger uses `flowlapseDwellMs` (controller-adjustable in Drone Mode)
+	- Serial capture progress logs include an estimated remaining time (`eta=Ns`)
 	- Set `FLOWLAPSE_LOOP_CAPTURE = true` to auto-restart capture from waypoint 0 after each full pass (default `false`)
 - While waiting in READY_FOR_PREVIEW or READY_FOR_CAPTURE, focus axis (Triangle/Cross/Square/Circle) stays fully responsive
 - Safety behavior:
@@ -230,6 +233,8 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `FLOWLAPSE_WAYPOINT_DWELL_MS` (currently `0`) — boot default dwell in ms before each trigger
 	- `FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS` (currently `250`) — controller dwell step size
 	- `FLOWLAPSE_DWELL_MAX_MS` (currently `5000`) — controller dwell upper cap
+	- `FLOWLAPSE_PREVIEW_SPEED_SCALE` (currently `0.70`) — preview-only motion speed multiplier
+	- `FLOWLAPSE_L3_RESET_HOLD_MS` (currently `1500`) — L3 hold duration for quick reset/re-arm
 	- `FLOWLAPSE_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
 	- `FLOWLAPSE_TIER_RAMP_INTERVAL_MS` (currently `450`)
 	- `FLOWLAPSE_AXIS_MED_ERROR` and `FLOWLAPSE_AXIS_HIGH_ERROR` (error bands for tier selection)

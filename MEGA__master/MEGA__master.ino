@@ -216,6 +216,7 @@ constexpr unsigned long FLOWLAPSE_WAYPOINT_DWELL_MS = 0UL; // ms to hold still a
 constexpr unsigned long FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS = 250UL; // step size per SELECT+D-pad press in drone mode
 constexpr unsigned long FLOWLAPSE_DWELL_MAX_MS = 5000UL; // upper cap for controller adjustment
 constexpr float FLOWLAPSE_PREVIEW_SPEED_SCALE = 0.70f; // 1.0 = same as capture, <1 slower preview
+constexpr unsigned long FLOWLAPSE_L3_RESET_HOLD_MS = 1500UL; // hold L3 to clear and re-arm recording quickly
 
 struct FlowlapseWaypoint {
   float swing;
@@ -269,6 +270,9 @@ bool lastFlowlapseDeleteLastComboActive = false;
 bool lastDwellAdjustUpComboActive = false;
 bool lastDwellAdjustDownComboActive = false;
 bool suppressDroneNextSelectRelease = false;
+bool suppressDroneNextL3Release = false;
+bool flowlapseL3HoldActive = false;
+unsigned long flowlapseL3HoldStartMs = 0;
 unsigned long flowlapseDwellMs = FLOWLAPSE_WAYPOINT_DWELL_MS;
 unsigned long droneLastActivityMs = 0;
 FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
@@ -459,6 +463,9 @@ void resetFlowlapseAxisTierState(unsigned long now) {
 void resetFlowlapseSession(bool resetEstimatedPosition) {
   flowlapseWaypointCount = 0;
   flowlapseJogIndex = 0;
+  flowlapseL3HoldActive = false;
+  flowlapseL3HoldStartMs = 0;
+  suppressDroneNextL3Release = false;
   flowlapseState = FLOWLAPSE_STATE_RECORDING;
   flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
   flowlapseCapturePhaseStartMs = 0;
@@ -1316,9 +1323,36 @@ void handleDroneFlowlapseButtons(unsigned long now) {
   lastDwellAdjustUpComboActive   = dwellAdjUpComboActive;
   lastDwellAdjustDownComboActive = dwellAdjDownComboActive;
 
-  if (flowlapseState == FLOWLAPSE_STATE_RECORDING && ps2x.ButtonReleased(PSB_L3)) {
-    captureFlowlapseWaypoint();
-    droneLastActivityMs = now;
+  bool l3HoldEligible = (flowlapseState != FLOWLAPSE_STATE_PREVIEW_RUNNING
+                      && flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING
+                      && flowlapseState != FLOWLAPSE_STATE_UNDO_RUNNING
+                      && flowlapseState != FLOWLAPSE_STATE_JOG_RUNNING);
+  if (l3HoldEligible && ps2x.Button(PSB_L3)) {
+    if (!flowlapseL3HoldActive) {
+      flowlapseL3HoldActive = true;
+      flowlapseL3HoldStartMs = now;
+    } else if (now - flowlapseL3HoldStartMs >= FLOWLAPSE_L3_RESET_HOLD_MS) {
+      resetFlowlapseSession(false);
+      stopAllMotors();
+      startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      Serial.println("Flowlapse: L3 hold reset — course cleared, recording re-armed.");
+      flowlapseL3HoldActive = false;
+      flowlapseL3HoldStartMs = 0;
+      suppressDroneNextL3Release = true;
+      droneLastActivityMs = now;
+    }
+  } else {
+    flowlapseL3HoldActive = false;
+    flowlapseL3HoldStartMs = 0;
+  }
+
+  if (ps2x.ButtonReleased(PSB_L3)) {
+    if (suppressDroneNextL3Release) {
+      suppressDroneNextL3Release = false;
+    } else if (flowlapseState == FLOWLAPSE_STATE_RECORDING) {
+      captureFlowlapseWaypoint();
+      droneLastActivityMs = now;
+    }
   }
 
   bool jogReadyState = (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW
