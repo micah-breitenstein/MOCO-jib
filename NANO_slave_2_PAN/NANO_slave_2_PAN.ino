@@ -2,6 +2,8 @@
 // Receives direction and speed commands from the Mega via digital pins.
 // Supports coarse speed stages, fine-tune adjustment, and a high-speed bypass mode.
 
+constexpr bool PAN_SERIAL_DEBUG = false;
+
 ///// PIN ASSIGNMENTS
 const int driverDIR    = 2;   // stepper driver direction pin
 const int driverPUL    = 4;   // stepper driver pulse pin
@@ -27,6 +29,19 @@ int pd;
 int lastSpeedUp   = 0;
 int lastSpeedDown = 0;
 
+void debugLog(const char* message) {
+  if (PAN_SERIAL_DEBUG) {
+    Serial.println(message);
+  }
+}
+
+void debugLogStage(int stageValue) {
+  if (PAN_SERIAL_DEBUG) {
+    Serial.print("STAGE");
+    Serial.println(stageValue);
+  }
+}
+
 ///// HELPERS
 
 // Send one step pulse to the stepper driver in the given direction.
@@ -47,17 +62,17 @@ void updateSpeedStage(int speedUpRead, int speedDownRead) {
   if (lastSpeedDown == 0 && speedDownRead == 1 && stage > 0) {
     stage--;
     count = STAGE_DELAYS[stage];
-    Serial.print("STAGE"); Serial.println(stage);
+    debugLogStage(stage);
   }
 
   if (stage == 0 && speedUpRead == 1) {
     stage = 1;
     count = STAGE_DELAYS[1];
-    Serial.println("STAGE1");
+    debugLog("STAGE1");
   } else if (lastSpeedUp == 0 && speedUpRead == 1 && stage < STAGE_COUNT - 1) {
     stage++;
     count = STAGE_DELAYS[stage];
-    Serial.print("STAGE"); Serial.println(stage);
+    debugLogStage(stage);
   }
 
   lastSpeedUp   = speedUpRead;
@@ -70,23 +85,25 @@ void updateSpeedStage(int speedUpRead, int speedDownRead) {
 // Returns the pulse delay to use this tick.
 int applySpeedAdjust(int adjUpRead, int adjDownRead) {
   if (adjUpRead == 1 && adjDownRead == 1) {
-    Serial.println("HIGH SPEED MODE");
+    debugLog("HIGH SPEED MODE");
     return HIGH_SPEED_DELAY;
   }
   if (adjUpRead == 1 && adjDownRead == 0) {
-    Serial.println("SPEED UP ADJUST");
+    debugLog("SPEED UP ADJUST");
     count--;
     if (count < MIN_DELAY) count = MIN_DELAY;
   }
   if (adjDownRead == 1 && adjUpRead == 0) {
-    Serial.println("SPEED DOWN ADJUST");
+    debugLog("SPEED DOWN ADJUST");
     count++;
   }
   return count;
 }
 
 void setup() {
-  // Serial.begin(57600);
+  if (PAN_SERIAL_DEBUG) {
+    Serial.begin(57600);
+  }
   pinMode(driverDIR,    OUTPUT);
   pinMode(driverPUL,    OUTPUT);
   pinMode(speedUpPin,   INPUT);
@@ -116,12 +133,12 @@ void loop() {
 
   ///// MOTOR MOVEMENTS
   if (upRead == HIGH) {
-    Serial.println("PAN LEFT");
+    debugLog("PAN LEFT");
     stepMotor(true);
   }
 
   if (downRead == HIGH) {
-    Serial.println("PAN RIGHT");
+    debugLog("PAN RIGHT");
     stepMotor(false);
   }
 }
