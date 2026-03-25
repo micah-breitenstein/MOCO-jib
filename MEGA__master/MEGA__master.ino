@@ -212,6 +212,7 @@ constexpr float FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC = 14.0f;
 constexpr float FLOWLAPSE_MED_RATE_UNITS_PER_SEC = 10.0f;
 constexpr float FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC = 18.0f;
 constexpr unsigned long FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS = 2000;
+constexpr bool FLOWLAPSE_CURVED_PATH_ENABLED = true; // smooth Catmull-Rom path during capture move phase
 constexpr unsigned long FLOWLAPSE_WAYPOINT_DWELL_MS = 0UL; // ms to hold still at each waypoint before triggering; 0 = disabled
 constexpr unsigned long FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS = 250UL; // step size per SELECT+D-pad press in drone mode
 constexpr unsigned long FLOWLAPSE_DWELL_MAX_MS = 5000UL; // upper cap for controller adjustment
@@ -446,6 +447,45 @@ float getFlowlapseTierRateUnitsPerSecond(uint8_t tier) {
     return FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC;
   }
   return 0.0f;
+}
+
+float clampFlowlapse01(float value) {
+  if (value < 0.0f) {
+    return 0.0f;
+  }
+  if (value > 1.0f) {
+    return 1.0f;
+  }
+  return value;
+}
+
+float interpolateCatmullRomScalar(float p0, float p1, float p2, float p3, float t) {
+  float t2 = t * t;
+  float t3 = t2 * t;
+  return 0.5f * ((2.0f * p1)
+      + (-p0 + p2) * t
+      + (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3) * t2
+      + (-p0 + 3.0f * p1 - 3.0f * p2 + p3) * t3);
+}
+
+FlowlapseWaypoint interpolateFlowlapseCurvedPoint(uint8_t segmentStartIndex, float t) {
+  uint8_t p1Index = segmentStartIndex;
+  uint8_t p2Index = static_cast<uint8_t>(segmentStartIndex + 1);
+  uint8_t p0Index = (p1Index > 0) ? static_cast<uint8_t>(p1Index - 1) : p1Index;
+  uint8_t p3Index = (p2Index + 1 < flowlapseWaypointCount) ? static_cast<uint8_t>(p2Index + 1) : p2Index;
+
+  const FlowlapseWaypoint& p0 = flowlapseWaypoints[p0Index];
+  const FlowlapseWaypoint& p1 = flowlapseWaypoints[p1Index];
+  const FlowlapseWaypoint& p2 = flowlapseWaypoints[p2Index];
+  const FlowlapseWaypoint& p3 = flowlapseWaypoints[p3Index];
+
+  float clampedT = clampFlowlapse01(t);
+  FlowlapseWaypoint result;
+  result.swing = interpolateCatmullRomScalar(p0.swing, p1.swing, p2.swing, p3.swing, clampedT);
+  result.lift  = interpolateCatmullRomScalar(p0.lift,  p1.lift,  p2.lift,  p3.lift,  clampedT);
+  result.pan   = interpolateCatmullRomScalar(p0.pan,   p1.pan,   p2.pan,   p3.pan,   clampedT);
+  result.tilt  = interpolateCatmullRomScalar(p0.tilt,  p1.tilt,  p2.tilt,  p3.tilt,  clampedT);
+  return result;
 }
 
 void resetFlowlapseAxisTierState(unsigned long now) {
@@ -1166,24 +1206,55 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
         return;
       }
 
-      applyFlowlapseMotionTowardWaypoint(flowlapseWaypoints[flowlapseTargetWaypointIndex], now, deltaSeconds);
+      unsigned long moveElapsedMs = now - flowlapseCapturePhaseStartMs;
+      unsigned long moveDurationMs = static_cast<unsigned long>(stepDist);
+      bool useCurvedPath = FLOWLAPSE_CURVED_PATH_ENABLED && flowlapseWaypointCount >= 3;
 
-      if (isFlowlapseTargetReached(flowlapseWaypoints[flowlapseTargetWaypointIndex])) {
-        flowlapseTargetWaypointIndex++;
-        if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
-          completeFlowlapseCapture();
-          return;
-        }
-      }
+      if (useCurvedPath) {
+        uint8_t segmentStartIndex = (flowlapseTargetWaypointIndex > 0)
+            ? static_cast<uint8_t>(flowlapseTargetWaypointIndex - 1)
+            : 0;
+        float segmentT = (moveDurationMs > 0)
+            ? static_cast<float>(moveElapsedMs) / static_cast<float>(moveDurationMs)
+            : 1.0f;
+        FlowlapseWaypoint curvedTarget = interpolateFlowlapseCurvedPoint(segmentStartIndex, segmentT);
+        applyFlowlapseMotionTowardWaypoint(curvedTarget, now, deltaSeconds);
 
-      if (now - flowlapseCapturePhaseStartMs >= static_cast<unsigned long>(stepDist)) {
-        stopAllMotors();
-        if (flowlapseDwellMs > 0) {
-          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
-        } else {
-          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+        if (moveElapsedMs >= moveDurationMs) {
+          flowlapseTargetWaypointIndex++;
+          if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+            completeFlowlapseCapture();
+            return;
+          }
+
+          stopAllMotors();
+          if (flowlapseDwellMs > 0) {
+            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
+          } else {
+            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+          }
+          flowlapseCapturePhaseStartMs = now;
         }
-        flowlapseCapturePhaseStartMs = now;
+      } else {
+        applyFlowlapseMotionTowardWaypoint(flowlapseWaypoints[flowlapseTargetWaypointIndex], now, deltaSeconds);
+
+        if (isFlowlapseTargetReached(flowlapseWaypoints[flowlapseTargetWaypointIndex])) {
+          flowlapseTargetWaypointIndex++;
+          if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+            completeFlowlapseCapture();
+            return;
+          }
+        }
+
+        if (moveElapsedMs >= moveDurationMs) {
+          stopAllMotors();
+          if (flowlapseDwellMs > 0) {
+            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
+          } else {
+            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+          }
+          flowlapseCapturePhaseStartMs = now;
+        }
       }
       break;
 
@@ -2507,6 +2578,9 @@ void printDroneTuningProfile() {
 
   Serial.print("Flowlapse tuning | capture progress log ms=");
   Serial.println(FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS);
+
+  Serial.print("Flowlapse tuning | curved path mode=");
+  Serial.println(FLOWLAPSE_CURVED_PATH_ENABLED ? "enabled" : "disabled");
 
   Serial.print("Flowlapse tuning | waypoint dwell ms=");
   if (flowlapseDwellMs == 0) {

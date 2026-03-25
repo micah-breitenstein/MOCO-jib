@@ -168,6 +168,7 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
 	- Move slice uses `stepDist` (same move-duration concept as normal timelapse)
 	- Motion is interpolated per-axis between recorded waypoints over repeated frame cycles
+	- With `FLOWLAPSE_CURVED_PATH_ENABLED = true`, capture move phase follows a smooth Catmull-Rom curved path through waypoints (fallback to linear path when fewer than 3 waypoints)
 	- Optional dwell/settle pause before each trigger uses `flowlapseDwellMs` (controller-adjustable in Drone Mode)
 	- Serial capture progress logs include an estimated remaining time (`eta=Ns`)
 	- Set `FLOWLAPSE_LOOP_CAPTURE = true` to auto-restart capture from waypoint 0 after each full pass (default `false`)
@@ -230,6 +231,7 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
 	- `FLOWLAPSE_LOOP_CAPTURE` (currently `false`) — set `true` to loop capture continuously from start after each pass
+	- `FLOWLAPSE_CURVED_PATH_ENABLED` (currently `true`) — enables smooth curved interpolation during capture move phase
 	- `FLOWLAPSE_WAYPOINT_DWELL_MS` (currently `0`) — boot default dwell in ms before each trigger
 	- `FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS` (currently `250`) — controller dwell step size
 	- `FLOWLAPSE_DWELL_MAX_MS` (currently `5000`) — controller dwell upper cap
