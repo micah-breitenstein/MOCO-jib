@@ -2123,7 +2123,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW) {
         startLockoutDeniedRumbleFeedback();
-        Serial.println("Flowlapse: run preview first (SELECT), then press START for capture.");
+        Serial.println(F("Flowlapse: run preview first (SELECT), then press START for capture."));
         droneLastActivityMs = now;
       }
     }
@@ -2169,9 +2169,9 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
         stopAllMotors();
         flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
         startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-        Serial.print("Flowlapse: jog reached waypoint ");
+        Serial.print(F("Flowlapse: jog reached waypoint "));
         Serial.print(flowlapseJogIndex + 1);
-        Serial.print("/");
+        Serial.print(F("/"));
         Serial.println(flowlapseWaypointCount);
       }
     } else {
@@ -2297,11 +2297,11 @@ void startFrameCountCompleteRumbleFeedback() {
 void startSettingsReplayRumble() {
   chainStepDistAfterInterval = true;
   startIntervalRumbleFeedback();
-  Serial.print("Settings replay: interval=");
+  Serial.print(F("Settings replay: interval="));
   Serial.print(timelapseIntervalSeconds);
-  Serial.print("s, stepDist=");
+  Serial.print(F("s, stepDist="));
   Serial.print(stepDist);
-  Serial.println("ms");
+  Serial.println(F("ms"));
 }
 
 void startIntervalRumbleFeedbackNow() {
@@ -2556,13 +2556,13 @@ void adjustIntervalSeconds(int delta) {
   }
   if (newIntervalSeconds == timelapseIntervalSeconds) {
     startLimitReachedRumbleFeedback();
-    Serial.println("Timelapse interval limit reached.");
+    Serial.println(F("Timelapse interval limit reached."));
     return;
   }
 
   timelapseIntervalSeconds = newIntervalSeconds;
   updateIntervalMs();
-  Serial.print("Timelapse interval (seconds) = ");
+  Serial.print(F("Timelapse interval (seconds) = "));
   Serial.println(timelapseIntervalSeconds);
   startIntervalRumbleFeedback();
 }
@@ -2577,12 +2577,12 @@ void adjustStepDist(int delta) {
   }
   if (newStepDist == stepDist) {
     startLimitReachedRumbleFeedback();
-    Serial.println("Timelapse stepDist limit reached.");
+    Serial.println(F("Timelapse stepDist limit reached."));
     return;
   }
 
   stepDist = newStepDist;
-  Serial.print("Timelapse stepDist (ms) = ");
+  Serial.print(F("Timelapse stepDist (ms) = "));
   Serial.println(stepDist);
   startStepDistRumbleFeedback();
 }
@@ -2613,7 +2613,7 @@ bool handleTimelapseIntervalAdjustment() {
       adjustIntervalSeconds(1);
     } else {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Timelapse interval adjustment blocked: auto mode active.");
+      Serial.println(F("Timelapse interval adjustment blocked: auto mode active."));
     }
   }
 
@@ -2622,7 +2622,7 @@ bool handleTimelapseIntervalAdjustment() {
       adjustIntervalSeconds(-1);
     } else {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Timelapse interval adjustment blocked: auto mode active.");
+      Serial.println(F("Timelapse interval adjustment blocked: auto mode active."));
     }
   }
 
@@ -2654,7 +2654,7 @@ bool handleTimelapseStepDistAdjustment() {
       adjustStepDist(TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
     } else {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Timelapse stepDist adjustment blocked: auto mode active.");
+      Serial.println(F("Timelapse stepDist adjustment blocked: auto mode active."));
     }
   }
 
@@ -2663,7 +2663,7 @@ bool handleTimelapseStepDistAdjustment() {
       adjustStepDist(-TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS);
     } else {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Timelapse stepDist adjustment blocked: auto mode active.");
+      Serial.println(F("Timelapse stepDist adjustment blocked: auto mode active."));
     }
   }
 
@@ -2691,7 +2691,7 @@ bool handleRumbleMuteToggle() {
     suppressNextStartRelease = true;
     stopIntervalRumbleFeedback();
 
-    Serial.print("Controller rumble ");
+    Serial.print(F("Controller rumble "));
     Serial.println(rumbleMuted ? "muted." : "unmuted.");
 
     if (!rumbleMuted) {
@@ -2714,7 +2714,7 @@ bool handleSettingsReplay() {
       startSettingsReplayRumble();
     } else {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Settings replay blocked: auto mode active.");
+      Serial.println(F("Settings replay blocked: auto mode active."));
     }
   }
 
@@ -2735,13 +2735,13 @@ void handleDroneModeToggle() {
 }
 
 void logEmergencyStopEvent() {
-  Serial.print("EMERGENCY STOP | timelapseMode=");
+  Serial.print(F("EMERGENCY STOP | timelapseMode="));
   Serial.print(timelapseMode);
-  Serial.print(" bounce=");
+  Serial.print(F(" bounce="));
   Serial.print(bounce);
-  Serial.print(" intervalSeconds=");
+  Serial.print(F(" intervalSeconds="));
   Serial.print(timelapseIntervalSeconds);
-  Serial.print(" stepDistMs=");
+  Serial.print(F(" stepDistMs="));
   Serial.println(stepDist);
 }
 
@@ -2752,7 +2752,7 @@ bool handleEmergencyStop() {
 
   if (!emergencyStopComboActive) {
     if (lastEmergencyStopComboActive) {
-      Serial.println("EMERGENCY STOP RELEASED | controls re-enabled");
+      Serial.println(F("EMERGENCY STOP RELEASED | controls re-enabled"));
       startEmergencyReleaseRumbleFeedback();
       stopIntervalRumbleFeedback();
     }
@@ -2766,7 +2766,7 @@ bool handleEmergencyStop() {
     resetBounceState();
     if (droneMode) {
       resetFlowlapseSession(false);
-      Serial.println("Flowlapse: canceled by emergency stop.");
+      Serial.println(F("Flowlapse: canceled by emergency stop."));
     }
     stopIntervalRumbleFeedback();
   }
@@ -2903,7 +2903,7 @@ void updateTimelapseModeSelection() {
   }
   timelapseMode = stickPositionToMode(leftStickXvalue, leftStickYvalue);
   if (timelapseMode == 0) {
-    Serial.println("Timelapse: stick near center at SELECT release, no mode started.");
+    Serial.println(F("Timelapse: stick near center at SELECT release, no mode started."));
     return;
   }
   const char* tlLabel = getTimelapseModeLabel(timelapseMode);
@@ -2939,7 +2939,7 @@ void updateBounceModeSelection() {
   }
   bounce = stickPositionToMode(leftStickXvalue, leftStickYvalue);
   if (bounce == 0) {
-    Serial.println("Bounce: stick near center at START release, no mode started.");
+    Serial.println(F("Bounce: stick near center at START release, no mode started."));
     return;
   }
   const char* bounceLabel = getBounceModeSerialLabel(bounce);
@@ -3088,9 +3088,9 @@ void advanceBounceToStage1() {
 
   if (measuredMoveDurationMs < BOUNCE_MIN_MOVE_DURATION_MS) {
     startLockoutDeniedRumbleFeedback();
-    Serial.print("Bounce endpoint rejected: minimum move time is ");
+    Serial.print(F("Bounce endpoint rejected: minimum move time is "));
     Serial.print(BOUNCE_MIN_MOVE_DURATION_MS);
-    Serial.println("ms.");
+    Serial.println(F("ms."));
     return;
   }
 
@@ -3099,9 +3099,9 @@ void advanceBounceToStage1() {
   bouncePhaseStartMs = now;
   stage = 1;
   startL3EndpointRumbleFeedback();
-  Serial.print("Bounce endpoint set: ");
+  Serial.print(F("Bounce endpoint set: "));
   Serial.print(bounceMoveDurationMs);
-  Serial.println("ms travel time");
+  Serial.println(F("ms travel time"));
 }
 
 void handleBounceStage0(unsigned long now) {
@@ -3187,54 +3187,54 @@ void handleActiveTimelapseMode(unsigned long now) {
 }
 
 void printDroneTuningProfile() {
-  Serial.print("Drone tuning | expo S/L/P/T=");
+  Serial.print(F("Drone tuning | expo S/L/P/T="));
   Serial.print(DRONE_SWING_EXPO_PERCENT);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(DRONE_LIFT_EXPO_PERCENT);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(DRONE_PAN_EXPO_PERCENT);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.println(DRONE_TILT_EXPO_PERCENT);
 
-  Serial.print("Drone tuning | deadband S/L/P/T=");
+  Serial.print(F("Drone tuning | deadband S/L/P/T="));
   Serial.print(DRONE_SWING_DEADBAND);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(DRONE_LIFT_DEADBAND);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(DRONE_PAN_DEADBAND);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.println(DRONE_TILT_DEADBAND);
 
-  Serial.print("Drone tuning | max tier S/L/P/T=");
+  Serial.print(F("Drone tuning | max tier S/L/P/T="));
   Serial.print(DRONE_SWING_MAX_SPEED_TIER);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(DRONE_LIFT_MAX_SPEED_TIER);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(DRONE_PAN_MAX_SPEED_TIER);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.println(DRONE_TILT_MAX_SPEED_TIER);
 
-  Serial.print("Drone tuning | modifier precision/boost enabled=");
+  Serial.print(F("Drone tuning | modifier precision/boost enabled="));
   Serial.print(DRONE_ENABLE_PRECISION_MODIFIER ? "Y" : "N");
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.println(DRONE_ENABLE_BOOST_MODIFIER ? "Y" : "N");
 
-  Serial.print("Drone tuning | L2+R2 neutral mode=");
+  Serial.print(F("Drone tuning | L2+R2 neutral mode="));
   Serial.println(DRONE_L2_R2_NEUTRAL_MODE ? "Y" : "N");
 
-  Serial.print("Drone tuning | tier thresholds med/high=");
+  Serial.print(F("Drone tuning | tier thresholds med/high="));
   Serial.print(DRONE_SPEED_TIER_MED_THRESHOLD);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.println(DRONE_SPEED_TIER_HIGH_THRESHOLD);
 
-  Serial.print("Drone tuning | idle timeout ms=");
+  Serial.print(F("Drone tuning | idle timeout ms="));
   if (DRONE_IDLE_TIMEOUT_MS == 0) {
-    Serial.println("disabled");
+    Serial.println(F("disabled"));
   } else {
     Serial.println(DRONE_IDLE_TIMEOUT_MS);
   }
 
-  Serial.print("Drone tuning | serial log enabled=");
+  Serial.print(F("Drone tuning | serial log enabled="));
   Serial.println(DRONE_SERIAL_LOG_ENABLED ? "Y" : "N");
 
   Serial.print("Flowlapse tuning | max points=");
