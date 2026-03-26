@@ -463,17 +463,17 @@ void configureController() {
   error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, PRESSURES, RUMBLE);
 
   if (error == 0) {
-    Serial.print("Controller configured. pressures=");
+    Serial.print(F("Controller configured. pressures="));
     Serial.print(PRESSURES ? "true" : "false");
-    Serial.print(", rumble=");
+    Serial.print(F(", rumble="));
     Serial.println(RUMBLE ? "true" : "false");
   }
   else if (error == 1)
-    Serial.println("No controller found, check wiring.");
+    Serial.println(F("No controller found, check wiring."));
   else if (error == 2)
-    Serial.println("Controller found but not accepting commands.");
+    Serial.println(F("Controller found but not accepting commands."));
   else if (error == 3)
-    Serial.println("Controller refusing Pressures mode, may not support it.");
+    Serial.println(F("Controller refusing Pressures mode, may not support it."));
 }
 
 void detectControllerType() {
@@ -481,16 +481,16 @@ void detectControllerType() {
   controllerType = ps2x.readType();
   switch (controllerType) {
     case 0:
-      Serial.println("Unknown Controller type found");
+      Serial.println(F("Unknown Controller type found"));
       break;
     case 1:
-      Serial.println("DualShock Controller found");
+      Serial.println(F("DualShock Controller found"));
       break;
     case 2:
-      Serial.println("GuitarHero Controller found");
+      Serial.println(F("GuitarHero Controller found"));
       break;
     case 3:
-      Serial.println("Wireless Sony DualShock Controller found");
+      Serial.println(F("Wireless Sony DualShock Controller found"));
       break;
   }
 }
@@ -966,17 +966,17 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
     unsigned long remainingFrames = (totalFrames >= completedFrames) ? static_cast<unsigned long>(totalFrames - completedFrames) : 0;
     unsigned long etaSeconds = (remainingFrames * estimatedPerFrameMs) / 1000UL;
 
-    Serial.print("Flowlapse capture | frame ");
+    Serial.print(F("Flowlapse capture | frame "));
     Serial.print(completedFrames);
-    Serial.print("/");
+    Serial.print(F("/"));
     Serial.print(totalFrames);
-    Serial.print(" phase=");
+    Serial.print(F(" phase="));
     Serial.print(getFlowlapseCapturePhaseLabel(flowlapseCapturePhase));
-    Serial.print(" progress=");
+    Serial.print(F(" progress="));
     Serial.print(progressPercent);
-    Serial.print("% eta=");
+    Serial.print(F("% eta="));
     Serial.print(etaSeconds);
-    Serial.println("s");
+    Serial.println(F("s"));
     return;
   }
 
@@ -1001,17 +1001,17 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
   }
   unsigned long etaSeconds = (remainingSegments * estimatedPerSegmentMs) / 1000UL;
 
-  Serial.print("Flowlapse capture | waypoint ");
+  Serial.print(F("Flowlapse capture | waypoint "));
   Serial.print(flowlapseTargetWaypointIndex + 1);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(flowlapseWaypointCount);
-  Serial.print(" phase=");
+  Serial.print(F(" phase="));
   Serial.print(getFlowlapseCapturePhaseLabel(flowlapseCapturePhase));
-  Serial.print(" progress=");
+  Serial.print(F(" progress="));
   Serial.print(progressPercent);
-  Serial.print("% eta=");
+  Serial.print(F("% eta="));
   Serial.print(etaSeconds);
-  Serial.println("s");
+  Serial.println(F("s"));
 }
 
 float getFlowlapseDeltaSeconds(unsigned long now) {
@@ -1050,7 +1050,7 @@ void updateFlowlapseEstimatedPositionFromManualSticks(float deltaSeconds) {
 void captureFlowlapseWaypoint() {
   if (flowlapseWaypointCount >= FLOWLAPSE_MAX_WAYPOINTS) {
     startLimitReachedRumbleFeedback();
-    Serial.println("Flowlapse: waypoint limit reached (8).");
+    Serial.println(F("Flowlapse: waypoint limit reached (8)."));
     return;
   }
 
@@ -1070,7 +1070,7 @@ void captureFlowlapseWaypoint() {
 
     if (separation < FLOWLAPSE_MIN_WAYPOINT_SEPARATION) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: waypoint too close to previous point; move rig farther before recording.");
+      Serial.println(F("Flowlapse: waypoint too close to previous point; move rig farther before recording."));
       return;
     }
   }
@@ -1081,18 +1081,18 @@ void captureFlowlapseWaypoint() {
   invalidateFlowlapseArcLengthLut();
 
   startFeedbackRumble(FLOWLAPSE_WAYPOINT_RUMBLE_PULSES, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-  Serial.print("Flowlapse: waypoint recorded ");
+  Serial.print(F("Flowlapse: waypoint recorded "));
   Serial.print(flowlapseWaypointCount);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.println(FLOWLAPSE_MAX_WAYPOINTS);
   if (DRONE_SERIAL_LOG_ENABLED) {
-    Serial.print("  swing=");
+    Serial.print(F("  swing="));
     Serial.print(waypoint.swing, 2);
-    Serial.print(" lift=");
+    Serial.print(F(" lift="));
     Serial.print(waypoint.lift, 2);
-    Serial.print(" pan=");
+    Serial.print(F(" pan="));
     Serial.print(waypoint.pan, 2);
-    Serial.print(" tilt=");
+    Serial.print(F(" tilt="));
     Serial.println(waypoint.tilt, 2);
   }
 }
@@ -1194,7 +1194,7 @@ void applyFlowlapseMotionTowardWaypoint(const FlowlapseWaypoint& target, unsigne
 void startFlowlapsePreview() {
   if (flowlapseWaypointCount < 2) {
     startLockoutDeniedRumbleFeedback();
-    Serial.println("Flowlapse: need at least 2 waypoints for preview.");
+    Serial.println(F("Flowlapse: need at least 2 waypoints for preview."));
     return;
   }
 
@@ -1211,16 +1211,16 @@ void startFlowlapsePreview() {
 
   if (flowlapsePreviewFrameModeActive) {
     rebuildFlowlapsePathLengthCache(useCurvedPath);
-    Serial.print("Flowlapse: frame-count preview started. frames=");
+    Serial.print(F("Flowlapse: frame-count preview started. frames="));
     Serial.print(flowlapsePreviewFrameTarget);
-    Serial.print(" spacing=");
+    Serial.print(F(" spacing="));
     float pathTotalLength = getFlowlapsePathTotalLength();
     float previewSpacing = (flowlapsePreviewFrameTarget > 1)
         ? (pathTotalLength / static_cast<float>(flowlapsePreviewFrameTarget - 1))
         : 0.0f;
     Serial.println(previewSpacing, 1);
   } else {
-    Serial.println("Flowlapse: preview started.");
+    Serial.println(F("Flowlapse: preview started."));
   }
 
   resetFlowlapseAxisTierState(millis());
@@ -1229,7 +1229,7 @@ void startFlowlapsePreview() {
 void startFlowlapseCapture(unsigned long now) {
   if (flowlapseWaypointCount < 2) {
     startLockoutDeniedRumbleFeedback();
-    Serial.println("Flowlapse: need at least 2 waypoints to run capture.");
+    Serial.println(F("Flowlapse: need at least 2 waypoints to run capture."));
     return;
   }
 
@@ -1257,21 +1257,21 @@ void startFlowlapseCapture(unsigned long now) {
       flowlapseFrameCountSpacingStored = encodeFlowlapseStoredLength(
           pathTotalLength / static_cast<float>(flowlapseFrameCountTarget - 1));
     }
-    Serial.print("Frame-count: ");
+    Serial.print(F("Frame-count: "));
     Serial.print(flowlapseFrameCountTarget);
-    Serial.print(" frames | spacing=");
+    Serial.print(F(" frames | spacing="));
     Serial.print(getFlowlapseFrameCountSpacing(), 1);
-    Serial.println(" units");
-    Serial.print("Flowlapse: frame-count mode active. target=");
+    Serial.println(F(" units"));
+    Serial.print(F("Flowlapse: frame-count mode active. target="));
     Serial.print(flowlapseFrameCountTarget);
-    Serial.print(" pathLength=");
+    Serial.print(F(" pathLength="));
     Serial.println(pathTotalLength, 2);
     if (FLOWLAPSE_LOOP_CAPTURE || FLOWLAPSE_PING_PONG_LOOP) {
-      Serial.println("Flowlapse: loop/ping-pong disabled while frame-count mode is active.");
+      Serial.println(F("Flowlapse: loop/ping-pong disabled while frame-count mode is active."));
     }
   }
 
-  Serial.println("Flowlapse: capture run started.");
+  Serial.println(F("Flowlapse: capture run started."));
 }
 
 void enterDroneMode() {
@@ -1281,9 +1281,9 @@ void enterDroneMode() {
   resetFlowlapseSession(true);
   droneMode = true;
   droneLastActivityMs = millis();
-  Serial.println("DRONE MODE ACTIVATED - timelapse/bounce locked out");
-  Serial.println("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L1+R1=wipe, L2+R2=undo last.");
-  Serial.println("Flowlapse: START+SELECT+TRIANGLE toggles frame-count preview/capture mode.");
+  Serial.println(F("DRONE MODE ACTIVATED - timelapse/bounce locked out"));
+  Serial.println(F("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L1+R1=wipe, L2+R2=undo last."));
+  Serial.println(F("Flowlapse: START+SELECT+TRIANGLE toggles frame-count preview/capture mode."));
   startDroneModeEnterRumbleFeedback();
 }
 
@@ -1295,7 +1295,7 @@ void exitDroneMode() {
   resetFlowlapseSession(true);
   droneLastActivityMs = 0;
   stopAllMotors();
-  Serial.println("DRONE MODE DEACTIVATED");
+  Serial.println(F("DRONE MODE DEACTIVATED"));
   startDroneModeExitRumbleFeedback();
 }
 
@@ -1303,7 +1303,7 @@ void logDroneAxisStateIfChanged(bool current, uint8_t axisMask, const char* axis
   bool last = isPackedStateSet(droneAxisLastActiveFlags, axisMask);
   if (current != last) {
     if (DRONE_SERIAL_LOG_ENABLED) {
-      Serial.print("Drone axis | ");
+      Serial.print(F("Drone axis | "));
       Serial.print(axisName);
       Serial.println(current ? " MOVING" : " STOPPED");
     }
@@ -1317,9 +1317,9 @@ void logDroneSpeedModifierStateIfChanged() {
 
   if (precisionModeActive != lastDronePrecisionModeActive || boostModeActive != lastDroneBoostModeActive) {
     if (DRONE_SERIAL_LOG_ENABLED) {
-      Serial.print("Drone speed modifier | precision=");
+      Serial.print(F("Drone speed modifier | precision="));
       Serial.print(precisionModeActive ? "ON" : "OFF");
-      Serial.print(" boost=");
+      Serial.print(F(" boost="));
       Serial.println(boostModeActive ? "ON" : "OFF");
     }
     lastDronePrecisionModeActive = precisionModeActive;
