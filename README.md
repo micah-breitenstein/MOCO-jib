@@ -156,6 +156,7 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 - Control flow:
 	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints); controller rumbles once per recorded waypoint as a count confirmation
 	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
+	- **START + SELECT + TRIANGLE**: toggle frame-count mode at runtime (no recompile needed); this changes whether preview/capture use equal-distance frame stops or normal waypoint stepping
 	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward (`current/total` waypoint index prints to Serial)
 	- **SELECT + D-pad UP/DOWN** (Drone Mode) increases/decreases Flowlapse dwell by 250 ms per press (0 to 5000 ms)
 	- Dwell adjustment rumble encodes current dwell in 250 ms steps (e.g., `1000 ms` = 4 pulses); `0 ms` plays a double pulse (disabled)
@@ -167,11 +168,22 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 - Capture behavior:
 	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
 	- Move slice uses `stepDist` (same move-duration concept as normal timelapse)
+	- Segment motion uses smooth ease-in/ease-out timing (slow start/end, faster mid-segment) when `FLOWLAPSE_EASE_IN_OUT_ENABLED = true`
+	- `FLOWLAPSE_EASE_STRENGTH` blends easing intensity (`0.0` ≈ linear, `1.0` = strong easing)
+	- With `FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED = true`, curved capture uses arc-length-based sampling for more path-even spatial progression
+	- With `FLOWLAPSE_FRAME_COUNT_MODE_ENABLED = true`, capture places stops at equal path distances and takes exactly `FLOWLAPSE_FRAME_COUNT_TARGET` photos (including first and last stop)
+	- The compile-time `FLOWLAPSE_FRAME_COUNT_MODE_ENABLED` value is now just the boot default; you can toggle the live mode from the controller with **START + SELECT + TRIANGLE**
+	- Preview also follows the actual evenly spaced frame-count stops when frame-count mode is enabled, rather than only previewing recorded waypoints
+	- On capture start in frame-count mode, Serial logs the computed plan, e.g. `Frame-count: 48 frames | spacing=12.4 units`
+	- Frame-count completion feedback: Serial prints `Frame-count capture complete (N frames) — mode exited` and plays a distinct long+short rumble pulse
+	- While frame-count mode is active, loop modes are explicitly disabled for the run (`FLOWLAPSE_LOOP_CAPTURE` and `FLOWLAPSE_PING_PONG_LOOP` are ignored with Serial notice)
 	- Motion is interpolated per-axis between recorded waypoints over repeated frame cycles
 	- With `FLOWLAPSE_CURVED_PATH_ENABLED = true`, capture move phase follows a smooth Catmull-Rom curved path through waypoints (fallback to linear path when fewer than 3 waypoints)
 	- Optional dwell/settle pause before each trigger uses `flowlapseDwellMs` (controller-adjustable in Drone Mode)
 	- Serial capture progress logs include an estimated remaining time (`eta=Ns`)
 	- Set `FLOWLAPSE_LOOP_CAPTURE = true` to auto-restart capture from waypoint 0 after each full pass (default `false`)
+	- Set `FLOWLAPSE_PING_PONG_LOOP = true` to continuously reverse direction at path ends (forward/backward loop)
+	- Set `FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE = true` to auto-return to waypoint 1 after non-loop capture completes
 - While waiting in READY_FOR_PREVIEW or READY_FOR_CAPTURE, focus axis (Triangle/Cross/Square/Circle) stays fully responsive
 - Safety behavior:
 	- Playback speed is capped conservatively (no aggressive instant max-speed jumps)
@@ -231,16 +243,34 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
 	- `FLOWLAPSE_LOOP_CAPTURE` (currently `false`) — set `true` to loop capture continuously from start after each pass
+	- `FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS` (currently `90`) — waypoint-confirm rumble on-time
+	- `FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS` (currently `180`) — waypoint-confirm rumble total pulse window
+	- `FLOWLAPSE_WAYPOINT_RUMBLE_PULSES` (currently `1`) — waypoint-confirm pulse count
+	- `FLOWLAPSE_PREVIEW_POINT_HOLD_MS` (currently `700`) — hold duration at each preview waypoint
+	- `FLOWLAPSE_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
+	- `FLOWLAPSE_TIER_RAMP_INTERVAL_MS` (currently `450`)
+	- `FLOWLAPSE_AXIS_STOP_TOLERANCE` (currently `1.0`) — target-reached tolerance band
+	- `FLOWLAPSE_AXIS_MED_ERROR` / `FLOWLAPSE_AXIS_HIGH_ERROR` (currently `4.0` / `12.0`) — error bands for tier selection
+	- `FLOWLAPSE_MIN_WAYPOINT_SEPARATION` (currently `2.5`) — minimum spacing between recorded waypoints
+	- `FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC` / `FLOWLAPSE_MED_RATE_UNITS_PER_SEC` / `FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC` (currently `14` / `10` / `18`) — open-loop motion model rates
+	- `FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS` (currently `2000`) — progress/ETA serial print cadence
 	- `FLOWLAPSE_CURVED_PATH_ENABLED` (currently `true`) — enables smooth curved interpolation during capture move phase
 	- `FLOWLAPSE_WAYPOINT_DWELL_MS` (currently `0`) — boot default dwell in ms before each trigger
 	- `FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS` (currently `250`) — controller dwell step size
 	- `FLOWLAPSE_DWELL_MAX_MS` (currently `5000`) — controller dwell upper cap
 	- `FLOWLAPSE_PREVIEW_SPEED_SCALE` (currently `0.70`) — preview-only motion speed multiplier
 	- `FLOWLAPSE_L3_RESET_HOLD_MS` (currently `1500`) — L3 hold duration for quick reset/re-arm
-	- `FLOWLAPSE_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
-	- `FLOWLAPSE_TIER_RAMP_INTERVAL_MS` (currently `450`)
-	- `FLOWLAPSE_AXIS_MED_ERROR` and `FLOWLAPSE_AXIS_HIGH_ERROR` (error bands for tier selection)
-	- `FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC` / `FLOWLAPSE_MED_RATE_UNITS_PER_SEC` / `FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC` (currently `14` / `10` / `18`, open-loop motion model rates)
+	- `FLOWLAPSE_EASE_IN_OUT_ENABLED` (currently `true`) — applies smooth ease-in/ease-out timing to each capture segment
+	- `FLOWLAPSE_EASE_STRENGTH` (currently `1.0`) — easing blend (`0.0` linear to `1.0` strong easing)
+	- `FLOWLAPSE_PING_PONG_LOOP` (currently `false`) — reverses direction automatically at each path edge
+	- `FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE` (currently `false`) — auto-return to waypoint 1 after a non-loop run
+	- `FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED` (currently `true`) — enables arc-length reparameterization in curved capture segments
+	- `FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET` (currently `FLOWLAPSE_ARC_LENGTH_QUALITY_MED`) — simple quality selector (`LOW`, `MED`, `HIGH`)
+	- `FLOWLAPSE_ARC_LENGTH_TABLE_STEPS` (currently `16`) — auto-derived from preset (`LOW=8`, `MED=16`, `HIGH=24`)
+	- Preset intent: **Low = faster/lighter**, **Med = balanced**, **High = smoothest/heaviest**
+	- `FLOWLAPSE_FRAME_COUNT_MODE_ENABLED` (currently `false`) — when enabled, capture progression uses equal-distance frame stops
+	- `FLOWLAPSE_FRAME_COUNT_TARGET` (currently `48`) — total number of capture stops/frames in frame-count mode
+	- `FLOWLAPSE_FRAMECOUNT_AUTO_EXIT` (currently `true`) — exits frame-count mode after completion (set `false` to remain armed for rerun)
 
 Quick tuning guide:
 
@@ -249,6 +279,8 @@ Quick tuning guide:
 - If controls feel sluggish, decrease that axis `DRONE_*_EXPO_PERCENT` or reduce deadband on that axis
 - If an axis is too aggressive at full stick, lower that axis `DRONE_*_MAX_SPEED_TIER`
 - On boot, Serial prints expo/deadband/max-tier/modifier/threshold/idle-timeout/log-flag summaries so you can confirm the active profile
+- On boot, Serial prints a compact Flowlapse mode summary line, e.g. `Flowlapse summary | ease=Y strength=1.00 loop=N frame=N fexit=Y arc=Y ping-pong=N return-home=N`
+	- Field mapping: `ease` → `FLOWLAPSE_EASE_IN_OUT_ENABLED`, `strength` → `FLOWLAPSE_EASE_STRENGTH`, `loop` → `FLOWLAPSE_LOOP_CAPTURE`, `frame` → `FLOWLAPSE_FRAME_COUNT_MODE_ENABLED`, `fexit` → `FLOWLAPSE_FRAMECOUNT_AUTO_EXIT`, `arc` → `FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED`, `ping-pong` → `FLOWLAPSE_PING_PONG_LOOP`, `return-home` → `FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE`
 - On boot, Serial also prints DIP axis reversal state for all 5 axes: `Boot axis reversal | swing=N pan=N lift=N tilt=N focus=N` (`Y` = reversed, `N` = normal)
 - When `DRONE_SERIAL_LOG_ENABLED = true`, the Mega prints edge-triggered events: per-axis start/stop movement and L2/R2 modifier state changes
 

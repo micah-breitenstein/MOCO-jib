@@ -3237,90 +3237,90 @@ void printDroneTuningProfile() {
   Serial.print(F("Drone tuning | serial log enabled="));
   Serial.println(DRONE_SERIAL_LOG_ENABLED ? "Y" : "N");
 
-  Serial.print("Flowlapse tuning | max points=");
+  Serial.print(F("Flowlapse tuning | max points="));
   Serial.println(FLOWLAPSE_MAX_WAYPOINTS);
 
-  Serial.print("Flowlapse tuning | min waypoint separation=");
+  Serial.print(F("Flowlapse tuning | min waypoint separation="));
   Serial.println(FLOWLAPSE_MIN_WAYPOINT_SEPARATION);
 
-  Serial.print("Flowlapse tuning | preview speed scale=");
+  Serial.print(F("Flowlapse tuning | preview speed scale="));
   Serial.println(FLOWLAPSE_PREVIEW_SPEED_SCALE, 2);
 
-  Serial.print("Flowlapse tuning | max speed tier=");
+  Serial.print(F("Flowlapse tuning | max speed tier="));
   Serial.println(FLOWLAPSE_MAX_SPEED_TIER);
 
-  Serial.print("Flowlapse tuning | ramp interval ms=");
+  Serial.print(F("Flowlapse tuning | ramp interval ms="));
   Serial.println(FLOWLAPSE_TIER_RAMP_INTERVAL_MS);
 
-  Serial.print("Flowlapse tuning | rates manual/med/high=");
+  Serial.print(F("Flowlapse tuning | rates manual/med/high="));
   Serial.print(FLOWLAPSE_MANUAL_TRACK_RATE_UNITS_PER_SEC);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.print(FLOWLAPSE_MED_RATE_UNITS_PER_SEC);
-  Serial.print("/");
+  Serial.print(F("/"));
   Serial.println(FLOWLAPSE_HIGH_RATE_UNITS_PER_SEC);
 
-  Serial.print("Flowlapse tuning | capture progress log ms=");
+  Serial.print(F("Flowlapse tuning | capture progress log ms="));
   Serial.println(FLOWLAPSE_CAPTURE_PROGRESS_LOG_MS);
 
-  Serial.print("Flowlapse tuning | curved path mode=");
+  Serial.print(F("Flowlapse tuning | curved path mode="));
   Serial.println(FLOWLAPSE_CURVED_PATH_ENABLED ? "enabled" : "disabled");
 
-  Serial.print("Flowlapse tuning | ease in/out=");
+  Serial.print(F("Flowlapse tuning | ease in/out="));
   Serial.println(FLOWLAPSE_EASE_IN_OUT_ENABLED ? "enabled" : "disabled");
 
-  Serial.print("Flowlapse tuning | ease strength=");
+  Serial.print(F("Flowlapse tuning | ease strength="));
   Serial.println(clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH), 2);
 
-  Serial.print("Flowlapse tuning | ping-pong loop=");
+  Serial.print(F("Flowlapse tuning | ping-pong loop="));
   Serial.println(FLOWLAPSE_PING_PONG_LOOP ? "enabled" : "disabled");
 
-  Serial.print("Flowlapse tuning | return-to-waypoint-1 on complete=");
+  Serial.print(F("Flowlapse tuning | return-to-waypoint-1 on complete="));
   Serial.println(FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE ? "enabled" : "disabled");
 
-  Serial.print("Flowlapse tuning | arc-length sampling=");
+  Serial.print(F("Flowlapse tuning | arc-length sampling="));
   Serial.println(FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED ? "enabled" : "disabled");
 
-  Serial.print("Flowlapse tuning | arc-length quality preset=");
+  Serial.print(F("Flowlapse tuning | arc-length quality preset="));
   if (FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET == FLOWLAPSE_ARC_LENGTH_QUALITY_LOW) {
-    Serial.println("low");
+    Serial.println(F("low"));
   } else if (FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET == FLOWLAPSE_ARC_LENGTH_QUALITY_HIGH) {
-    Serial.println("high");
+    Serial.println(F("high"));
   } else {
-    Serial.println("med");
+    Serial.println(F("med"));
   }
 
-  Serial.print("Flowlapse tuning | arc-length LUT steps=");
+  Serial.print(F("Flowlapse tuning | arc-length LUT steps="));
   Serial.println(FLOWLAPSE_ARC_LENGTH_TABLE_STEPS);
 
-  Serial.print("Flowlapse tuning | frame-count mode=");
+  Serial.print(F("Flowlapse tuning | frame-count mode="));
   Serial.println(flowlapseFrameCountModeEnabled ? "enabled" : "disabled");
 
-  Serial.print("Flowlapse tuning | frame-count target=");
+  Serial.print(F("Flowlapse tuning | frame-count target="));
   Serial.println(FLOWLAPSE_FRAME_COUNT_TARGET);
 
-  Serial.print("Flowlapse tuning | frame-count auto-exit=");
+  Serial.print(F("Flowlapse tuning | frame-count auto-exit="));
   Serial.println(FLOWLAPSE_FRAMECOUNT_AUTO_EXIT ? "enabled" : "disabled");
 
-  Serial.print("Flowlapse summary | ease=");
+  Serial.print(F("Flowlapse summary | ease="));
   Serial.print(FLOWLAPSE_EASE_IN_OUT_ENABLED ? "Y" : "N");
-  Serial.print(" strength=");
+  Serial.print(F(" strength="));
   Serial.print(clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH), 2);
-  Serial.print(" loop=");
+  Serial.print(F(" loop="));
   Serial.print(FLOWLAPSE_LOOP_CAPTURE ? "Y" : "N");
-  Serial.print(" frame=");
+  Serial.print(F(" frame="));
   Serial.print(flowlapseFrameCountModeEnabled ? "Y" : "N");
-  Serial.print(" fexit=");
+  Serial.print(F(" fexit="));
   Serial.print(FLOWLAPSE_FRAMECOUNT_AUTO_EXIT ? "Y" : "N");
-  Serial.print(" arc=");
+  Serial.print(F(" arc="));
   Serial.print(FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED ? "Y" : "N");
-  Serial.print(" ping-pong=");
+  Serial.print(F(" ping-pong="));
   Serial.print(FLOWLAPSE_PING_PONG_LOOP ? "Y" : "N");
-  Serial.print(" return-home=");
+  Serial.print(F(" return-home="));
   Serial.println(FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE ? "Y" : "N");
 
-  Serial.print("Flowlapse tuning | waypoint dwell ms=");
+  Serial.print(F("Flowlapse tuning | waypoint dwell ms="));
   if (flowlapseDwellMs == 0) {
-    Serial.println("disabled");
+    Serial.println(F("disabled"));
   } else {
     Serial.println(flowlapseDwellMs);
   }
@@ -3380,27 +3380,27 @@ void setup() {
   delay(CONTROLLER_STARTUP_DELAY_MS);
   configureController();
   detectControllerType();
-  Serial.println("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds.");
-  Serial.println("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms.");
-  Serial.println("START + SELECT + SQUARE toggles controller rumble mute.");
-  Serial.println("Drone Mode: START + SELECT + TRIANGLE toggles Flowlapse frame-count mode.");
-  Serial.println("L1 + L2 + CIRCLE replays current settings as rumble patterns.");
-  Serial.print("Boot settings: interval=");
+  Serial.println(F("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds."));
+  Serial.println(F("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms."));
+  Serial.println(F("START + SELECT + SQUARE toggles controller rumble mute."));
+  Serial.println(F("Drone Mode: START + SELECT + TRIANGLE toggles Flowlapse frame-count mode."));
+  Serial.println(F("L1 + L2 + CIRCLE replays current settings as rumble patterns."));
+  Serial.print(F("Boot settings: interval="));
   Serial.print(timelapseIntervalSeconds);
-  Serial.print("s, stepDist=");
+  Serial.print(F("s, stepDist="));
   Serial.print(stepDist);
-  Serial.println("ms");
+  Serial.println(F("ms"));
   printDroneTuningProfile();
 
-  Serial.print("Boot axis reversal | swing=");
+  Serial.print(F("Boot axis reversal | swing="));
   Serial.print(digitalRead(DIP_SWITCH_1) == HIGH ? "Y" : "N");
-  Serial.print(" pan=");
+  Serial.print(F(" pan="));
   Serial.print(digitalRead(DIP_SWITCH_2) == HIGH ? "Y" : "N");
-  Serial.print(" lift=");
+  Serial.print(F(" lift="));
   Serial.print(digitalRead(DIP_SWITCH_3) == HIGH ? "Y" : "N");
-  Serial.print(" tilt=");
+  Serial.print(F(" tilt="));
   Serial.print(digitalRead(DIP_SWITCH_4) == HIGH ? "Y" : "N");
-  Serial.print(" focus=");
+  Serial.print(F(" focus="));
   Serial.println(digitalRead(DIP_SWITCH_5) == HIGH ? "Y" : "N");
 }
 
@@ -3411,7 +3411,7 @@ void loop() {
   if (error != 0) {
     if (now - lastControllerRetryMs >= CONTROLLER_RETRY_INTERVAL_MS) {
       lastControllerRetryMs = now;
-      Serial.println("Controller init failed. Retrying config...");
+      Serial.println(F("Controller init failed. Retrying config..."));
       configureController();
       if (error == 0) {
         detectControllerType();
@@ -3427,7 +3427,7 @@ void loop() {
   const bool isDualShockType = (controllerType == 1 || controllerType == 3);
   if (!isDualShockType) {
     if (!unsupportedControllerWarningShown) {
-      Serial.print("Unsupported controller type: ");
+      Serial.print(F("Unsupported controller type: "));
       Serial.println(controllerType);
       unsupportedControllerWarningShown = true;
     }
