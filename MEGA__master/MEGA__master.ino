@@ -1330,7 +1330,7 @@ void logDroneSpeedModifierStateIfChanged() {
 void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t& modeState) {
   if (ps2x.Button(PSB_SELECT) && ps2x.Button(buttonCode)) {
     if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
-      Serial.print("SOLO press: ");
+      Serial.print(F("SOLO press: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
     setDirectionalOutput(isReversed, normalPin, reversedPin, HIGH);
@@ -1338,7 +1338,7 @@ void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t norm
   }
   if (modeState == 1 && ps2x.ButtonReleased(buttonCode)) {
     if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
-      Serial.print("SOLO release: ");
+      Serial.print(F("SOLO release: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
     digitalWrite(normalPin, LOW);
@@ -1352,7 +1352,7 @@ void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8
                                     uint8_t& soloState, uint8_t motionFlagMask) {
   if (soloState == 0 && ps2x.Button(buttonCode)) {
     if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
-      Serial.print("COMBINED press: ");
+      Serial.print(F("COMBINED press: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
     setPackedState(motionFlags, motionFlagMask, true);
@@ -1361,7 +1361,7 @@ void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8
   }
   if (soloState == 0 && ps2x.ButtonReleased(buttonCode)) {
     if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
-      Serial.print("COMBINED release: ");
+      Serial.print(F("COMBINED release: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
     digitalWrite(axis1Normal, LOW);
@@ -1447,12 +1447,12 @@ void handleLiftOnly(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftRever
 
 void handleTiltTrimAxis() {
   if (liftInMotion && rightStickYvalue == STICK_MAX) {
-    Serial.println("tiltSpeedDownOnly");
+    Serial.println(F("tiltSpeedDownOnly"));
     digitalWrite(tiltSpeedDownOnly, HIGH);
     tiltStop = TILT_STOP_TRIM;
   }
   if (liftInMotion && rightStickYvalue == STICK_MIN) {
-    Serial.println("tiltSpeedUpOnly");
+    Serial.println(F("tiltSpeedUpOnly"));
     digitalWrite(tiltSpeedUpOnly, HIGH);
     tiltStop = TILT_STOP_TRIM;
   }
@@ -1585,7 +1585,7 @@ void completeFlowlapsePreview() {
   flowlapsePreviewFrameModeActive = false;
   flowlapsePreviewFrameTarget = 0;
   flowlapsePreviewFrameStopIndex = 0;
-  Serial.println("Flowlapse: preview complete. Press START to run capture.");
+  Serial.println(F("Flowlapse: preview complete. Press START to run capture."));
 }
 
 void completeFlowlapseCapture(unsigned long now) {
@@ -1593,15 +1593,15 @@ void completeFlowlapseCapture(unsigned long now) {
   digitalWrite(trigger, HIGH);
 
   if (flowlapseFrameCountModeActive && FLOWLAPSE_FRAMECOUNT_AUTO_EXIT) {
-    Serial.print("Frame-count capture complete (");
+    Serial.print(F("Frame-count capture complete ("));
     Serial.print(flowlapseFrameCountTarget);
-    Serial.println(" frames) — mode exited");
+    Serial.println(F(" frames) — mode exited"));
     startFrameCountCompleteRumbleFeedback();
     flowlapseFrameCountModeActive = false;
   } else if (flowlapseFrameCountModeActive) {
-    Serial.print("Frame-count capture complete (");
+    Serial.print(F("Frame-count capture complete ("));
     Serial.print(flowlapseFrameCountTarget);
-    Serial.println(" frames) — mode remains armed");
+    Serial.println(F(" frames) — mode remains armed"));
   }
 
   if (!flowlapseFrameCountModeActive && FLOWLAPSE_PING_PONG_LOOP && flowlapseWaypointCount >= 2) {
@@ -1618,7 +1618,7 @@ void completeFlowlapseCapture(unsigned long now) {
       flowlapseTargetWaypointIndex = 1;
     }
 
-    Serial.println("Flowlapse: ping-pong edge reached — reversing direction.");
+    Serial.println(F("Flowlapse: ping-pong edge reached — reversing direction."));
   } else if (!flowlapseFrameCountModeActive && FLOWLAPSE_LOOP_CAPTURE) {
     flowlapseCaptureAlignedToFirstWaypoint = false;
     flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
@@ -1627,7 +1627,7 @@ void completeFlowlapseCapture(unsigned long now) {
     flowlapseCaptureDirection = 1;
     flowlapseLastProgressLogMs = 0;
     resetFlowlapseAxisTierState(now);
-    Serial.println("Flowlapse: capture loop complete — restarting.");
+    Serial.println(F("Flowlapse: capture loop complete — restarting."));
   } else {
     bool shouldReturnToFirst = FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE
                             && flowlapseWaypointCount > 0
@@ -1636,7 +1636,7 @@ void completeFlowlapseCapture(unsigned long now) {
       flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
       flowlapseJogIndex = 0;
       resetFlowlapseAxisTierState(now);
-      Serial.println("Flowlapse: capture complete. Returning to waypoint 1.");
+      Serial.println(F("Flowlapse: capture complete. Returning to waypoint 1."));
     } else {
       flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
       flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
@@ -1644,7 +1644,7 @@ void completeFlowlapseCapture(unsigned long now) {
       flowlapseCaptureAlignedToFirstWaypoint = false;
       flowlapseTargetWaypointIndex = 0;
       flowlapseCaptureDirection = 1;
-      Serial.println("Flowlapse: capture complete.");
+      Serial.println(F("Flowlapse: capture complete."));
     }
   }
 }
@@ -1684,9 +1684,9 @@ void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
     if (isFlowlapseTargetReached(previewTarget)) {
       stopAllMotors();
       flowlapsePreviewHoldUntilMs = now + FLOWLAPSE_PREVIEW_POINT_HOLD_MS;
-      Serial.print("Flowlapse preview reached frame stop ");
+      Serial.print(F("Flowlapse preview reached frame stop "));
       Serial.print(static_cast<unsigned long>(flowlapsePreviewFrameStopIndex + 1));
-      Serial.print("/");
+      Serial.print(F("/"));
       Serial.println(flowlapsePreviewFrameTarget);
     }
     return;
@@ -1718,7 +1718,7 @@ void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
   if (isFlowlapseTargetReached(target)) {
     stopAllMotors();
     flowlapsePreviewHoldUntilMs = now + FLOWLAPSE_PREVIEW_POINT_HOLD_MS;
-    Serial.print("Flowlapse preview reached waypoint ");
+    Serial.print(F("Flowlapse preview reached waypoint "));
     Serial.println(flowlapseTargetWaypointIndex + 1);
   }
 }
@@ -1743,7 +1743,7 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
       flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
       flowlapseCapturePhaseStartMs = now;
       flowlapseTargetWaypointIndex = 1;
-      Serial.println("Flowlapse: aligned to first waypoint. Capture triggering started.");
+      Serial.println(F("Flowlapse: aligned to first waypoint. Capture triggering started."));
     }
     return;
   }
@@ -1866,14 +1866,14 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
 void startFlowlapseUndoLastWaypoint(unsigned long now) {
   if (flowlapseWaypointCount == 0) {
     startLockoutDeniedRumbleFeedback();
-    Serial.println("Flowlapse: no waypoint to undo.");
+    Serial.println(F("Flowlapse: no waypoint to undo."));
     return;
   }
 
   flowlapseState = FLOWLAPSE_STATE_UNDO_RUNNING;
   flowlapseTargetWaypointIndex = static_cast<uint8_t>(flowlapseWaypointCount - 1);
   resetFlowlapseAxisTierState(now);
-  Serial.print("Flowlapse: undo moving to waypoint ");
+  Serial.print(F("Flowlapse: undo moving to waypoint "));
   Serial.println(flowlapseTargetWaypointIndex + 1);
 }
 
@@ -1893,9 +1893,9 @@ void handleFlowlapseUndoStep(unsigned long now, float deltaSeconds) {
 
   stopAllMotors();
   flowlapseState = FLOWLAPSE_STATE_UNDO_READY_DELETE;
-  Serial.print("Flowlapse: reached last waypoint ");
+  Serial.print(F("Flowlapse: reached last waypoint "));
   Serial.print(flowlapseTargetWaypointIndex + 1);
-  Serial.println(". Press L2+R2 again to delete it.");
+  Serial.println(F(". Press L2+R2 again to delete it."));
 }
 
 void adjustFlowlapseDwell(long delta) {
@@ -1904,15 +1904,15 @@ void adjustFlowlapseDwell(long delta) {
   if (newDwell > static_cast<long>(FLOWLAPSE_DWELL_MAX_MS)) newDwell = static_cast<long>(FLOWLAPSE_DWELL_MAX_MS);
   if (static_cast<unsigned long>(newDwell) == flowlapseDwellMs) {
     startLimitReachedRumbleFeedback();
-    Serial.println("Flowlapse dwell limit reached.");
+    Serial.println(F("Flowlapse dwell limit reached."));
     return;
   }
   flowlapseDwellMs = static_cast<unsigned long>(newDwell);
-  Serial.print("Flowlapse dwell (ms) = ");
+  Serial.print(F("Flowlapse dwell (ms) = "));
   Serial.println(flowlapseDwellMs);
   if (flowlapseDwellMs == 0) {
     startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-    Serial.println("Flowlapse dwell disabled (0 ms).");
+    Serial.println(F("Flowlapse dwell disabled (0 ms)."));
     return;
   }
 
@@ -1933,16 +1933,16 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
 
     if (!toggleAllowed) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: frame-count toggle blocked while preview/capture/undo/jog is running.");
+      Serial.println(F("Flowlapse: frame-count toggle blocked while preview/capture/undo/jog is running."));
     } else {
       flowlapseFrameCountModeEnabled = !flowlapseFrameCountModeEnabled;
       startFeedbackRumble(flowlapseFrameCountModeEnabled ? 2 : 1,
                           FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS,
                           FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-      Serial.print("Flowlapse: frame-count mode ");
+      Serial.print(F("Flowlapse: frame-count mode "));
       Serial.println(flowlapseFrameCountModeEnabled ? "enabled via controller toggle." : "disabled via controller toggle.");
       if (flowlapseFrameCountModeEnabled) {
-        Serial.print("Flowlapse: target frames = ");
+        Serial.print(F("Flowlapse: target frames = "));
         Serial.println(FLOWLAPSE_FRAME_COUNT_TARGET);
       }
     }
@@ -1962,12 +1962,12 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_JOG_RUNNING) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: cannot wipe while preview/capture/undo/jog is running.");
+      Serial.println(F("Flowlapse: cannot wipe while preview/capture/undo/jog is running."));
     } else {
       resetFlowlapseSession(false);
       stopAllMotors();
       startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-      Serial.println("Flowlapse: full course wiped. Recording re-armed.");
+      Serial.println(F("Flowlapse: full course wiped. Recording re-armed."));
     }
 
     droneLastActivityMs = now;
@@ -1980,10 +1980,10 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: cannot undo while preview/capture/undo is running.");
+      Serial.println(F("Flowlapse: cannot undo while preview/capture/undo is running."));
     } else if (flowlapseWaypointCount == 0) {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: no waypoint to undo.");
+      Serial.println(F("Flowlapse: no waypoint to undo."));
     } else if (flowlapseState == FLOWLAPSE_STATE_UNDO_READY_DELETE) {
       flowlapseWaypointCount--;
       invalidateFlowlapseArcLengthLut();
@@ -1991,14 +1991,14 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
 
       if (flowlapseWaypointCount < 2) {
         flowlapseState = FLOWLAPSE_STATE_RECORDING;
-        Serial.print("Flowlapse: last waypoint deleted. Remaining ");
+        Serial.print(F("Flowlapse: last waypoint deleted. Remaining "));
         Serial.print(flowlapseWaypointCount);
-        Serial.println(" waypoint(s); keep recording.");
+        Serial.println(F(" waypoint(s); keep recording."));
       } else {
         flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
-        Serial.print("Flowlapse: last waypoint deleted. Remaining ");
+        Serial.print(F("Flowlapse: last waypoint deleted. Remaining "));
         Serial.print(flowlapseWaypointCount);
-        Serial.println(" waypoints; run SELECT preview again.");
+        Serial.println(F(" waypoints; run SELECT preview again."));
       }
     } else {
       startFlowlapseUndoLastWaypoint(now);
@@ -2035,7 +2035,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       resetFlowlapseSession(false);
       stopAllMotors();
       startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-      Serial.println("Flowlapse: L3 hold reset — course cleared, recording re-armed.");
+      Serial.println(F("Flowlapse: L3 hold reset — course cleared, recording re-armed."));
       flowlapseL3HoldActive = false;
       flowlapseL3HoldStartMs = 0;
       suppressDroneNextL3Release = true;
@@ -2062,15 +2062,15 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       flowlapseJogIndex++;
       flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
       resetFlowlapseAxisTierState(now);
-      Serial.print("Flowlapse: jog -> waypoint ");
+      Serial.print(F("Flowlapse: jog -> waypoint "));
       Serial.println(flowlapseJogIndex + 1);
-      Serial.print("Flowlapse: jog target ");
+      Serial.print(F("Flowlapse: jog target "));
       Serial.print(flowlapseJogIndex + 1);
-      Serial.print("/");
+      Serial.print(F("/"));
       Serial.println(flowlapseWaypointCount);
     } else {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: already at last waypoint.");
+      Serial.println(F("Flowlapse: already at last waypoint."));
     }
     droneLastActivityMs = now;
   }
@@ -2079,15 +2079,15 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       flowlapseJogIndex--;
       flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
       resetFlowlapseAxisTierState(now);
-      Serial.print("Flowlapse: jog -> waypoint ");
+      Serial.print(F("Flowlapse: jog -> waypoint "));
       Serial.println(flowlapseJogIndex + 1);
-      Serial.print("Flowlapse: jog target ");
+      Serial.print(F("Flowlapse: jog target "));
       Serial.print(flowlapseJogIndex + 1);
-      Serial.print("/");
+      Serial.print(F("/"));
       Serial.println(flowlapseWaypointCount);
     } else {
       startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: already at first waypoint.");
+      Serial.println(F("Flowlapse: already at first waypoint."));
     }
     droneLastActivityMs = now;
   }
@@ -2099,12 +2099,12 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
     if (flowlapseState == FLOWLAPSE_STATE_RECORDING) {
       if (flowlapseWaypointCount < 2) {
         startLockoutDeniedRumbleFeedback();
-        Serial.println("Flowlapse: record at least 2 waypoints before stopping record.");
+        Serial.println(F("Flowlapse: record at least 2 waypoints before stopping record."));
       } else {
         flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
         stopAllMotors();
         startFeedbackRumble(flowlapseWaypointCount, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-        Serial.println("Flowlapse: recording stopped. Press SELECT again for preview.");
+        Serial.println(F("Flowlapse: recording stopped. Press SELECT again for preview."));
       }
       droneLastActivityMs = now;
     } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
