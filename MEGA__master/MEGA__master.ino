@@ -19,13 +19,13 @@ const uint8_t swingLeft = 24;
 const uint8_t swingRight = 25;
 const uint8_t swingSpeedUp = 26;
 const uint8_t swingSpeedDown = 27;
-int swingSoloMode = 0;
+uint8_t swingSoloMode = 0;
 
 const uint8_t panLeft = 46;
 const uint8_t panRight = 48;
 const uint8_t panSpeedUp = 50;
 const uint8_t panSpeedDown = 52;
-int panStop = 0;
+uint8_t panStop = 0;
 
 const uint8_t panSpeedUpOnly = 29; //lower
 const uint8_t panSpeedDownOnly = 45; //higher
@@ -34,7 +34,7 @@ const uint8_t liftDown = 30;
 const uint8_t liftUp = 31;
 const uint8_t liftSpeedUp = 32;
 const uint8_t liftSpeedDown = 33;
-int liftSoloMode = 0;
+uint8_t liftSoloMode = 0;
 
 const uint8_t tiltSpeedUpOnly = 42; //lower val
 const uint8_t tiltSpeedDownOnly = 44; //higher val
@@ -43,15 +43,15 @@ const uint8_t tiltDown = 34;
 const uint8_t tiltUp = 36;
 const uint8_t tiltSpeedUp = 38;
 const uint8_t tiltSpeedDown = 40;
-int tiltStop = 0;
+uint8_t tiltStop = 0;
 
 const uint8_t focusLeft = 47;
 const uint8_t focusRight = 49;
 const uint8_t focusSpeedUp = 51;
 const uint8_t focusSpeedDown = 53;
 
-bool swingInMotion = false;
-bool liftInMotion = false;
+uint8_t motionFlags = 0;
+uint8_t droneAxisLastActiveFlags = 0;
 
 int leftStickXvalue;
 int leftStickYvalue;
@@ -59,13 +59,13 @@ int rightStickXvalue;
 int rightStickYvalue;
 
 // Timelapse Variables
-int timelapseMode = 0;
-int timelapseIntervalSeconds = 15;
+uint8_t timelapseMode = 0;
+uint8_t timelapseIntervalSeconds = 15;
 unsigned long timelapseIntervalMs;
 int stepDist = 100;
 const uint8_t trigger = 28;
 
-enum TimelapsePhase {
+enum TimelapsePhase : uint8_t {
   TIMELAPSE_PHASE_IDLE,
   TIMELAPSE_PHASE_TRIGGER_LOW,
   TIMELAPSE_PHASE_TRIGGER_HIGH,
@@ -75,29 +75,37 @@ enum TimelapsePhase {
 TimelapsePhase timelapsePhase = TIMELAPSE_PHASE_IDLE;
 unsigned long timelapsePhaseStartMs = 0;
 
-enum IntervalRumblePhase {
+enum IntervalRumblePhase : uint8_t {
   INTERVAL_RUMBLE_IDLE,
   INTERVAL_RUMBLE_LONG_ACTIVE,
   INTERVAL_RUMBLE_SHORT_ACTIVE,
   INTERVAL_RUMBLE_SHORT_PAUSE
 };
 
-enum StepDistRumblePhase {
+enum StepDistRumblePhase : uint8_t {
   STEP_DIST_RUMBLE_IDLE,
   STEP_DIST_RUMBLE_LONG_ACTIVE,
   STEP_DIST_RUMBLE_LONG_PAUSE
 };
 
-enum PendingRumblePattern {
+enum PendingRumblePattern : uint8_t {
   PENDING_RUMBLE_NONE,
   PENDING_RUMBLE_INTERVAL,
   PENDING_RUMBLE_STEP_DIST
 };
 
-enum FeedbackRumblePhase {
+enum FeedbackRumblePhase : uint8_t {
   FEEDBACK_RUMBLE_IDLE,
   FEEDBACK_RUMBLE_ON,
   FEEDBACK_RUMBLE_PAUSE
+};
+
+enum FrameCountCompleteRumblePhase : uint8_t {
+  FRAMECOUNT_COMPLETE_RUMBLE_IDLE,
+  FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON,
+  FRAMECOUNT_COMPLETE_RUMBLE_LONG_PAUSE,
+  FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON,
+  FRAMECOUNT_COMPLETE_RUMBLE_SHORT_PAUSE
 };
 
 IntervalRumblePhase intervalRumblePhase = INTERVAL_RUMBLE_IDLE;
@@ -115,10 +123,12 @@ unsigned long feedbackRumblePhaseStartMs = 0;
 uint8_t feedbackRumblePulsesRemaining = 0;
 unsigned long feedbackRumbleOnMs = 0;
 unsigned long feedbackRumbleTotalMs = 0;
+FrameCountCompleteRumblePhase frameCountCompleteRumblePhase = FRAMECOUNT_COMPLETE_RUMBLE_IDLE;
+unsigned long frameCountCompleteRumblePhaseStartMs = 0;
 
 // Motion Control Variables
-int bounce = 0;
-int stage = 0;
+uint8_t bounce = 0;
+uint8_t stage = 0;
 unsigned long bouncePhaseStartMs = 0;
 unsigned long bounceMoveDurationMs = 0;
 
@@ -134,12 +144,12 @@ constexpr int STICK_CENTER = 128;
 constexpr int STICK_MAX = 255;
 constexpr int STICK_MODE_LOW_THRESHOLD = 123;
 constexpr int STICK_MODE_HIGH_THRESHOLD = 133;
-constexpr int PAN_STOP_NONE = 0;
-constexpr int PAN_STOP_ACTIVE = 1;
-constexpr int PAN_STOP_TRIM = 2;
-constexpr int TILT_STOP_NONE = 0;
-constexpr int TILT_STOP_ACTIVE = 1;
-constexpr int TILT_STOP_TRIM = 2;
+constexpr uint8_t PAN_STOP_NONE = 0;
+constexpr uint8_t PAN_STOP_ACTIVE = 1;
+constexpr uint8_t PAN_STOP_TRIM = 2;
+constexpr uint8_t TILT_STOP_NONE = 0;
+constexpr uint8_t TILT_STOP_ACTIVE = 1;
+constexpr uint8_t TILT_STOP_TRIM = 2;
 constexpr int TIMELAPSE_INTERVAL_MIN_SECONDS = 1;
 constexpr int TIMELAPSE_INTERVAL_MAX_SECONDS = 99;
 constexpr int TIMELAPSE_STEP_DIST_MIN_MS = 20;
@@ -162,6 +172,10 @@ constexpr uint8_t EMERGENCY_RELEASE_RUMBLE_PULSES = 1;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_ON_MS = 200;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_TOTAL_MS = 350;
 constexpr uint8_t L3_ENDPOINT_RUMBLE_PULSES = 2;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON_MS = 260;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_LONG_TOTAL_MS = 420;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON_MS = 100;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_TOTAL_MS = 220;
 constexpr unsigned long BOUNCE_MIN_MOVE_DURATION_MS = 150;
 
 // Drone mode constants
@@ -218,6 +232,25 @@ constexpr unsigned long FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS = 250UL; // step siz
 constexpr unsigned long FLOWLAPSE_DWELL_MAX_MS = 5000UL; // upper cap for controller adjustment
 constexpr float FLOWLAPSE_PREVIEW_SPEED_SCALE = 0.70f; // 1.0 = same as capture, <1 slower preview
 constexpr unsigned long FLOWLAPSE_L3_RESET_HOLD_MS = 1500UL; // hold L3 to clear and re-arm recording quickly
+constexpr bool FLOWLAPSE_EASE_IN_OUT_ENABLED = true; // smooth segment acceleration/deceleration during capture motion
+constexpr float FLOWLAPSE_EASE_STRENGTH = 1.0f; // 0.0 = linear, 1.0 = full easing
+constexpr bool FLOWLAPSE_PING_PONG_LOOP = false; // alternate forward/backward segments continuously
+constexpr bool FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE = false; // auto-return to waypoint 1 when non-loop capture finishes
+constexpr bool FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED = true; // reparameterize curved segments for path-aware spacing
+enum FlowlapseArcLengthQualityPreset : uint8_t {
+  FLOWLAPSE_ARC_LENGTH_QUALITY_LOW,
+  FLOWLAPSE_ARC_LENGTH_QUALITY_MED,
+  FLOWLAPSE_ARC_LENGTH_QUALITY_HIGH
+};
+constexpr FlowlapseArcLengthQualityPreset FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET = FLOWLAPSE_ARC_LENGTH_QUALITY_MED; // low=8, med=16, high=24
+constexpr uint8_t FLOWLAPSE_ARC_LENGTH_TABLE_STEPS =
+  (FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET == FLOWLAPSE_ARC_LENGTH_QUALITY_LOW) ? 8 :
+  (FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET == FLOWLAPSE_ARC_LENGTH_QUALITY_HIGH) ? 24 : 16;
+constexpr bool FLOWLAPSE_FRAME_COUNT_MODE_ENABLED = false; // distribute captures by equal path distance instead of waypoint-to-waypoint
+constexpr uint16_t FLOWLAPSE_FRAME_COUNT_TARGET = 48; // total captures including first and last stop in frame-count mode
+constexpr bool FLOWLAPSE_FRAMECOUNT_AUTO_EXIT = true; // exit frame-count mode after completion when enabled
+constexpr uint16_t FLOWLAPSE_NORMALIZED_LUT_SCALE = 65535U;
+constexpr uint8_t FLOWLAPSE_LENGTH_STORAGE_SCALE = 8U; // stored path values use 1/8-unit resolution
 
 struct FlowlapseWaypoint {
   float swing;
@@ -226,7 +259,7 @@ struct FlowlapseWaypoint {
   float tilt;
 };
 
-enum FlowlapseState {
+enum FlowlapseState : uint8_t {
   FLOWLAPSE_STATE_RECORDING,
   FLOWLAPSE_STATE_READY_FOR_PREVIEW,
   FLOWLAPSE_STATE_PREVIEW_RUNNING,
@@ -237,42 +270,146 @@ enum FlowlapseState {
   FLOWLAPSE_STATE_JOG_RUNNING
 };
 
-enum FlowlapseCapturePhase {
+enum FlowlapseCapturePhase : uint8_t {
   FLOWLAPSE_CAPTURE_TRIGGER_LOW,
   FLOWLAPSE_CAPTURE_TRIGGER_HIGH,
   FLOWLAPSE_CAPTURE_MOVE_ACTIVE,
   FLOWLAPSE_CAPTURE_DWELL
 };
 
-bool isSwingReversed = false;
-bool isPanReversed = false;
-bool isLiftReversed = false;
-bool isTiltReversed = false;
-bool isFocusReversed = false;
-bool droneMode = false;
-bool lastIntervalAdjustUpComboActive = false;
-bool lastIntervalAdjustDownComboActive = false;
-bool lastStepDistAdjustUpComboActive = false;
-bool lastStepDistAdjustDownComboActive = false;
-bool lastEmergencyStopComboActive = false;
-bool lastRumbleMuteToggleComboActive = false;
-bool rumbleMuted = false;
-bool suppressNextSelectRelease = false;
-bool suppressNextStartRelease = false;
-bool lastSettingsReplayComboActive = false;
-bool lastDronePrecisionModeActive = false;
-bool lastDroneBoostModeActive = false;
+constexpr uint8_t MOTION_FLAG_SWING = 0x01;
+constexpr uint8_t MOTION_FLAG_LIFT = 0x02;
+constexpr uint8_t DRONE_AXIS_LAST_SWING = 0x01;
+constexpr uint8_t DRONE_AXIS_LAST_LIFT = 0x02;
+constexpr uint8_t DRONE_AXIS_LAST_PAN = 0x04;
+constexpr uint8_t DRONE_AXIS_LAST_TILT = 0x08;
+
+inline bool isPackedStateSet(uint8_t flags, uint8_t mask) {
+  return (flags & mask) != 0;
+}
+
+inline void setPackedState(uint8_t& flags, uint8_t mask, bool enabled) {
+  if (enabled) {
+    flags |= mask;
+  } else {
+    flags &= static_cast<uint8_t>(~mask);
+  }
+}
+
+struct PackedFlags {
+  uint8_t isSwingReversed : 1;
+  uint8_t isPanReversed : 1;
+  uint8_t isLiftReversed : 1;
+  uint8_t isTiltReversed : 1;
+  uint8_t isFocusReversed : 1;
+  uint8_t droneMode : 1;
+  uint8_t lastIntervalAdjustUpComboActive : 1;
+  uint8_t lastIntervalAdjustDownComboActive : 1;
+
+  uint8_t lastStepDistAdjustUpComboActive : 1;
+  uint8_t lastStepDistAdjustDownComboActive : 1;
+  uint8_t lastEmergencyStopComboActive : 1;
+  uint8_t lastRumbleMuteToggleComboActive : 1;
+  uint8_t rumbleMuted : 1;
+  uint8_t suppressNextSelectRelease : 1;
+  uint8_t suppressNextStartRelease : 1;
+  uint8_t lastSettingsReplayComboActive : 1;
+
+  uint8_t lastDronePrecisionModeActive : 1;
+  uint8_t lastDroneBoostModeActive : 1;
+  uint8_t lastFlowlapseClearComboActive : 1;
+  uint8_t lastFlowlapseDeleteLastComboActive : 1;
+  uint8_t lastFlowlapseFrameModeToggleComboActive : 1;
+  uint8_t lastDwellAdjustUpComboActive : 1;
+  uint8_t lastDwellAdjustDownComboActive : 1;
+  uint8_t suppressDroneNextSelectRelease : 1;
+
+  uint8_t suppressDroneNextStartRelease : 1;
+  uint8_t suppressDroneNextL3Release : 1;
+  uint8_t flowlapseL3HoldActive : 1;
+  uint8_t flowlapseCaptureAlignedToFirstWaypoint : 1;
+  uint8_t flowlapseArcLengthLutValid : 1;
+  uint8_t flowlapseFrameCountModeEnabled : 1;
+  uint8_t flowlapseFrameCountModeActive : 1;
+  uint8_t flowlapsePreviewFrameModeActive : 1;
+
+  uint8_t unsupportedControllerWarningShown : 1;
+  uint8_t rumbleSeparatorActive : 1;
+  uint8_t chainStepDistAfterInterval : 1;
+
+  PackedFlags()
+    : isSwingReversed(false),
+      isPanReversed(false),
+      isLiftReversed(false),
+      isTiltReversed(false),
+      isFocusReversed(false),
+      droneMode(false),
+      lastIntervalAdjustUpComboActive(false),
+      lastIntervalAdjustDownComboActive(false),
+      lastStepDistAdjustUpComboActive(false),
+      lastStepDistAdjustDownComboActive(false),
+      lastEmergencyStopComboActive(false),
+      lastRumbleMuteToggleComboActive(false),
+      rumbleMuted(false),
+      suppressNextSelectRelease(false),
+      suppressNextStartRelease(false),
+      lastSettingsReplayComboActive(false),
+      lastDronePrecisionModeActive(false),
+      lastDroneBoostModeActive(false),
+      lastFlowlapseClearComboActive(false),
+      lastFlowlapseDeleteLastComboActive(false),
+      lastFlowlapseFrameModeToggleComboActive(false),
+      lastDwellAdjustUpComboActive(false),
+      lastDwellAdjustDownComboActive(false),
+      suppressDroneNextSelectRelease(false),
+      suppressDroneNextStartRelease(false),
+      suppressDroneNextL3Release(false),
+      flowlapseL3HoldActive(false),
+      flowlapseCaptureAlignedToFirstWaypoint(false),
+      flowlapseArcLengthLutValid(false),
+      flowlapseFrameCountModeEnabled(FLOWLAPSE_FRAME_COUNT_MODE_ENABLED),
+      flowlapseFrameCountModeActive(false),
+      flowlapsePreviewFrameModeActive(false),
+      unsupportedControllerWarningShown(false),
+      rumbleSeparatorActive(false),
+      chainStepDistAfterInterval(false) {}
+};
+
+PackedFlags packedFlags;
+
+#define isSwingReversed packedFlags.isSwingReversed
+#define isPanReversed packedFlags.isPanReversed
+#define isLiftReversed packedFlags.isLiftReversed
+#define isTiltReversed packedFlags.isTiltReversed
+#define isFocusReversed packedFlags.isFocusReversed
+#define droneMode packedFlags.droneMode
+#define lastIntervalAdjustUpComboActive packedFlags.lastIntervalAdjustUpComboActive
+#define lastIntervalAdjustDownComboActive packedFlags.lastIntervalAdjustDownComboActive
+#define lastStepDistAdjustUpComboActive packedFlags.lastStepDistAdjustUpComboActive
+#define lastStepDistAdjustDownComboActive packedFlags.lastStepDistAdjustDownComboActive
+#define lastEmergencyStopComboActive packedFlags.lastEmergencyStopComboActive
+#define lastRumbleMuteToggleComboActive packedFlags.lastRumbleMuteToggleComboActive
+#define rumbleMuted packedFlags.rumbleMuted
+#define suppressNextSelectRelease packedFlags.suppressNextSelectRelease
+#define suppressNextStartRelease packedFlags.suppressNextStartRelease
+#define lastSettingsReplayComboActive packedFlags.lastSettingsReplayComboActive
+#define lastDronePrecisionModeActive packedFlags.lastDronePrecisionModeActive
+#define lastDroneBoostModeActive packedFlags.lastDroneBoostModeActive
 bool lastDroneSwingActive = false;
 bool lastDroneLiftActive = false;
 bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
-bool lastFlowlapseClearComboActive = false;
-bool lastFlowlapseDeleteLastComboActive = false;
-bool lastDwellAdjustUpComboActive = false;
-bool lastDwellAdjustDownComboActive = false;
-bool suppressDroneNextSelectRelease = false;
-bool suppressDroneNextL3Release = false;
-bool flowlapseL3HoldActive = false;
+#define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
+#define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
+#define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
+#define lastDwellAdjustUpComboActive packedFlags.lastDwellAdjustUpComboActive
+#define lastDwellAdjustDownComboActive packedFlags.lastDwellAdjustDownComboActive
+#define suppressDroneNextSelectRelease packedFlags.suppressDroneNextSelectRelease
+#define suppressDroneNextStartRelease packedFlags.suppressDroneNextStartRelease
+#define suppressDroneNextL3Release packedFlags.suppressDroneNextL3Release
+#define flowlapseL3HoldActive packedFlags.flowlapseL3HoldActive
+#define swingInMotion (isPackedStateSet(motionFlags, MOTION_FLAG_SWING))
+#define liftInMotion (isPackedStateSet(motionFlags, MOTION_FLAG_LIFT))
 unsigned long flowlapseL3HoldStartMs = 0;
 unsigned long flowlapseDwellMs = FLOWLAPSE_WAYPOINT_DWELL_MS;
 unsigned long droneLastActivityMs = 0;
@@ -286,7 +423,21 @@ unsigned long flowlapseLastUpdateMs = 0;
 unsigned long flowlapseLastProgressLogMs = 0;
 uint8_t flowlapseTargetWaypointIndex = 0;
 uint8_t flowlapseJogIndex = 0;
-bool flowlapseCaptureAlignedToFirstWaypoint = false;
+#define flowlapseCaptureAlignedToFirstWaypoint packedFlags.flowlapseCaptureAlignedToFirstWaypoint
+int8_t flowlapseCaptureDirection = 1;
+#define flowlapseArcLengthLutValid packedFlags.flowlapseArcLengthLutValid
+uint8_t flowlapseArcLengthLutSegmentBaseIndex = 255;
+uint16_t flowlapseArcLengthLutNormalized[FLOWLAPSE_ARC_LENGTH_TABLE_STEPS + 1];
+#define flowlapseFrameCountModeEnabled packedFlags.flowlapseFrameCountModeEnabled
+#define flowlapseFrameCountModeActive packedFlags.flowlapseFrameCountModeActive
+uint16_t flowlapseFrameCountTarget = 0;
+uint16_t flowlapseFrameCountCurrentStopIndex = 0;
+uint16_t flowlapseFrameCountSpacingStored = 0;
+#define flowlapsePreviewFrameModeActive packedFlags.flowlapsePreviewFrameModeActive
+uint16_t flowlapsePreviewFrameTarget = 0;
+uint16_t flowlapsePreviewFrameStopIndex = 0;
+uint16_t flowlapsePathTotalLengthStored = 0;
+uint16_t flowlapsePathSegmentCumulative[FLOWLAPSE_MAX_WAYPOINTS - 1];
 
 float flowlapseCurrentSwingPos = 0.0f;
 float flowlapseCurrentLiftPos = 0.0f;
@@ -302,9 +453,10 @@ unsigned long flowlapseLiftTierLastChangeMs = 0;
 unsigned long flowlapsePanTierLastChangeMs = 0;
 unsigned long flowlapseTiltTierLastChangeMs = 0;
 
-bool chainStepDistAfterInterval = false;
 unsigned long lastControllerRetryMs = 0;
-bool unsupportedControllerWarningShown = false;
+#define unsupportedControllerWarningShown packedFlags.unsupportedControllerWarningShown
+#define rumbleSeparatorActive packedFlags.rumbleSeparatorActive
+#define chainStepDistAfterInterval packedFlags.chainStepDistAfterInterval
 
 void configureController() {
 
@@ -459,6 +611,93 @@ float clampFlowlapse01(float value) {
   return value;
 }
 
+uint16_t encodeFlowlapseNormalizedValue(float value) {
+  float clampedValue = clampFlowlapse01(value);
+  return static_cast<uint16_t>(clampedValue * static_cast<float>(FLOWLAPSE_NORMALIZED_LUT_SCALE) + 0.5f);
+}
+
+float decodeFlowlapseNormalizedValue(uint16_t value) {
+  return static_cast<float>(value) / static_cast<float>(FLOWLAPSE_NORMALIZED_LUT_SCALE);
+}
+
+uint16_t encodeFlowlapseStoredLength(float value) {
+  if (value <= 0.0f) {
+    return 0;
+  }
+
+  float scaledValue = value * static_cast<float>(FLOWLAPSE_LENGTH_STORAGE_SCALE);
+  if (scaledValue >= 65535.0f) {
+    return 65535U;
+  }
+
+  return static_cast<uint16_t>(scaledValue + 0.5f);
+}
+
+float decodeFlowlapseStoredLength(uint16_t value) {
+  return static_cast<float>(value) / static_cast<float>(FLOWLAPSE_LENGTH_STORAGE_SCALE);
+}
+
+float getFlowlapsePathTotalLength() {
+  return decodeFlowlapseStoredLength(flowlapsePathTotalLengthStored);
+}
+
+float getFlowlapseFrameCountSpacing() {
+  return decodeFlowlapseStoredLength(flowlapseFrameCountSpacingStored);
+}
+
+float getFlowlapsePathSegmentLength(uint8_t segmentIndex) {
+  if (segmentIndex >= FLOWLAPSE_MAX_WAYPOINTS - 1) {
+    return 0.0f;
+  }
+
+  uint16_t segmentEndStored = flowlapsePathSegmentCumulative[segmentIndex];
+  uint16_t segmentStartStored = (segmentIndex == 0) ? 0 : flowlapsePathSegmentCumulative[segmentIndex - 1];
+  if (segmentEndStored <= segmentStartStored) {
+    return 0.0f;
+  }
+
+  return decodeFlowlapseStoredLength(static_cast<uint16_t>(segmentEndStored - segmentStartStored));
+}
+
+float applyFlowlapseEaseInOut(float t) {
+  float clampedT = clampFlowlapse01(t);
+  if (!FLOWLAPSE_EASE_IN_OUT_ENABLED) {
+    return clampedT;
+  }
+  float smoothStep = clampedT * clampedT * (3.0f - 2.0f * clampedT);
+  float easedStrength = clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH);
+  return clampedT + (smoothStep - clampedT) * easedStrength;
+}
+
+FlowlapseWaypoint interpolateFlowlapseLinearPoint(uint8_t segmentStartIndex, float t) {
+  uint8_t startIndex = segmentStartIndex;
+  uint8_t endIndex = static_cast<uint8_t>(segmentStartIndex + 1);
+
+  const FlowlapseWaypoint& start = flowlapseWaypoints[startIndex];
+  const FlowlapseWaypoint& end = flowlapseWaypoints[endIndex];
+
+  float clampedT = clampFlowlapse01(t);
+  FlowlapseWaypoint result;
+  result.swing = start.swing + (end.swing - start.swing) * clampedT;
+  result.lift  = start.lift  + (end.lift  - start.lift)  * clampedT;
+  result.pan   = start.pan   + (end.pan   - start.pan)   * clampedT;
+  result.tilt  = start.tilt  + (end.tilt  - start.tilt)  * clampedT;
+  return result;
+}
+
+FlowlapseWaypoint interpolateFlowlapseLinearPointBetween(uint8_t startIndex, uint8_t endIndex, float t) {
+  const FlowlapseWaypoint& start = flowlapseWaypoints[startIndex];
+  const FlowlapseWaypoint& end = flowlapseWaypoints[endIndex];
+
+  float clampedT = clampFlowlapse01(t);
+  FlowlapseWaypoint result;
+  result.swing = start.swing + (end.swing - start.swing) * clampedT;
+  result.lift  = start.lift  + (end.lift  - start.lift)  * clampedT;
+  result.pan   = start.pan   + (end.pan   - start.pan)   * clampedT;
+  result.tilt  = start.tilt  + (end.tilt  - start.tilt)  * clampedT;
+  return result;
+}
+
 float interpolateCatmullRomScalar(float p0, float p1, float p2, float p3, float t) {
   float t2 = t * t;
   float t3 = t2 * t;
@@ -488,6 +727,156 @@ FlowlapseWaypoint interpolateFlowlapseCurvedPoint(uint8_t segmentStartIndex, flo
   return result;
 }
 
+float computeFlowlapseWaypointDistance(const FlowlapseWaypoint& a, const FlowlapseWaypoint& b) {
+  float deltaSwing = b.swing - a.swing;
+  float deltaLift = b.lift - a.lift;
+  float deltaPan = b.pan - a.pan;
+  float deltaTilt = b.tilt - a.tilt;
+  return sqrt(deltaSwing * deltaSwing + deltaLift * deltaLift + deltaPan * deltaPan + deltaTilt * deltaTilt);
+}
+
+void invalidateFlowlapseArcLengthLut() {
+  flowlapseArcLengthLutValid = false;
+  flowlapseArcLengthLutSegmentBaseIndex = 255;
+}
+
+void buildFlowlapseArcLengthLut(uint8_t segmentBaseIndex) {
+  flowlapseArcLengthLutSegmentBaseIndex = segmentBaseIndex;
+  flowlapseArcLengthLutNormalized[0] = 0;
+
+  FlowlapseWaypoint previousSample = interpolateFlowlapseCurvedPoint(segmentBaseIndex, 0.0f);
+  float accumulatedLength = 0.0f;
+
+  for (uint8_t i = 1; i <= FLOWLAPSE_ARC_LENGTH_TABLE_STEPS; ++i) {
+    float sampleT = static_cast<float>(i) / static_cast<float>(FLOWLAPSE_ARC_LENGTH_TABLE_STEPS);
+    FlowlapseWaypoint sample = interpolateFlowlapseCurvedPoint(segmentBaseIndex, sampleT);
+    accumulatedLength += computeFlowlapseWaypointDistance(previousSample, sample);
+    flowlapseArcLengthLutNormalized[i] = encodeFlowlapseStoredLength(accumulatedLength);
+    previousSample = sample;
+  }
+
+  if (accumulatedLength <= 0.0001f) {
+    for (uint8_t i = 0; i <= FLOWLAPSE_ARC_LENGTH_TABLE_STEPS; ++i) {
+      flowlapseArcLengthLutNormalized[i] = encodeFlowlapseNormalizedValue(
+          static_cast<float>(i) / static_cast<float>(FLOWLAPSE_ARC_LENGTH_TABLE_STEPS));
+    }
+  } else {
+    flowlapseArcLengthLutNormalized[0] = 0;
+    for (uint8_t i = 1; i <= FLOWLAPSE_ARC_LENGTH_TABLE_STEPS; ++i) {
+      float normalizedDistance = decodeFlowlapseStoredLength(flowlapseArcLengthLutNormalized[i]) / accumulatedLength;
+      flowlapseArcLengthLutNormalized[i] = encodeFlowlapseNormalizedValue(normalizedDistance);
+    }
+  }
+
+  flowlapseArcLengthLutValid = true;
+}
+
+float mapFlowlapseDistanceFractionToCurveT(uint8_t segmentBaseIndex, float distanceFraction) {
+  float clampedDistanceFraction = clampFlowlapse01(distanceFraction);
+  if (!FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED) {
+    return clampedDistanceFraction;
+  }
+
+  if (!flowlapseArcLengthLutValid || flowlapseArcLengthLutSegmentBaseIndex != segmentBaseIndex) {
+    buildFlowlapseArcLengthLut(segmentBaseIndex);
+  }
+
+  for (uint8_t i = 1; i <= FLOWLAPSE_ARC_LENGTH_TABLE_STEPS; ++i) {
+    float segmentEndDistance = decodeFlowlapseNormalizedValue(flowlapseArcLengthLutNormalized[i]);
+    if (clampedDistanceFraction <= segmentEndDistance) {
+      float segmentStartDistance = decodeFlowlapseNormalizedValue(flowlapseArcLengthLutNormalized[i - 1]);
+      float segmentSpanDistance = segmentEndDistance - segmentStartDistance;
+      float localFraction = 0.0f;
+      if (segmentSpanDistance > 0.00001f) {
+        localFraction = (clampedDistanceFraction - segmentStartDistance) / segmentSpanDistance;
+      }
+
+      float segmentStartT = static_cast<float>(i - 1) / static_cast<float>(FLOWLAPSE_ARC_LENGTH_TABLE_STEPS);
+      float segmentEndT = static_cast<float>(i) / static_cast<float>(FLOWLAPSE_ARC_LENGTH_TABLE_STEPS);
+      return segmentStartT + (segmentEndT - segmentStartT) * localFraction;
+    }
+  }
+
+  return 1.0f;
+}
+
+float computeFlowlapseSegmentLength(uint8_t segmentBaseIndex, bool useCurvedPath) {
+  if (!useCurvedPath) {
+    return computeFlowlapseWaypointDistance(flowlapseWaypoints[segmentBaseIndex], flowlapseWaypoints[segmentBaseIndex + 1]);
+  }
+
+  FlowlapseWaypoint previousSample = interpolateFlowlapseCurvedPoint(segmentBaseIndex, 0.0f);
+  float accumulatedLength = 0.0f;
+  for (uint8_t i = 1; i <= FLOWLAPSE_ARC_LENGTH_TABLE_STEPS; ++i) {
+    float sampleT = static_cast<float>(i) / static_cast<float>(FLOWLAPSE_ARC_LENGTH_TABLE_STEPS);
+    FlowlapseWaypoint currentSample = interpolateFlowlapseCurvedPoint(segmentBaseIndex, sampleT);
+    accumulatedLength += computeFlowlapseWaypointDistance(previousSample, currentSample);
+    previousSample = currentSample;
+  }
+
+  return accumulatedLength;
+}
+
+void rebuildFlowlapsePathLengthCache(bool useCurvedPath) {
+  flowlapsePathTotalLengthStored = 0;
+  for (uint8_t segmentIndex = 0; segmentIndex < FLOWLAPSE_MAX_WAYPOINTS - 1; ++segmentIndex) {
+    flowlapsePathSegmentCumulative[segmentIndex] = 0;
+  }
+
+  if (flowlapseWaypointCount < 2) {
+    return;
+  }
+
+  float runningTotalLength = 0.0f;
+  uint8_t segmentCount = static_cast<uint8_t>(flowlapseWaypointCount - 1);
+  for (uint8_t segmentIndex = 0; segmentIndex < segmentCount; ++segmentIndex) {
+    float segmentLength = computeFlowlapseSegmentLength(segmentIndex, useCurvedPath);
+    runningTotalLength += segmentLength;
+    flowlapsePathSegmentCumulative[segmentIndex] = encodeFlowlapseStoredLength(runningTotalLength);
+  }
+  flowlapsePathTotalLengthStored = encodeFlowlapseStoredLength(runningTotalLength);
+}
+
+FlowlapseWaypoint sampleFlowlapsePointAtPathDistance(float pathDistance, bool useCurvedPath) {
+  float pathTotalLength = getFlowlapsePathTotalLength();
+  if (flowlapseWaypointCount < 2 || pathTotalLength <= 0.0001f) {
+    return flowlapseWaypoints[0];
+  }
+
+  float clampedDistance = pathDistance;
+  if (clampedDistance < 0.0f) {
+    clampedDistance = 0.0f;
+  }
+  if (clampedDistance > pathTotalLength) {
+    clampedDistance = pathTotalLength;
+  }
+
+  uint8_t segmentCount = static_cast<uint8_t>(flowlapseWaypointCount - 1);
+  uint8_t segmentIndex = 0;
+  while (segmentIndex < segmentCount - 1
+      && clampedDistance > decodeFlowlapseStoredLength(flowlapsePathSegmentCumulative[segmentIndex])) {
+    segmentIndex++;
+  }
+
+  float segmentStartDistance = (segmentIndex == 0)
+      ? 0.0f
+      : decodeFlowlapseStoredLength(flowlapsePathSegmentCumulative[segmentIndex - 1]);
+  float segmentLength = getFlowlapsePathSegmentLength(segmentIndex);
+  float segmentDistance = clampedDistance - segmentStartDistance;
+  float segmentFraction = 0.0f;
+  if (segmentLength > 0.0001f) {
+    segmentFraction = segmentDistance / segmentLength;
+  }
+  segmentFraction = clampFlowlapse01(segmentFraction);
+
+  if (useCurvedPath) {
+    float curveT = mapFlowlapseDistanceFractionToCurveT(segmentIndex, segmentFraction);
+    return interpolateFlowlapseCurvedPoint(segmentIndex, curveT);
+  }
+
+  return interpolateFlowlapseLinearPointBetween(segmentIndex, static_cast<uint8_t>(segmentIndex + 1), segmentFraction);
+}
+
 void resetFlowlapseAxisTierState(unsigned long now) {
   flowlapseSwingTier = DRONE_SPEED_TIER_STOP;
   flowlapseLiftTier = DRONE_SPEED_TIER_STOP;
@@ -512,6 +901,16 @@ void resetFlowlapseSession(bool resetEstimatedPosition) {
   flowlapsePreviewHoldUntilMs = 0;
   flowlapseTargetWaypointIndex = 0;
   flowlapseCaptureAlignedToFirstWaypoint = false;
+  flowlapseCaptureDirection = 1;
+  invalidateFlowlapseArcLengthLut();
+  flowlapseFrameCountModeActive = false;
+  flowlapseFrameCountTarget = 0;
+  flowlapseFrameCountCurrentStopIndex = 0;
+  flowlapseFrameCountSpacingStored = 0;
+  flowlapsePreviewFrameModeActive = false;
+  flowlapsePreviewFrameTarget = 0;
+  flowlapsePreviewFrameStopIndex = 0;
+  flowlapsePathTotalLengthStored = 0;
   flowlapseLastUpdateMs = millis();
   flowlapseLastProgressLogMs = 0;
   resetFlowlapseAxisTierState(flowlapseLastUpdateMs);
@@ -550,6 +949,36 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
   }
 
   flowlapseLastProgressLogMs = now;
+
+  if (flowlapseFrameCountModeActive) {
+    uint16_t totalFrames = flowlapseFrameCountTarget;
+    uint16_t completedFrames = static_cast<uint16_t>(flowlapseFrameCountCurrentStopIndex + 1);
+    if (completedFrames > totalFrames) {
+      completedFrames = totalFrames;
+    }
+
+    uint8_t progressPercent = 0;
+    if (totalFrames > 0) {
+      progressPercent = static_cast<uint8_t>((static_cast<unsigned long>(completedFrames) * 100UL) / totalFrames);
+    }
+
+    unsigned long estimatedPerFrameMs = timelapseIntervalMs + static_cast<unsigned long>(stepDist) + flowlapseDwellMs;
+    unsigned long remainingFrames = (totalFrames >= completedFrames) ? static_cast<unsigned long>(totalFrames - completedFrames) : 0;
+    unsigned long etaSeconds = (remainingFrames * estimatedPerFrameMs) / 1000UL;
+
+    Serial.print("Flowlapse capture | frame ");
+    Serial.print(completedFrames);
+    Serial.print("/");
+    Serial.print(totalFrames);
+    Serial.print(" phase=");
+    Serial.print(getFlowlapseCapturePhaseLabel(flowlapseCapturePhase));
+    Serial.print(" progress=");
+    Serial.print(progressPercent);
+    Serial.print("% eta=");
+    Serial.print(etaSeconds);
+    Serial.println("s");
+    return;
+  }
 
   uint8_t totalSegments = (flowlapseWaypointCount > 1) ? static_cast<uint8_t>(flowlapseWaypointCount - 1) : 0;
   uint8_t completedSegments = 0;
@@ -649,6 +1078,7 @@ void captureFlowlapseWaypoint() {
   FlowlapseWaypoint& waypoint = flowlapseWaypoints[flowlapseWaypointCount];
   waypoint = candidateWaypoint;
   flowlapseWaypointCount++;
+  invalidateFlowlapseArcLengthLut();
 
   startFeedbackRumble(FLOWLAPSE_WAYPOINT_RUMBLE_PULSES, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
   Serial.print("Flowlapse: waypoint recorded ");
@@ -768,11 +1198,32 @@ void startFlowlapsePreview() {
     return;
   }
 
+  bool useCurvedPath = FLOWLAPSE_CURVED_PATH_ENABLED && flowlapseWaypointCount >= 3;
   flowlapseState = FLOWLAPSE_STATE_PREVIEW_RUNNING;
   flowlapseTargetWaypointIndex = 0;
   flowlapsePreviewHoldUntilMs = 0;
+  flowlapsePreviewFrameModeActive = flowlapseFrameCountModeEnabled;
+  flowlapsePreviewFrameTarget = FLOWLAPSE_FRAME_COUNT_TARGET;
+  if (flowlapsePreviewFrameTarget < 2) {
+    flowlapsePreviewFrameTarget = 2;
+  }
+  flowlapsePreviewFrameStopIndex = 0;
+
+  if (flowlapsePreviewFrameModeActive) {
+    rebuildFlowlapsePathLengthCache(useCurvedPath);
+    Serial.print("Flowlapse: frame-count preview started. frames=");
+    Serial.print(flowlapsePreviewFrameTarget);
+    Serial.print(" spacing=");
+    float pathTotalLength = getFlowlapsePathTotalLength();
+    float previewSpacing = (flowlapsePreviewFrameTarget > 1)
+        ? (pathTotalLength / static_cast<float>(flowlapsePreviewFrameTarget - 1))
+        : 0.0f;
+    Serial.println(previewSpacing, 1);
+  } else {
+    Serial.println("Flowlapse: preview started.");
+  }
+
   resetFlowlapseAxisTierState(millis());
-  Serial.println("Flowlapse: preview started.");
 }
 
 void startFlowlapseCapture(unsigned long now) {
@@ -785,10 +1236,41 @@ void startFlowlapseCapture(unsigned long now) {
   flowlapseState = FLOWLAPSE_STATE_CAPTURE_RUNNING;
   flowlapseTargetWaypointIndex = 0;
   flowlapseCaptureAlignedToFirstWaypoint = false;
+  flowlapseCaptureDirection = 1;
   flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
   flowlapseCapturePhaseStartMs = now;
   flowlapseLastProgressLogMs = 0;
   resetFlowlapseAxisTierState(now);
+
+  bool useCurvedPath = FLOWLAPSE_CURVED_PATH_ENABLED && flowlapseWaypointCount >= 3;
+  flowlapseFrameCountModeActive = flowlapseFrameCountModeEnabled;
+  flowlapseFrameCountTarget = FLOWLAPSE_FRAME_COUNT_TARGET;
+  if (flowlapseFrameCountTarget < 2) {
+    flowlapseFrameCountTarget = 2;
+  }
+  flowlapseFrameCountCurrentStopIndex = 0;
+  flowlapseFrameCountSpacingStored = 0;
+  rebuildFlowlapsePathLengthCache(useCurvedPath);
+  if (flowlapseFrameCountModeActive) {
+    float pathTotalLength = getFlowlapsePathTotalLength();
+    if (flowlapseFrameCountTarget > 1) {
+      flowlapseFrameCountSpacingStored = encodeFlowlapseStoredLength(
+          pathTotalLength / static_cast<float>(flowlapseFrameCountTarget - 1));
+    }
+    Serial.print("Frame-count: ");
+    Serial.print(flowlapseFrameCountTarget);
+    Serial.print(" frames | spacing=");
+    Serial.print(getFlowlapseFrameCountSpacing(), 1);
+    Serial.println(" units");
+    Serial.print("Flowlapse: frame-count mode active. target=");
+    Serial.print(flowlapseFrameCountTarget);
+    Serial.print(" pathLength=");
+    Serial.println(pathTotalLength, 2);
+    if (FLOWLAPSE_LOOP_CAPTURE || FLOWLAPSE_PING_PONG_LOOP) {
+      Serial.println("Flowlapse: loop/ping-pong disabled while frame-count mode is active.");
+    }
+  }
+
   Serial.println("Flowlapse: capture run started.");
 }
 
@@ -801,6 +1283,7 @@ void enterDroneMode() {
   droneLastActivityMs = millis();
   Serial.println("DRONE MODE ACTIVATED - timelapse/bounce locked out");
   Serial.println("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L1+R1=wipe, L2+R2=undo last.");
+  Serial.println("Flowlapse: START+SELECT+TRIANGLE toggles frame-count preview/capture mode.");
   startDroneModeEnterRumbleFeedback();
 }
 
@@ -808,10 +1291,7 @@ void exitDroneMode() {
   droneMode = false;
   lastDronePrecisionModeActive = false;
   lastDroneBoostModeActive = false;
-  lastDroneSwingActive = false;
-  lastDroneLiftActive = false;
-  lastDronePanActive = false;
-  lastDroneTiltActive = false;
+  droneAxisLastActiveFlags = 0;
   resetFlowlapseSession(true);
   droneLastActivityMs = 0;
   stopAllMotors();
@@ -819,14 +1299,15 @@ void exitDroneMode() {
   startDroneModeExitRumbleFeedback();
 }
 
-void logDroneAxisStateIfChanged(bool current, bool& last, const char* axisName) {
+void logDroneAxisStateIfChanged(bool current, uint8_t axisMask, const char* axisName) {
+  bool last = isPackedStateSet(droneAxisLastActiveFlags, axisMask);
   if (current != last) {
     if (DRONE_SERIAL_LOG_ENABLED) {
       Serial.print("Drone axis | ");
       Serial.print(axisName);
       Serial.println(current ? " MOVING" : " STOPPED");
     }
-    last = current;
+    setPackedState(droneAxisLastActiveFlags, axisMask, current);
   }
 }
 
@@ -846,7 +1327,7 @@ void logDroneSpeedModifierStateIfChanged() {
   }
 }
 
-void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, int& modeState) {
+void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t& modeState) {
   if (ps2x.Button(PSB_SELECT) && ps2x.Button(buttonCode)) {
     if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
       Serial.print("SOLO press: ");
@@ -868,13 +1349,13 @@ void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t norm
 
 void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8_t axis1Normal, uint8_t axis1Rev,
                                     bool axis2Reversed, uint8_t axis2Normal, uint8_t axis2Rev,
-                                    int& soloState, bool& motionState) {
+                                    uint8_t& soloState, uint8_t motionFlagMask) {
   if (soloState == 0 && ps2x.Button(buttonCode)) {
     if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
       Serial.print("COMBINED press: ");
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
-    motionState = true;
+    setPackedState(motionFlags, motionFlagMask, true);
     setDirectionalOutput(axis1Reversed, axis1Normal, axis1Rev, HIGH);
     setDirectionalOutput(axis2Reversed, axis2Normal, axis2Rev, HIGH);
   }
@@ -887,7 +1368,7 @@ void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8
     digitalWrite(axis1Rev, LOW);
     digitalWrite(axis2Normal, LOW);
     digitalWrite(axis2Rev, LOW);
-    motionState = false;
+    setPackedState(motionFlags, motionFlagMask, false);
   }
 }
 
@@ -898,7 +1379,7 @@ void handleSwingOnly(uint8_t buttonCode, uint8_t swingNormalPin, uint8_t swingRe
 void handleSwingAndPan(uint8_t buttonCode, uint8_t swingNormalPin, uint8_t swingReversedPin,
                         uint8_t panNormalPin, uint8_t panReversedPin) {
   handleCombinedDirectionalMode(buttonCode, isSwingReversed, swingNormalPin, swingReversedPin,
-                                 isPanReversed, panNormalPin, panReversedPin, swingSoloMode, swingInMotion);
+                                 isPanReversed, panNormalPin, panReversedPin, swingSoloMode, MOTION_FLAG_SWING);
 }
 
 void activatePanTrim(uint8_t pin, const char* label) {
@@ -985,7 +1466,7 @@ void handleTiltTrimAxis() {
 void handleLiftAndTilt(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftReversedPin,
                        uint8_t tiltNormalPin, uint8_t tiltReversedPin) {
   handleCombinedDirectionalMode(buttonCode, isLiftReversed, liftNormalPin, liftReversedPin,
-                                isTiltReversed, tiltNormalPin, tiltReversedPin, liftSoloMode, liftInMotion);
+                                isTiltReversed, tiltNormalPin, tiltReversedPin, liftSoloMode, MOTION_FLAG_LIFT);
 }
 
 void activateTiltOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* label) {
@@ -1084,10 +1565,10 @@ void handleDroneStickControl() {
   bool panActive  = applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND, DRONE_PAN_MAX_SPEED_TIER, DRONE_PAN_EXPO_PERCENT);
   bool tiltActive = applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND, DRONE_TILT_MAX_SPEED_TIER, DRONE_TILT_EXPO_PERCENT);
 
-  logDroneAxisStateIfChanged(swingActive, lastDroneSwingActive, "swing");
-  logDroneAxisStateIfChanged(liftActive,  lastDroneLiftActive,  "lift");
-  logDroneAxisStateIfChanged(panActive,   lastDronePanActive,   "pan");
-  logDroneAxisStateIfChanged(tiltActive,  lastDroneTiltActive,  "tilt");
+  logDroneAxisStateIfChanged(swingActive, DRONE_AXIS_LAST_SWING, "swing");
+  logDroneAxisStateIfChanged(liftActive,  DRONE_AXIS_LAST_LIFT,  "lift");
+  logDroneAxisStateIfChanged(panActive,   DRONE_AXIS_LAST_PAN,   "pan");
+  logDroneAxisStateIfChanged(tiltActive,  DRONE_AXIS_LAST_TILT,  "tilt");
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
@@ -1101,31 +1582,116 @@ void completeFlowlapsePreview() {
   flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
   flowlapseTargetWaypointIndex = 0;
   flowlapsePreviewHoldUntilMs = 0;
+  flowlapsePreviewFrameModeActive = false;
+  flowlapsePreviewFrameTarget = 0;
+  flowlapsePreviewFrameStopIndex = 0;
   Serial.println("Flowlapse: preview complete. Press START to run capture.");
 }
 
-void completeFlowlapseCapture() {
+void completeFlowlapseCapture(unsigned long now) {
   stopAllMotors();
   digitalWrite(trigger, HIGH);
-  if (FLOWLAPSE_LOOP_CAPTURE) {
+
+  if (flowlapseFrameCountModeActive && FLOWLAPSE_FRAMECOUNT_AUTO_EXIT) {
+    Serial.print("Frame-count capture complete (");
+    Serial.print(flowlapseFrameCountTarget);
+    Serial.println(" frames) — mode exited");
+    startFrameCountCompleteRumbleFeedback();
+    flowlapseFrameCountModeActive = false;
+  } else if (flowlapseFrameCountModeActive) {
+    Serial.print("Frame-count capture complete (");
+    Serial.print(flowlapseFrameCountTarget);
+    Serial.println(" frames) — mode remains armed");
+  }
+
+  if (!flowlapseFrameCountModeActive && FLOWLAPSE_PING_PONG_LOOP && flowlapseWaypointCount >= 2) {
+    flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+    flowlapseCapturePhaseStartMs = now;
+    flowlapseLastProgressLogMs = 0;
+    resetFlowlapseAxisTierState(now);
+
+    if (flowlapseCaptureDirection >= 0) {
+      flowlapseCaptureDirection = -1;
+      flowlapseTargetWaypointIndex = static_cast<uint8_t>(flowlapseWaypointCount - 2);
+    } else {
+      flowlapseCaptureDirection = 1;
+      flowlapseTargetWaypointIndex = 1;
+    }
+
+    Serial.println("Flowlapse: ping-pong edge reached — reversing direction.");
+  } else if (!flowlapseFrameCountModeActive && FLOWLAPSE_LOOP_CAPTURE) {
     flowlapseCaptureAlignedToFirstWaypoint = false;
     flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
-    flowlapseCapturePhaseStartMs = millis();
+    flowlapseCapturePhaseStartMs = now;
     flowlapseTargetWaypointIndex = 0;
+    flowlapseCaptureDirection = 1;
     flowlapseLastProgressLogMs = 0;
-    resetFlowlapseAxisTierState(millis());
+    resetFlowlapseAxisTierState(now);
     Serial.println("Flowlapse: capture loop complete — restarting.");
   } else {
-    flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
-    flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
-    flowlapseCapturePhaseStartMs = 0;
-    flowlapseCaptureAlignedToFirstWaypoint = false;
-    flowlapseTargetWaypointIndex = 0;
-    Serial.println("Flowlapse: capture complete.");
+    bool shouldReturnToFirst = FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE
+                            && flowlapseWaypointCount > 0
+                            && flowlapseTargetWaypointIndex != 0;
+    if (shouldReturnToFirst) {
+      flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
+      flowlapseJogIndex = 0;
+      resetFlowlapseAxisTierState(now);
+      Serial.println("Flowlapse: capture complete. Returning to waypoint 1.");
+    } else {
+      flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
+      flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
+      flowlapseCapturePhaseStartMs = 0;
+      flowlapseCaptureAlignedToFirstWaypoint = false;
+      flowlapseTargetWaypointIndex = 0;
+      flowlapseCaptureDirection = 1;
+      Serial.println("Flowlapse: capture complete.");
+    }
   }
 }
 
 void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
+  if (flowlapsePreviewFrameModeActive) {
+    if (flowlapsePreviewFrameStopIndex >= flowlapsePreviewFrameTarget) {
+      completeFlowlapsePreview();
+      return;
+    }
+
+    if (flowlapsePreviewHoldUntilMs != 0) {
+      stopAllMotors();
+      if (now < flowlapsePreviewHoldUntilMs) {
+        return;
+      }
+
+      flowlapsePreviewHoldUntilMs = 0;
+      flowlapsePreviewFrameStopIndex++;
+      if (flowlapsePreviewFrameStopIndex >= flowlapsePreviewFrameTarget) {
+        completeFlowlapsePreview();
+        return;
+      }
+    }
+
+    bool useCurvedPath = FLOWLAPSE_CURVED_PATH_ENABLED && flowlapseWaypointCount >= 3;
+    float previewDenominator = static_cast<float>(flowlapsePreviewFrameTarget - 1);
+    float previewFraction = (previewDenominator > 0.0f)
+        ? (static_cast<float>(flowlapsePreviewFrameStopIndex) / previewDenominator)
+        : 0.0f;
+    float previewDistance = getFlowlapsePathTotalLength() * clampFlowlapse01(previewFraction);
+    FlowlapseWaypoint previewTarget = sampleFlowlapsePointAtPathDistance(previewDistance, useCurvedPath);
+
+    float scaledPreviewDeltaSeconds = deltaSeconds * FLOWLAPSE_PREVIEW_SPEED_SCALE;
+    applyFlowlapseMotionTowardWaypoint(previewTarget, now, scaledPreviewDeltaSeconds);
+
+    if (isFlowlapseTargetReached(previewTarget)) {
+      stopAllMotors();
+      flowlapsePreviewHoldUntilMs = now + FLOWLAPSE_PREVIEW_POINT_HOLD_MS;
+      Serial.print("Flowlapse preview reached frame stop ");
+      Serial.print(static_cast<unsigned long>(flowlapsePreviewFrameStopIndex + 1));
+      Serial.print("/");
+      Serial.println(flowlapsePreviewFrameTarget);
+    }
+    return;
+  }
+
   if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
     completeFlowlapsePreview();
     return;
@@ -1161,7 +1727,7 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
   logFlowlapseCaptureProgressIfDue(now);
 
   if (flowlapseWaypointCount < 2) {
-    completeFlowlapseCapture();
+    completeFlowlapseCapture(now);
     return;
   }
 
@@ -1172,6 +1738,8 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
     if (isFlowlapseTargetReached(firstWaypoint)) {
       stopAllMotors();
       flowlapseCaptureAlignedToFirstWaypoint = true;
+      flowlapseCaptureDirection = 1;
+      flowlapseFrameCountCurrentStopIndex = 0;
       flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
       flowlapseCapturePhaseStartMs = now;
       flowlapseTargetWaypointIndex = 1;
@@ -1195,14 +1763,24 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
       stopAllMotors();
       digitalWrite(trigger, HIGH);
       if (now - flowlapseCapturePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
-        flowlapseCapturePhase = FLOWLAPSE_CAPTURE_MOVE_ACTIVE;
-        flowlapseCapturePhaseStartMs = now;
+        if (flowlapseFrameCountModeActive) {
+          uint16_t nextStopIndex = static_cast<uint16_t>(flowlapseFrameCountCurrentStopIndex + 1);
+          if (nextStopIndex >= flowlapseFrameCountTarget) {
+            completeFlowlapseCapture(now);
+            return;
+          }
+          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_MOVE_ACTIVE;
+          flowlapseCapturePhaseStartMs = now;
+        } else {
+          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_MOVE_ACTIVE;
+          flowlapseCapturePhaseStartMs = now;
+        }
       }
       break;
 
     case FLOWLAPSE_CAPTURE_MOVE_ACTIVE:
-      if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
-        completeFlowlapseCapture();
+      if (!flowlapseFrameCountModeActive && flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
+        completeFlowlapseCapture(now);
         return;
       }
 
@@ -1210,51 +1788,68 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
       unsigned long moveDurationMs = static_cast<unsigned long>(stepDist);
       bool useCurvedPath = FLOWLAPSE_CURVED_PATH_ENABLED && flowlapseWaypointCount >= 3;
 
-      if (useCurvedPath) {
-        uint8_t segmentStartIndex = (flowlapseTargetWaypointIndex > 0)
-            ? static_cast<uint8_t>(flowlapseTargetWaypointIndex - 1)
-            : 0;
-        float segmentT = (moveDurationMs > 0)
-            ? static_cast<float>(moveElapsedMs) / static_cast<float>(moveDurationMs)
-            : 1.0f;
-        FlowlapseWaypoint curvedTarget = interpolateFlowlapseCurvedPoint(segmentStartIndex, segmentT);
-        applyFlowlapseMotionTowardWaypoint(curvedTarget, now, deltaSeconds);
+      float segmentT = (moveDurationMs > 0)
+          ? static_cast<float>(moveElapsedMs) / static_cast<float>(moveDurationMs)
+          : 1.0f;
+      float easedSegmentT = applyFlowlapseEaseInOut(segmentT);
 
-        if (moveElapsedMs >= moveDurationMs) {
-          flowlapseTargetWaypointIndex++;
-          if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
-            completeFlowlapseCapture();
-            return;
-          }
-
-          stopAllMotors();
-          if (flowlapseDwellMs > 0) {
-            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
-          } else {
-            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
-          }
-          flowlapseCapturePhaseStartMs = now;
-        }
+      FlowlapseWaypoint segmentTarget;
+      if (flowlapseFrameCountModeActive) {
+        uint16_t nextStopIndex = static_cast<uint16_t>(flowlapseFrameCountCurrentStopIndex + 1);
+        float stopDenominator = static_cast<float>(flowlapseFrameCountTarget - 1);
+        float nextStopFraction = (stopDenominator > 0.0f) ? (static_cast<float>(nextStopIndex) / stopDenominator) : 1.0f;
+        float targetPathDistance = getFlowlapsePathTotalLength() * clampFlowlapse01(nextStopFraction);
+        segmentTarget = sampleFlowlapsePointAtPathDistance(targetPathDistance, useCurvedPath);
       } else {
-        applyFlowlapseMotionTowardWaypoint(flowlapseWaypoints[flowlapseTargetWaypointIndex], now, deltaSeconds);
+        uint8_t segmentStartIndex = (flowlapseCaptureDirection >= 0)
+            ? static_cast<uint8_t>(flowlapseTargetWaypointIndex - 1)
+            : static_cast<uint8_t>(flowlapseTargetWaypointIndex + 1);
+        uint8_t segmentEndIndex = flowlapseTargetWaypointIndex;
+        if (useCurvedPath) {
+          uint8_t curveSegmentBaseIndex = (flowlapseCaptureDirection >= 0)
+              ? segmentStartIndex
+              : segmentEndIndex;
+          float curveDistanceMappedT = mapFlowlapseDistanceFractionToCurveT(curveSegmentBaseIndex, easedSegmentT);
+          float curveT = (flowlapseCaptureDirection >= 0)
+            ? curveDistanceMappedT
+            : (1.0f - curveDistanceMappedT);
+          segmentTarget = interpolateFlowlapseCurvedPoint(curveSegmentBaseIndex, curveT);
+        } else {
+          segmentTarget = interpolateFlowlapseLinearPointBetween(segmentStartIndex, segmentEndIndex, easedSegmentT);
+        }
+      }
+      applyFlowlapseMotionTowardWaypoint(segmentTarget, now, deltaSeconds);
 
-        if (isFlowlapseTargetReached(flowlapseWaypoints[flowlapseTargetWaypointIndex])) {
-          flowlapseTargetWaypointIndex++;
-          if (flowlapseTargetWaypointIndex >= flowlapseWaypointCount) {
-            completeFlowlapseCapture();
+      if (moveElapsedMs >= moveDurationMs) {
+        flowlapseCurrentSwingPos = segmentTarget.swing;
+        flowlapseCurrentLiftPos = segmentTarget.lift;
+        flowlapseCurrentPanPos = segmentTarget.pan;
+        flowlapseCurrentTiltPos = segmentTarget.tilt;
+
+        if (flowlapseFrameCountModeActive) {
+          flowlapseFrameCountCurrentStopIndex++;
+        } else {
+          if (flowlapseCaptureDirection >= 0) {
+            flowlapseTargetWaypointIndex++;
+          } else {
+            flowlapseTargetWaypointIndex--;
+          }
+
+          bool reachedForwardEnd = (flowlapseCaptureDirection >= 0) && (flowlapseTargetWaypointIndex >= flowlapseWaypointCount);
+          bool reachedReverseEnd = (flowlapseCaptureDirection < 0) && (flowlapseTargetWaypointIndex == 255);
+          if (reachedForwardEnd || reachedReverseEnd) {
+            completeFlowlapseCapture(now);
             return;
           }
         }
 
-        if (moveElapsedMs >= moveDurationMs) {
-          stopAllMotors();
-          if (flowlapseDwellMs > 0) {
-            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
-          } else {
-            flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
-          }
-          flowlapseCapturePhaseStartMs = now;
+        stopAllMotors();
+        if (flowlapseDwellMs > 0) {
+          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
+        } else {
+          flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
         }
+        flowlapseCapturePhaseStartMs = now;
       }
       break;
 
@@ -1326,7 +1921,40 @@ void adjustFlowlapseDwell(long delta) {
   startFeedbackRumble(dwellStepCount, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
 }
 
-void handleDroneFlowlapseButtons(unsigned long now) {
+bool handleDroneFlowlapseButtons(unsigned long now) {
+  bool frameModeToggleComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_TRIANGLE);
+  if (frameModeToggleComboActive && !lastFlowlapseFrameModeToggleComboActive) {
+    bool toggleAllowed = (flowlapseState != FLOWLAPSE_STATE_PREVIEW_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_UNDO_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_JOG_RUNNING);
+    suppressDroneNextSelectRelease = true;
+    suppressDroneNextStartRelease = true;
+
+    if (!toggleAllowed) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println("Flowlapse: frame-count toggle blocked while preview/capture/undo/jog is running.");
+    } else {
+      flowlapseFrameCountModeEnabled = !flowlapseFrameCountModeEnabled;
+      startFeedbackRumble(flowlapseFrameCountModeEnabled ? 2 : 1,
+                          FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS,
+                          FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      Serial.print("Flowlapse: frame-count mode ");
+      Serial.println(flowlapseFrameCountModeEnabled ? "enabled via controller toggle." : "disabled via controller toggle.");
+      if (flowlapseFrameCountModeEnabled) {
+        Serial.print("Flowlapse: target frames = ");
+        Serial.println(FLOWLAPSE_FRAME_COUNT_TARGET);
+      }
+    }
+
+    droneLastActivityMs = now;
+  }
+  lastFlowlapseFrameModeToggleComboActive = frameModeToggleComboActive;
+  if (frameModeToggleComboActive) {
+    stopAllMotors();
+    return true;
+  }
+
   bool flowlapseClearComboActive = ps2x.Button(PSB_L1) && ps2x.Button(PSB_R1);
   if (flowlapseClearComboActive && !lastFlowlapseClearComboActive) {
     if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
@@ -1358,6 +1986,7 @@ void handleDroneFlowlapseButtons(unsigned long now) {
       Serial.println("Flowlapse: no waypoint to undo.");
     } else if (flowlapseState == FLOWLAPSE_STATE_UNDO_READY_DELETE) {
       flowlapseWaypointCount--;
+      invalidateFlowlapseArcLengthLut();
       startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
 
       if (flowlapseWaypointCount < 2) {
@@ -1486,19 +2115,27 @@ void handleDroneFlowlapseButtons(unsigned long now) {
   }
 
   if (ps2x.ButtonReleased(PSB_START)) {
-    if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
-      startFlowlapseCapture(now);
-      droneLastActivityMs = now;
-    } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW) {
-      startLockoutDeniedRumbleFeedback();
-      Serial.println("Flowlapse: run preview first (SELECT), then press START for capture.");
-      droneLastActivityMs = now;
+    if (suppressDroneNextStartRelease) {
+      suppressDroneNextStartRelease = false;
+    } else {
+      if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
+        startFlowlapseCapture(now);
+        droneLastActivityMs = now;
+      } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW) {
+        startLockoutDeniedRumbleFeedback();
+        Serial.println("Flowlapse: run preview first (SELECT), then press START for capture.");
+        droneLastActivityMs = now;
+      }
     }
   }
+
+  return false;
 }
 
 void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
-  handleDroneFlowlapseButtons(now);
+  if (handleDroneFlowlapseButtons(now)) {
+    return;
+  }
 
   if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING) {
     handleFlowlapsePreviewStep(now, deltaSeconds);
@@ -1609,6 +2246,8 @@ void stopIntervalRumbleFeedback() {
   feedbackRumblePulsesRemaining = 0;
   feedbackRumbleOnMs = 0;
   feedbackRumbleTotalMs = 0;
+  frameCountCompleteRumblePhase = FRAMECOUNT_COMPLETE_RUMBLE_IDLE;
+  frameCountCompleteRumblePhaseStartMs = 0;
   chainStepDistAfterInterval = false;
   vibrate = 0;
 }
@@ -1646,6 +2285,13 @@ void startL3EndpointRumbleFeedback() {
 
 void startRumbleUnmuteFeedback() {
   startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+}
+
+void startFrameCountCompleteRumbleFeedback() {
+  stopIntervalRumbleFeedback();
+  frameCountCompleteRumblePhase = FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON;
+  frameCountCompleteRumblePhaseStartMs = millis();
+  vibrate = RUMBLE_ACTIVE_INTENSITY;
 }
 
 void startSettingsReplayRumble() {
@@ -1735,6 +2381,43 @@ void startStepDistRumbleFeedback() {
 }
 
 void handleIntervalRumbleFeedback(unsigned long now) {
+  if (frameCountCompleteRumblePhase != FRAMECOUNT_COMPLETE_RUMBLE_IDLE) {
+    switch (frameCountCompleteRumblePhase) {
+      case FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON:
+        vibrate = RUMBLE_ACTIVE_INTENSITY;
+        if (now - frameCountCompleteRumblePhaseStartMs >= FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON_MS) {
+          frameCountCompleteRumblePhase = FRAMECOUNT_COMPLETE_RUMBLE_LONG_PAUSE;
+          frameCountCompleteRumblePhaseStartMs = now;
+          vibrate = 0;
+        }
+        break;
+      case FRAMECOUNT_COMPLETE_RUMBLE_LONG_PAUSE:
+        vibrate = 0;
+        if (now - frameCountCompleteRumblePhaseStartMs >= (FRAMECOUNT_COMPLETE_RUMBLE_LONG_TOTAL_MS - FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON_MS)) {
+          frameCountCompleteRumblePhase = FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON;
+          frameCountCompleteRumblePhaseStartMs = now;
+        }
+        break;
+      case FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON:
+        vibrate = RUMBLE_ACTIVE_INTENSITY;
+        if (now - frameCountCompleteRumblePhaseStartMs >= FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON_MS) {
+          frameCountCompleteRumblePhase = FRAMECOUNT_COMPLETE_RUMBLE_SHORT_PAUSE;
+          frameCountCompleteRumblePhaseStartMs = now;
+          vibrate = 0;
+        }
+        break;
+      case FRAMECOUNT_COMPLETE_RUMBLE_SHORT_PAUSE:
+        vibrate = 0;
+        if (now - frameCountCompleteRumblePhaseStartMs >= (FRAMECOUNT_COMPLETE_RUMBLE_SHORT_TOTAL_MS - FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON_MS)) {
+          stopIntervalRumbleFeedback();
+        }
+        break;
+      case FRAMECOUNT_COMPLETE_RUMBLE_IDLE:
+        break;
+    }
+    return;
+  }
+
   if (feedbackRumblePhase != FEEDBACK_RUMBLE_IDLE) {
     switch (feedbackRumblePhase) {
       case FEEDBACK_RUMBLE_ON:
@@ -2093,7 +2776,7 @@ bool handleEmergencyStop() {
   return true;
 }
 
-const char* getTimelapseModeLabel(int mode) {
+const char* getTimelapseModeLabel(uint8_t mode) {
   switch (mode) {
     // Mode 1: swing left, boom down
     case 1:
@@ -2124,7 +2807,7 @@ const char* getTimelapseModeLabel(int mode) {
   }
 }
 
-void applyTimelapseModeOutputs(int mode) {
+void applyTimelapseModeOutputs(uint8_t mode) {
   switch (mode) {
     // Mode 1: swing left, boom down
     case 1:
@@ -2195,7 +2878,7 @@ void resetBounceState() {
 
 // Returns 1-8 based on left-stick position, or 0 if no match.
 // Used by both timelapse and bounce mode selection.
-int stickPositionToMode(int stickX, int stickY) {
+uint8_t stickPositionToMode(int stickX, int stickY) {
   if (stickX < STICK_MODE_LOW_THRESHOLD  && stickY > STICK_MODE_HIGH_THRESHOLD) return 1;
   if (stickX < STICK_MODE_LOW_THRESHOLD  && stickY < STICK_MODE_LOW_THRESHOLD)  return 2;
   if (stickX > STICK_MODE_HIGH_THRESHOLD && stickY < STICK_MODE_LOW_THRESHOLD)  return 3;
@@ -2229,7 +2912,7 @@ void updateTimelapseModeSelection() {
   }
 }
 
-const char* getBounceModeSerialLabel(int mode) {
+const char* getBounceModeSerialLabel(uint8_t mode) {
   switch (mode) {
     case 1: return "Bounce Mode 1: Swing left, boom down";
     case 2: return "Bounce Mode 2: Swing left, boom up";
@@ -2270,7 +2953,7 @@ void updateBounceModeSelection() {
 // towardEndpoint=false → moving back toward the start position (stage 1 first half)
 // state=HIGH turns the motor on; state=LOW turns it off.
 // DIP-switch reversal is handled inside setDirectionalOutput().
-void setBounceModeOutputs(int mode, bool towardEndpoint, uint8_t state) {
+void setBounceModeOutputs(uint8_t mode, bool towardEndpoint, uint8_t state) {
   switch (mode) {
     case 1: // swing left + boom down
       if (towardEndpoint) {
@@ -2367,7 +3050,7 @@ void setBounceModeOutputs(int mode, bool towardEndpoint, uint8_t state) {
 // Called at the turnaround point between stage 0 and stage 1,
 // and during direction switches inside stage 1.
 // Modes 1-4 use all four axes; modes 5/7 use swing only; modes 6/8 use lift only.
-void stopBounceModeOutputs(int mode) {
+void stopBounceModeOutputs(uint8_t mode) {
   switch (mode) {
     case 1: // swing left + boom down
     case 2: // swing left + boom up
@@ -2582,6 +3265,59 @@ void printDroneTuningProfile() {
   Serial.print("Flowlapse tuning | curved path mode=");
   Serial.println(FLOWLAPSE_CURVED_PATH_ENABLED ? "enabled" : "disabled");
 
+  Serial.print("Flowlapse tuning | ease in/out=");
+  Serial.println(FLOWLAPSE_EASE_IN_OUT_ENABLED ? "enabled" : "disabled");
+
+  Serial.print("Flowlapse tuning | ease strength=");
+  Serial.println(clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH), 2);
+
+  Serial.print("Flowlapse tuning | ping-pong loop=");
+  Serial.println(FLOWLAPSE_PING_PONG_LOOP ? "enabled" : "disabled");
+
+  Serial.print("Flowlapse tuning | return-to-waypoint-1 on complete=");
+  Serial.println(FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE ? "enabled" : "disabled");
+
+  Serial.print("Flowlapse tuning | arc-length sampling=");
+  Serial.println(FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED ? "enabled" : "disabled");
+
+  Serial.print("Flowlapse tuning | arc-length quality preset=");
+  if (FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET == FLOWLAPSE_ARC_LENGTH_QUALITY_LOW) {
+    Serial.println("low");
+  } else if (FLOWLAPSE_ARC_LENGTH_QUALITY_PRESET == FLOWLAPSE_ARC_LENGTH_QUALITY_HIGH) {
+    Serial.println("high");
+  } else {
+    Serial.println("med");
+  }
+
+  Serial.print("Flowlapse tuning | arc-length LUT steps=");
+  Serial.println(FLOWLAPSE_ARC_LENGTH_TABLE_STEPS);
+
+  Serial.print("Flowlapse tuning | frame-count mode=");
+  Serial.println(flowlapseFrameCountModeEnabled ? "enabled" : "disabled");
+
+  Serial.print("Flowlapse tuning | frame-count target=");
+  Serial.println(FLOWLAPSE_FRAME_COUNT_TARGET);
+
+  Serial.print("Flowlapse tuning | frame-count auto-exit=");
+  Serial.println(FLOWLAPSE_FRAMECOUNT_AUTO_EXIT ? "enabled" : "disabled");
+
+  Serial.print("Flowlapse summary | ease=");
+  Serial.print(FLOWLAPSE_EASE_IN_OUT_ENABLED ? "Y" : "N");
+  Serial.print(" strength=");
+  Serial.print(clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH), 2);
+  Serial.print(" loop=");
+  Serial.print(FLOWLAPSE_LOOP_CAPTURE ? "Y" : "N");
+  Serial.print(" frame=");
+  Serial.print(flowlapseFrameCountModeEnabled ? "Y" : "N");
+  Serial.print(" fexit=");
+  Serial.print(FLOWLAPSE_FRAMECOUNT_AUTO_EXIT ? "Y" : "N");
+  Serial.print(" arc=");
+  Serial.print(FLOWLAPSE_ARC_LENGTH_SAMPLING_ENABLED ? "Y" : "N");
+  Serial.print(" ping-pong=");
+  Serial.print(FLOWLAPSE_PING_PONG_LOOP ? "Y" : "N");
+  Serial.print(" return-home=");
+  Serial.println(FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE ? "Y" : "N");
+
   Serial.print("Flowlapse tuning | waypoint dwell ms=");
   if (flowlapseDwellMs == 0) {
     Serial.println("disabled");
@@ -2647,6 +3383,7 @@ void setup() {
   Serial.println("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds.");
   Serial.println("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms.");
   Serial.println("START + SELECT + SQUARE toggles controller rumble mute.");
+  Serial.println("Drone Mode: START + SELECT + TRIANGLE toggles Flowlapse frame-count mode.");
   Serial.println("L1 + L2 + CIRCLE replays current settings as rumble patterns.");
   Serial.print("Boot settings: interval=");
   Serial.print(timelapseIntervalSeconds);
