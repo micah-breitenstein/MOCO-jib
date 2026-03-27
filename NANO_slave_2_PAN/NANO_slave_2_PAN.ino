@@ -54,6 +54,7 @@ void stepMotor(bool dirHigh) {
   delayMicroseconds(pd);
   digitalWrite(driverPUL, HIGH);
   delayMicroseconds(pd);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 // Handle speed stage transitions.
