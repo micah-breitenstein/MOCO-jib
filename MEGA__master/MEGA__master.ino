@@ -1323,19 +1323,23 @@ void logDroneSpeedModifierStateIfChanged() {
 }
 
 void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t& modeState) {
-  if (ps2x.Button(PSB_SELECT) && ps2x.Button(buttonCode)) {
-    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+  bool wasActive = (modeState == 1);
+  bool isActive = ps2x.Button(PSB_SELECT) && ps2x.Button(buttonCode);
+
+  if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+    if (isActive && !wasActive) {
       Serial.print(F("SOLO press: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
-    }
-    setDirectionalOutput(isReversed, normalPin, reversedPin, HIGH);
-    modeState = 1;
-  }
-  if (modeState == 1 && ps2x.ButtonReleased(buttonCode)) {
-    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+    } else if (!isActive && wasActive) {
       Serial.print(F("SOLO release: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
+  }
+
+  if (isActive) {
+    setDirectionalOutput(isReversed, normalPin, reversedPin, HIGH);
+    modeState = 1;
+  } else {
     digitalWrite(normalPin, LOW);
     digitalWrite(reversedPin, LOW);
     modeState = 0;
@@ -1345,25 +1349,29 @@ void handleSoloDirectionalMode(uint8_t buttonCode, bool isReversed, uint8_t norm
 void handleCombinedDirectionalMode(uint8_t buttonCode, bool axis1Reversed, uint8_t axis1Normal, uint8_t axis1Rev,
                                     bool axis2Reversed, uint8_t axis2Normal, uint8_t axis2Rev,
                                     uint8_t& soloState, uint8_t motionFlagMask) {
-  if (soloState == 0 && ps2x.Button(buttonCode)) {
-    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+  bool wasActive = isPackedStateSet(motionFlags, motionFlagMask);
+  bool isActive = (soloState == 0 && ps2x.Button(buttonCode));
+
+  if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+    if (isActive && !wasActive) {
       Serial.print(F("COMBINED press: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
-    }
-    setPackedState(motionFlags, motionFlagMask, true);
-    setDirectionalOutput(axis1Reversed, axis1Normal, axis1Rev, HIGH);
-    setDirectionalOutput(axis2Reversed, axis2Normal, axis2Rev, HIGH);
-  }
-  if (soloState == 0 && ps2x.ButtonReleased(buttonCode)) {
-    if (DEBUG_EDGE_EVENTS && (buttonCode == PSB_PAD_LEFT || buttonCode == PSB_PAD_RIGHT)) {
+    } else if (!isActive && wasActive) {
       Serial.print(F("COMBINED release: "));
       Serial.println(buttonCode == PSB_PAD_LEFT ? "PAD_LEFT" : "PAD_RIGHT");
     }
+  }
+
+  setPackedState(motionFlags, motionFlagMask, isActive);
+
+  if (isActive) {
+    setDirectionalOutput(axis1Reversed, axis1Normal, axis1Rev, HIGH);
+    setDirectionalOutput(axis2Reversed, axis2Normal, axis2Rev, HIGH);
+  } else {
     digitalWrite(axis1Normal, LOW);
     digitalWrite(axis1Rev, LOW);
     digitalWrite(axis2Normal, LOW);
     digitalWrite(axis2Rev, LOW);
-    setPackedState(motionFlags, motionFlagMask, false);
   }
 }
 
