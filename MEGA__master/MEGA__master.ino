@@ -2124,7 +2124,11 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
     if (suppressDroneNextStartRelease) {
       suppressDroneNextStartRelease = false;
     } else {
-      if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
+      if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING) {
+        completeFlowlapsePreview();
+        Serial.println(F("Flowlapse: preview skipped by START; capture is now ready."));
+        droneLastActivityMs = now;
+      } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
         startFlowlapseCapture(now);
         droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW) {

@@ -156,11 +156,12 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 - Control flow:
 	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints); controller rumbles once per recorded waypoint as a count confirmation
 	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
+	- **START while preview is running**: force-complete preview and move to **READY_FOR_CAPTURE** (useful if preview appears stuck)
 	- **START + SELECT + TRIANGLE**: toggle frame-count mode at runtime (no recompile needed); this changes whether preview/capture use equal-distance frame stops or normal waypoint stepping
 	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward (`current/total` waypoint index prints to Serial)
 	- **SELECT + D-pad UP/DOWN** (Drone Mode) increases/decreases Flowlapse dwell by 250 ms per press (0 to 5000 ms)
 	- Dwell adjustment rumble encodes current dwell in 250 ms steps (e.g., `1000 ms` = 4 pulses); `0 ms` plays a double pulse (disabled)
-	- **START**: run actual Flowlapse capture after preview completes
+	- **START**: run actual Flowlapse capture when in **READY_FOR_CAPTURE** (if you skipped preview with START, press START again to begin capture)
 	- **L1 + R1**: wipe the full Flowlapse course and re-arm recording
 	- **L2 + R2 (1st press)**: move the rig back to the **last** recorded waypoint
 	- **L2 + R2 (2nd press)**: rumble + delete that last point (repeat this two-step cycle to walk the path backward)
