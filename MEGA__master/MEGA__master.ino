@@ -496,14 +496,9 @@ void detectControllerType() {
 }
 
 void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin) {
-  if (ps2x.Button(buttonCode)) {
-    digitalWrite(axis1Pin, HIGH);
-    digitalWrite(axis2Pin, HIGH);
-  }
-  if (ps2x.ButtonReleased(buttonCode)) {
-    digitalWrite(axis1Pin, LOW);
-    digitalWrite(axis2Pin, LOW);
-  }
+  uint8_t outputState = ps2x.Button(buttonCode) ? HIGH : LOW;
+  digitalWrite(axis1Pin, outputState);
+  digitalWrite(axis2Pin, outputState);
 }
 
 void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t state) {
