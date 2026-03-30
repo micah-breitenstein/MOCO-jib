@@ -1506,12 +1506,15 @@ void handleButtonDirection(uint8_t buttonCode, bool isReversed,
 }
 
 void handleFocusAxis() {
-  handleButtonDirection(PSB_TRIANGLE, isFocusReversed, focusLeft, focusRight);
-  handleButtonDirection(PSB_CROSS, isFocusReversed, focusRight, focusLeft);
-  if (ps2x.Button(PSB_SQUARE))         digitalWrite(focusSpeedDown, HIGH);
-  if (ps2x.ButtonReleased(PSB_SQUARE)) digitalWrite(focusSpeedDown, LOW);
-  if (ps2x.Button(PSB_CIRCLE))         digitalWrite(focusSpeedUp, HIGH);
-  if (ps2x.ButtonReleased(PSB_CIRCLE)) digitalWrite(focusSpeedUp, LOW);
+  uint8_t triangleState = ps2x.Button(PSB_TRIANGLE) ? HIGH : LOW;
+  uint8_t crossState = ps2x.Button(PSB_CROSS) ? HIGH : LOW;
+  setDirectionalOutput(isFocusReversed, focusLeft, focusRight, triangleState);
+  setDirectionalOutput(isFocusReversed, focusRight, focusLeft, crossState);
+
+  uint8_t speedDownState = ps2x.Button(PSB_SQUARE) ? HIGH : LOW;
+  uint8_t speedUpState = ps2x.Button(PSB_CIRCLE) ? HIGH : LOW;
+  digitalWrite(focusSpeedDown, speedDownState);
+  digitalWrite(focusSpeedUp, speedUpState);
 }
 
 // Returns true if the axis is active (outside deadband), false if stopped.
