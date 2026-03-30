@@ -1504,10 +1504,10 @@ void handleTiltAxis() {
 
 void handleButtonDirection(uint8_t buttonCode, bool isReversed,
                            uint8_t normalPin, uint8_t reversedPin) {
-  if (ps2x.Button(buttonCode)) {
+  uint8_t outputState = ps2x.Button(buttonCode) ? HIGH : LOW;
+  if (outputState == HIGH) {
     setDirectionalOutput(isReversed, normalPin, reversedPin, HIGH);
-  }
-  if (ps2x.ButtonReleased(buttonCode)) {
+  } else {
     digitalWrite(normalPin, LOW);
     digitalWrite(reversedPin, LOW);
   }
