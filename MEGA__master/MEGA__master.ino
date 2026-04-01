@@ -140,7 +140,8 @@ constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
 constexpr int EEPROM_SETTINGS_ADDRESS = 0;
 constexpr uint16_t PERSISTED_SETTINGS_MAGIC = 0x4D52;
-constexpr uint8_t PERSISTED_SETTINGS_VERSION = 2;
+constexpr uint8_t PERSISTED_SETTINGS_VERSION = 3;
+constexpr uint8_t PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED = 0x01;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
 constexpr int STICK_MIN = 0;
@@ -269,6 +270,15 @@ struct PersistedSettingsV2 {
   uint8_t version;
   uint8_t timelapseIntervalSeconds;
   int stepDist;
+  uint8_t checksum;
+};
+
+struct PersistedSettingsV3 {
+  uint16_t magic;
+  uint8_t version;
+  uint8_t timelapseIntervalSeconds;
+  int stepDist;
+  uint8_t flags;
   uint8_t checksum;
 };
 
@@ -2647,19 +2657,46 @@ uint8_t computePersistedSettingsChecksum(const PersistedSettingsV2& settings) {
       + ((settings.stepDist >> 8) & 0xFF));
 }
 
-void writePersistedSettings(const PersistedSettingsV2& settings) {
+uint8_t computePersistedSettingsChecksum(const PersistedSettingsV3& settings) {
+  return static_cast<uint8_t>((settings.magic & 0xFF)
+      + (settings.magic >> 8)
+      + settings.version
+      + settings.timelapseIntervalSeconds
+      + (settings.stepDist & 0xFF)
+      + ((settings.stepDist >> 8) & 0xFF)
+      + settings.flags);
+}
+
+void writePersistedSettings(const PersistedSettingsV3& settings) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
-  for (unsigned int i = 0; i < sizeof(PersistedSettingsV2); ++i) {
+  for (unsigned int i = 0; i < sizeof(PersistedSettingsV3); ++i) {
     EEPROM.update(EEPROM_SETTINGS_ADDRESS + static_cast<int>(i), bytes[i]);
   }
 }
 
 bool loadPersistedSettings() {
+  PersistedSettingsV3 settingsV3;
+  EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV3);
+
+  if (settingsV3.magic == PERSISTED_SETTINGS_MAGIC
+      && settingsV3.version == PERSISTED_SETTINGS_VERSION
+      && settingsV3.checksum == computePersistedSettingsChecksum(settingsV3)) {
+    timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
+        static_cast<int>(settingsV3.timelapseIntervalSeconds),
+        TIMELAPSE_INTERVAL_MIN_SECONDS,
+        TIMELAPSE_INTERVAL_MAX_SECONDS));
+    stepDist = constrain(settingsV3.stepDist,
+        TIMELAPSE_STEP_DIST_MIN_MS,
+        TIMELAPSE_STEP_DIST_MAX_MS);
+    rumbleMuted = ((settingsV3.flags & PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED) != 0);
+    return true;
+  }
+
   PersistedSettingsV2 settingsV2;
   EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV2);
 
   if (settingsV2.magic == PERSISTED_SETTINGS_MAGIC
-      && settingsV2.version == PERSISTED_SETTINGS_VERSION
+      && settingsV2.version == 2
       && settingsV2.checksum == computePersistedSettingsChecksum(settingsV2)) {
     timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
         static_cast<int>(settingsV2.timelapseIntervalSeconds),
@@ -2687,11 +2724,12 @@ bool loadPersistedSettings() {
 }
 
 void savePersistedSettings() {
-  PersistedSettingsV2 settings;
+  PersistedSettingsV3 settings;
   settings.magic = PERSISTED_SETTINGS_MAGIC;
   settings.version = PERSISTED_SETTINGS_VERSION;
   settings.timelapseIntervalSeconds = timelapseIntervalSeconds;
   settings.stepDist = stepDist;
+  settings.flags = rumbleMuted ? PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED : 0;
   settings.checksum = computePersistedSettingsChecksum(settings);
   writePersistedSettings(settings);
 }
@@ -2787,6 +2825,7 @@ bool handleRumbleMuteToggle() {
     suppressNextSelectRelease = true;
     suppressNextStartRelease = true;
     stopIntervalRumbleFeedback();
+    savePersistedSettings();
 
     Serial.print(F("Controller rumble "));
     Serial.println(rumbleMuted ? "muted." : "unmuted.");
