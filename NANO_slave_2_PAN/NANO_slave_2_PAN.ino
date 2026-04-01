@@ -21,6 +21,7 @@ const int STAGE_COUNT     = 5;
 const int STAGE_DELAYS[STAGE_COUNT] = {3000, 1700, 650, 300, 150};
 const int HIGH_SPEED_DELAY = 100;  // used when both adj pins are HIGH (solo axis trim)
 const int MIN_DELAY        = 100;  // floor for fine adjustment
+const int MAX_DELAY        = 6000; // ceiling for fine adjustment (2x slowest stage; prevents runaway accumulation)
 
 ///// STATE
 int stage = 0;
@@ -98,6 +99,7 @@ int applySpeedAdjust(int adjUpRead, int adjDownRead) {
   if (adjDownRead == 1 && adjUpRead == 0) {
     debugLog("SPEED DOWN ADJUST");
     count++;
+    if (count > MAX_DELAY) count = MAX_DELAY;
   }
   return count;
 }

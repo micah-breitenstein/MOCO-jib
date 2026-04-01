@@ -142,6 +142,7 @@ constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
 constexpr int STICK_MIN = 0;
 constexpr int STICK_CENTER = 128;
 constexpr int STICK_MAX = 255;
+constexpr int STICK_DEADBAND = 5;   // tolerance for analog stick exact-equality comparisons
 constexpr int STICK_MODE_LOW_THRESHOLD = 123;
 constexpr int STICK_MODE_HIGH_THRESHOLD = 133;
 constexpr uint8_t PAN_STOP_NONE = 0;
@@ -1393,16 +1394,16 @@ void activatePanTrim(uint8_t pin, const char* label) {
 
 void applyPanTrimDuringSwing() {
   if (swingInMotion) {
-    if (rightStickXvalue == STICK_MIN) {
+    if (rightStickXvalue <= STICK_DEADBAND) {
       activatePanTrim(panSpeedDownOnly, "panSpeedDownOnly");
-    } else if (rightStickXvalue == STICK_MAX) {
+    } else if (rightStickXvalue >= STICK_MAX - STICK_DEADBAND) {
       activatePanTrim(panSpeedUpOnly, "panSpeedUpOnly");
     }
   }
 }
 
 void resetPanTrimAtCenter() {
-  if (panStop == PAN_STOP_TRIM && rightStickXvalue == STICK_CENTER) {
+  if (panStop == PAN_STOP_TRIM && abs(rightStickXvalue - STICK_CENTER) <= STICK_DEADBAND) {
     digitalWrite(panSpeedUpOnly, LOW);
     digitalWrite(panSpeedDownOnly, LOW);
     panStop = PAN_STOP_NONE;
@@ -1423,7 +1424,7 @@ void activatePanOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* l
 }
 
 void stopPanOnlyMotionAtCenter() {
-  if (!swingInMotion && panStop == PAN_STOP_ACTIVE && rightStickXvalue == STICK_CENTER) {
+  if (!swingInMotion && panStop == PAN_STOP_ACTIVE && abs(rightStickXvalue - STICK_CENTER) <= STICK_DEADBAND) {
     digitalWrite(panLeft, LOW);
     digitalWrite(panRight, LOW);
     digitalWrite(panSpeedUpOnly, LOW);
@@ -1434,9 +1435,9 @@ void stopPanOnlyMotionAtCenter() {
 
 void handlePanAxis() {
   if (!swingInMotion) {
-    if (rightStickXvalue == STICK_MIN) {
+    if (rightStickXvalue <= STICK_DEADBAND) {
       activatePanOnlyMotion(panLeft, panRight, "pan left only with top speed");
-    } else if (rightStickXvalue == STICK_MAX) {
+    } else if (rightStickXvalue >= STICK_MAX - STICK_DEADBAND) {
       activatePanOnlyMotion(panRight, panLeft, "pan right only with top speed");
     }
   }
@@ -1449,17 +1450,17 @@ void handleLiftOnly(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftRever
 }
 
 void handleTiltTrimAxis() {
-  if (liftInMotion && rightStickYvalue == STICK_MAX) {
+  if (liftInMotion && rightStickYvalue >= STICK_MAX - STICK_DEADBAND) {
     Serial.println(F("tiltSpeedDownOnly"));
     digitalWrite(tiltSpeedDownOnly, HIGH);
     tiltStop = TILT_STOP_TRIM;
   }
-  if (liftInMotion && rightStickYvalue == STICK_MIN) {
+  if (liftInMotion && rightStickYvalue <= STICK_DEADBAND) {
     Serial.println(F("tiltSpeedUpOnly"));
     digitalWrite(tiltSpeedUpOnly, HIGH);
     tiltStop = TILT_STOP_TRIM;
   }
-  if (tiltStop == TILT_STOP_TRIM && rightStickYvalue == STICK_CENTER) {
+  if (tiltStop == TILT_STOP_TRIM && abs(rightStickYvalue - STICK_CENTER) <= STICK_DEADBAND) {
     digitalWrite(tiltSpeedUpOnly, LOW);
     digitalWrite(tiltSpeedDownOnly, LOW);
     tiltStop = TILT_STOP_NONE;
@@ -1481,7 +1482,7 @@ void activateTiltOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* 
 }
 
 void stopTiltOnlyMotionAtCenter() {
-  if (!liftInMotion && tiltStop == TILT_STOP_ACTIVE && rightStickYvalue == STICK_CENTER) {
+  if (!liftInMotion && tiltStop == TILT_STOP_ACTIVE && abs(rightStickYvalue - STICK_CENTER) <= STICK_DEADBAND) {
     digitalWrite(tiltUp, LOW);
     digitalWrite(tiltDown, LOW);
     digitalWrite(tiltSpeedUpOnly, LOW);
@@ -1492,9 +1493,9 @@ void stopTiltOnlyMotionAtCenter() {
 
 void handleTiltAxis() {
   if (!liftInMotion) {
-    if (rightStickYvalue == STICK_MAX) {
+    if (rightStickYvalue >= STICK_MAX - STICK_DEADBAND) {
       activateTiltOnlyMotion(tiltDown, tiltUp, "tiltDownOnly");
-    } else if (rightStickYvalue == STICK_MIN) {
+    } else if (rightStickYvalue <= STICK_DEADBAND) {
       activateTiltOnlyMotion(tiltUp, tiltDown, "tiltUpOnly");
     }
   }
@@ -2893,10 +2894,10 @@ uint8_t stickPositionToMode(int stickX, int stickY) {
   if (stickX < STICK_MODE_LOW_THRESHOLD  && stickY < STICK_MODE_LOW_THRESHOLD)  return 2;
   if (stickX > STICK_MODE_HIGH_THRESHOLD && stickY < STICK_MODE_LOW_THRESHOLD)  return 3;
   if (stickX > STICK_MODE_HIGH_THRESHOLD && stickY > STICK_MODE_HIGH_THRESHOLD) return 4;
-  if (stickX == STICK_MIN) return 5;
-  if (stickY == STICK_MIN) return 6;
-  if (stickX == STICK_MAX) return 7;
-  if (stickY == STICK_MAX) return 8;
+  if (stickX <= STICK_DEADBAND) return 5;
+  if (stickY <= STICK_DEADBAND) return 6;
+  if (stickX >= STICK_MAX - STICK_DEADBAND) return 7;
+  if (stickY >= STICK_MAX - STICK_DEADBAND) return 8;
   return 0;
 }
 
