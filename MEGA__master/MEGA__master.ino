@@ -140,7 +140,7 @@ constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
 constexpr int EEPROM_SETTINGS_ADDRESS = 0;
 constexpr uint16_t PERSISTED_SETTINGS_MAGIC = 0x4D52;
-constexpr uint8_t PERSISTED_SETTINGS_VERSION = 1;
+constexpr uint8_t PERSISTED_SETTINGS_VERSION = 2;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
 constexpr int STICK_MIN = 0;
@@ -261,6 +261,14 @@ struct PersistedSettingsV1 {
   uint16_t magic;
   uint8_t version;
   uint8_t timelapseIntervalSeconds;
+  uint8_t checksum;
+};
+
+struct PersistedSettingsV2 {
+  uint16_t magic;
+  uint8_t version;
+  uint8_t timelapseIntervalSeconds;
+  int stepDist;
   uint8_t checksum;
 };
 
@@ -2605,6 +2613,7 @@ void adjustStepDist(int delta) {
   }
 
   stepDist = newStepDist;
+  savePersistedSettings();
   Serial.print(F("Timelapse stepDist (ms) = "));
   Serial.println(stepDist);
   startStepDistRumbleFeedback();
@@ -2629,35 +2638,60 @@ uint8_t computePersistedSettingsChecksum(const PersistedSettingsV1& settings) {
       + settings.timelapseIntervalSeconds);
 }
 
-void writePersistedSettings(const PersistedSettingsV1& settings) {
+uint8_t computePersistedSettingsChecksum(const PersistedSettingsV2& settings) {
+  return static_cast<uint8_t>((settings.magic & 0xFF)
+      + (settings.magic >> 8)
+      + settings.version
+      + settings.timelapseIntervalSeconds
+      + (settings.stepDist & 0xFF)
+      + ((settings.stepDist >> 8) & 0xFF));
+}
+
+void writePersistedSettings(const PersistedSettingsV2& settings) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
-  for (unsigned int i = 0; i < sizeof(PersistedSettingsV1); ++i) {
+  for (unsigned int i = 0; i < sizeof(PersistedSettingsV2); ++i) {
     EEPROM.update(EEPROM_SETTINGS_ADDRESS + static_cast<int>(i), bytes[i]);
   }
 }
 
 bool loadPersistedSettings() {
-  PersistedSettingsV1 settings;
-  EEPROM.get(EEPROM_SETTINGS_ADDRESS, settings);
+  PersistedSettingsV2 settingsV2;
+  EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV2);
 
-  if (settings.magic != PERSISTED_SETTINGS_MAGIC
-      || settings.version != PERSISTED_SETTINGS_VERSION
-      || settings.checksum != computePersistedSettingsChecksum(settings)) {
+  if (settingsV2.magic == PERSISTED_SETTINGS_MAGIC
+      && settingsV2.version == PERSISTED_SETTINGS_VERSION
+      && settingsV2.checksum == computePersistedSettingsChecksum(settingsV2)) {
+    timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
+        static_cast<int>(settingsV2.timelapseIntervalSeconds),
+        TIMELAPSE_INTERVAL_MIN_SECONDS,
+        TIMELAPSE_INTERVAL_MAX_SECONDS));
+    stepDist = constrain(settingsV2.stepDist,
+        TIMELAPSE_STEP_DIST_MIN_MS,
+        TIMELAPSE_STEP_DIST_MAX_MS);
+    return true;
+  }
+
+  PersistedSettingsV1 settingsV1;
+  EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV1);
+  if (settingsV1.magic != PERSISTED_SETTINGS_MAGIC
+      || settingsV1.version != 1
+      || settingsV1.checksum != computePersistedSettingsChecksum(settingsV1)) {
     return false;
   }
 
   timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
-      static_cast<int>(settings.timelapseIntervalSeconds),
+      static_cast<int>(settingsV1.timelapseIntervalSeconds),
       TIMELAPSE_INTERVAL_MIN_SECONDS,
       TIMELAPSE_INTERVAL_MAX_SECONDS));
   return true;
 }
 
 void savePersistedSettings() {
-  PersistedSettingsV1 settings;
+  PersistedSettingsV2 settings;
   settings.magic = PERSISTED_SETTINGS_MAGIC;
   settings.version = PERSISTED_SETTINGS_VERSION;
   settings.timelapseIntervalSeconds = timelapseIntervalSeconds;
+  settings.stepDist = stepDist;
   settings.checksum = computePersistedSettingsChecksum(settings);
   writePersistedSettings(settings);
 }
