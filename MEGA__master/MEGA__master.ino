@@ -1,3 +1,4 @@
+#include <EEPROM.h>
 #include <PS2X_lib.h>  //for v1.6
 
 constexpr uint8_t PS2_DAT = 10;
@@ -137,6 +138,9 @@ constexpr uint8_t DIP_SWITCH_2 = 43;
 constexpr uint8_t DIP_SWITCH_3 = 37;
 constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
+constexpr int EEPROM_SETTINGS_ADDRESS = 0;
+constexpr uint16_t PERSISTED_SETTINGS_MAGIC = 0x4D52;
+constexpr uint8_t PERSISTED_SETTINGS_VERSION = 1;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
 constexpr int STICK_MIN = 0;
@@ -252,6 +256,13 @@ constexpr uint16_t FLOWLAPSE_FRAME_COUNT_TARGET = 48; // total captures includin
 constexpr bool FLOWLAPSE_FRAMECOUNT_AUTO_EXIT = true; // exit frame-count mode after completion when enabled
 constexpr uint16_t FLOWLAPSE_NORMALIZED_LUT_SCALE = 65535U;
 constexpr uint8_t FLOWLAPSE_LENGTH_STORAGE_SCALE = 8U; // stored path values use 1/8-unit resolution
+
+struct PersistedSettingsV1 {
+  uint16_t magic;
+  uint8_t version;
+  uint8_t timelapseIntervalSeconds;
+  uint8_t checksum;
+};
 
 struct FlowlapseWaypoint {
   float swing;
@@ -2573,6 +2584,7 @@ void adjustIntervalSeconds(int delta) {
 
   timelapseIntervalSeconds = newIntervalSeconds;
   updateIntervalMs();
+  savePersistedSettings();
   Serial.print(F("Timelapse interval (seconds) = "));
   Serial.println(timelapseIntervalSeconds);
   startIntervalRumbleFeedback();
@@ -2608,6 +2620,46 @@ bool isRumbleFeedbackActive() {
       || rumbleSeparatorActive
       || feedbackRumblePhase != FEEDBACK_RUMBLE_IDLE
       || pendingRumblePattern != PENDING_RUMBLE_NONE);
+}
+
+uint8_t computePersistedSettingsChecksum(const PersistedSettingsV1& settings) {
+  return static_cast<uint8_t>((settings.magic & 0xFF)
+      + (settings.magic >> 8)
+      + settings.version
+      + settings.timelapseIntervalSeconds);
+}
+
+void writePersistedSettings(const PersistedSettingsV1& settings) {
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
+  for (unsigned int i = 0; i < sizeof(PersistedSettingsV1); ++i) {
+    EEPROM.update(EEPROM_SETTINGS_ADDRESS + static_cast<int>(i), bytes[i]);
+  }
+}
+
+bool loadPersistedSettings() {
+  PersistedSettingsV1 settings;
+  EEPROM.get(EEPROM_SETTINGS_ADDRESS, settings);
+
+  if (settings.magic != PERSISTED_SETTINGS_MAGIC
+      || settings.version != PERSISTED_SETTINGS_VERSION
+      || settings.checksum != computePersistedSettingsChecksum(settings)) {
+    return false;
+  }
+
+  timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
+      static_cast<int>(settings.timelapseIntervalSeconds),
+      TIMELAPSE_INTERVAL_MIN_SECONDS,
+      TIMELAPSE_INTERVAL_MAX_SECONDS));
+  return true;
+}
+
+void savePersistedSettings() {
+  PersistedSettingsV1 settings;
+  settings.magic = PERSISTED_SETTINGS_MAGIC;
+  settings.version = PERSISTED_SETTINGS_VERSION;
+  settings.timelapseIntervalSeconds = timelapseIntervalSeconds;
+  settings.checksum = computePersistedSettingsChecksum(settings);
+  writePersistedSettings(settings);
 }
 
 // START + PAD_UP increases timelapseIntervalSeconds.
@@ -3340,6 +3392,7 @@ void printDroneTuningProfile() {
 void setup() {
 
   Serial.begin(9600);
+  bool persistedSettingsLoaded = loadPersistedSettings();
   updateIntervalMs();
 
   const uint8_t outputPins[] = {
@@ -3401,6 +3454,9 @@ void setup() {
   Serial.print(F("s, stepDist="));
   Serial.print(stepDist);
   Serial.println(F("ms"));
+  Serial.println(persistedSettingsLoaded
+      ? F("Persisted settings: timelapse interval restored from EEPROM.")
+      : F("Persisted settings: defaults active."));
   printDroneTuningProfile();
 
   Serial.print(F("Boot axis reversal | swing="));
