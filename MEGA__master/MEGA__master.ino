@@ -61,9 +61,11 @@ int rightStickYvalue;
 
 // Timelapse Variables
 uint8_t timelapseMode = 0;
-uint8_t timelapseIntervalSeconds = 15;
+constexpr uint8_t DEFAULT_TIMELAPSE_INTERVAL_SECONDS = 15;
+uint8_t timelapseIntervalSeconds = DEFAULT_TIMELAPSE_INTERVAL_SECONDS;
 unsigned long timelapseIntervalMs;
-int stepDist = 100;
+constexpr int DEFAULT_TIMELAPSE_STEP_DIST_MS = 100;
+int stepDist = DEFAULT_TIMELAPSE_STEP_DIST_MS;
 const uint8_t trigger = 28;
 
 enum TimelapsePhase : uint8_t {
@@ -161,6 +163,7 @@ constexpr int TIMELAPSE_INTERVAL_MAX_SECONDS = 99;
 constexpr int TIMELAPSE_STEP_DIST_MIN_MS = 20;
 constexpr int TIMELAPSE_STEP_DIST_MAX_MS = 150;
 constexpr int TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS = 10;
+constexpr unsigned long PERSISTED_SETTINGS_RESET_HOLD_MS = 1500;
 constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 600;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 200;
@@ -487,6 +490,9 @@ unsigned long lastControllerRetryMs = 0;
 #define unsupportedControllerWarningShown packedFlags.unsupportedControllerWarningShown
 #define rumbleSeparatorActive packedFlags.rumbleSeparatorActive
 #define chainStepDistAfterInterval packedFlags.chainStepDistAfterInterval
+bool persistedSettingsResetComboActive = false;
+bool persistedSettingsResetLatched = false;
+unsigned long persistedSettingsResetStartMs = 0;
 
 void configureController() {
 
@@ -2734,6 +2740,13 @@ void savePersistedSettings() {
   writePersistedSettings(settings);
 }
 
+void restorePersistedSettingDefaults() {
+  timelapseIntervalSeconds = DEFAULT_TIMELAPSE_INTERVAL_SECONDS;
+  stepDist = DEFAULT_TIMELAPSE_STEP_DIST_MS;
+  rumbleMuted = false;
+  updateIntervalMs();
+}
+
 // START + PAD_UP increases timelapseIntervalSeconds.
 // START + PAD_DOWN decreases timelapseIntervalSeconds.
 // This is only active while no auto mode is running so it does not conflict
@@ -2856,6 +2869,48 @@ bool handleSettingsReplay() {
 
   lastSettingsReplayComboActive = settingsReplayComboActive;
   return settingsReplayComboActive;
+}
+
+bool handlePersistedSettingsReset(unsigned long now) {
+  bool resetAllowed = !droneMode && !isAutoModeActive();
+  bool resetComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_CIRCLE);
+
+  if (!resetComboActive) {
+    persistedSettingsResetComboActive = false;
+    persistedSettingsResetStartMs = 0;
+    persistedSettingsResetLatched = false;
+    return false;
+  }
+
+  if (!persistedSettingsResetComboActive) {
+    persistedSettingsResetComboActive = true;
+    persistedSettingsResetStartMs = now;
+  }
+
+  if (!resetAllowed) {
+    if (!persistedSettingsResetLatched) {
+      persistedSettingsResetLatched = true;
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Persisted settings reset blocked: auto mode or drone mode active."));
+    }
+    stopAllMotors();
+    return true;
+  }
+
+  if (!persistedSettingsResetLatched
+      && now - persistedSettingsResetStartMs >= PERSISTED_SETTINGS_RESET_HOLD_MS) {
+    restorePersistedSettingDefaults();
+    savePersistedSettings();
+    stopIntervalRumbleFeedback();
+    suppressNextSelectRelease = true;
+    suppressNextStartRelease = true;
+    persistedSettingsResetLatched = true;
+    startFeedbackRumble(2, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+    Serial.println(F("Persisted settings reset: timelapse interval, stepDist, and rumble mute restored to defaults."));
+  }
+
+  stopAllMotors();
+  return true;
 }
 
 void handleDroneModeToggle() {
@@ -3597,6 +3652,10 @@ void loop() {
   handleDroneModeToggle();
 
   if (!droneMode) {
+    if (handlePersistedSettingsReset(now)) {
+      return;
+    }
+
     if (handleTimelapseIntervalAdjustment()) {
       return;
     }
