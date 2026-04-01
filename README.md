@@ -339,6 +339,7 @@ You can now change the timelapse interval directly from the controller while no 
 - **Decrease interval:** hold **START** and tap **D-pad DOWN**
 - **Allowed range:** 1 to 99 seconds
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
+- **Persistence:** saved on change and restored at boot
 - **Limit feedback:** trying to go below/above range gives a distinct double-short rumble
 - **Lockout feedback:** trying this combo while timelapse or bounce is active gives a distinct triple-short deny rumble
 - **R3 behavior:** toggles Drone Mode ON/OFF (does not cancel timelapse/bounce directly)
@@ -389,6 +390,7 @@ You can also change the timelapse move-active duration (`stepDist`) directly fro
 - **Step size:** **10 ms** per press
 - **Allowed range:** 20 ms to 150 ms
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
+- **Persistence:** saved on change and restored at boot
 - **Limit feedback:** trying to go below/above range gives a distinct double-short rumble
 - **Lockout feedback:** trying this combo while timelapse or bounce is active gives a distinct triple-short deny rumble
 - **Rumble feedback:** long-pulse count encodes `stepDist` in 10 ms units (`stepDist / 10`)
@@ -399,6 +401,26 @@ You can also change the timelapse move-active duration (`stepDist`) directly fro
 When changed, the Mega prints the value over Serial as:
 
 - `Timelapse stepDist (ms) = X`
+
+### Rumble mute persistence
+
+Rumble mute now persists across power cycles.
+
+- Toggle rumble mute as usual in the runtime controls
+- **Persistence:** the mute preference is saved immediately when toggled
+- On boot, the saved preference is restored automatically
+
+### Reset persisted defaults (controller combo)
+
+You can reset persisted settings to defaults without reflashing.
+
+- Hold **START + SELECT + CIRCLE** together for **1.5 seconds** while auto modes are idle
+- Resets to:
+	- `timelapseIntervalSeconds = 15`
+	- `stepDist = 50`
+	- `rumbleMuted = false`
+- The reset values are written to EEPROM immediately
+- **Lockout:** while timelapse, bounce, or drone mode is active, reset is denied and values are unchanged
 
 ## Project Details Sheet
 
