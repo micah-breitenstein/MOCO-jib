@@ -300,6 +300,7 @@ enum FlowlapseState : uint8_t {
   FLOWLAPSE_STATE_PREVIEW_RUNNING,
   FLOWLAPSE_STATE_READY_FOR_CAPTURE,
   FLOWLAPSE_STATE_CAPTURE_RUNNING,
+  FLOWLAPSE_STATE_CAPTURE_PAUSED,
   FLOWLAPSE_STATE_UNDO_RUNNING,
   FLOWLAPSE_STATE_UNDO_READY_DELETE,
   FLOWLAPSE_STATE_JOG_RUNNING
@@ -2005,6 +2006,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   if (frameModeToggleComboActive && !lastFlowlapseFrameModeToggleComboActive) {
     bool toggleAllowed = (flowlapseState != FLOWLAPSE_STATE_PREVIEW_RUNNING)
                       && (flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_CAPTURE_PAUSED)
                       && (flowlapseState != FLOWLAPSE_STATE_UNDO_RUNNING)
                       && (flowlapseState != FLOWLAPSE_STATE_JOG_RUNNING);
     suppressDroneNextSelectRelease = true;
@@ -2038,6 +2040,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   if (flowlapseClearComboActive && !lastFlowlapseClearComboActive) {
     if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED
         || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_JOG_RUNNING) {
       startLockoutDeniedRumbleFeedback();
@@ -2057,6 +2060,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   if (flowlapseDeleteLastComboActive && !lastFlowlapseDeleteLastComboActive) {
     if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED
         || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING) {
       startLockoutDeniedRumbleFeedback();
       Serial.println(F("Flowlapse: cannot undo while preview/capture/undo is running."));
@@ -2227,6 +2231,19 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         completeFlowlapsePreview();
         Serial.println(F("Flowlapse: preview skipped by START; capture is now ready."));
         droneLastActivityMs = now;
+      } else if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
+        // Pause capture
+        stopAllMotors();
+        flowlapseState = FLOWLAPSE_STATE_CAPTURE_PAUSED;
+        startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+        Serial.println(F("Flowlapse: capture paused. Press START again to resume."));
+        droneLastActivityMs = now;
+      } else if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED) {
+        // Resume capture
+        flowlapseState = FLOWLAPSE_STATE_CAPTURE_RUNNING;
+        startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+        Serial.println(F("Flowlapse: capture resumed."));
+        droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
         startFlowlapseCapture(now);
         droneLastActivityMs = now;
@@ -2254,6 +2271,12 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
 
   if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
     handleFlowlapseCaptureStep(now, deltaSeconds);
+    droneLastActivityMs = now;
+    return;
+  }
+
+  if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED) {
+    stopAllMotors();
     droneLastActivityMs = now;
     return;
   }
