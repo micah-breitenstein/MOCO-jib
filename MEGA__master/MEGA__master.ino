@@ -216,6 +216,7 @@ constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
+constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.25f; // L2 micro-motion multiplier
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mode with R3
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 
@@ -596,14 +597,20 @@ uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) 
   bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
   bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2);
 
-  if (DRONE_L2_R2_NEUTRAL_MODE && precisionModeActive && boostModeActive) {
+  // L2 alone activates micro-motion: clamp to near-stop tier with fractional speed
+  if (precisionModeActive && !boostModeActive) {
+    return DRONE_SPEED_TIER_STOP;  // Return STOP; actual motion is gated by proportional magnitude (stick position)
+  }
+
+  // L2 + R2 together: L2 takes priority (micro-motion mode)
+  if (precisionModeActive && boostModeActive) {
+    if (DRONE_L2_R2_NEUTRAL_MODE) {
+      return DRONE_SPEED_TIER_STOP;
+    }
     return speedTier;
   }
 
-  if (precisionModeActive && speedTier > DRONE_SPEED_TIER_STOP) {
-    speedTier--;
-  }
-
+  // R2 alone: boost mode
   if (boostModeActive && speedTier < maxAllowedTier) {
     speedTier++;
   }
@@ -612,11 +619,20 @@ uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) 
 }
 
 void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin, uint8_t maxSpeedTier, uint8_t expoPercent) {
+  bool microMotionActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
+  
   uint8_t speedTier = getProportionalSpeedTier(magnitude, expoPercent);
   uint8_t clampedMaxTier = static_cast<uint8_t>(constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH));
 
   if (speedTier > clampedMaxTier) {
     speedTier = clampedMaxTier;
+  }
+
+  // In micro-motion mode (L2 alone), hold downPin to continuously decrement Nano stage toward ultra-slow
+  if (microMotionActive && speedTier > DRONE_SPEED_TIER_STOP) {
+    digitalWrite(downPin, HIGH);
+    digitalWrite(upPin, LOW);
+    return;  // Skip normal tier application
   }
 
   speedTier = applyDroneSpeedTierModifiers(speedTier, clampedMaxTier);
