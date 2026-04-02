@@ -240,6 +240,7 @@ constexpr unsigned long FLOWLAPSE_WAYPOINT_DWELL_MS = 0UL; // ms to hold still a
 constexpr unsigned long FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS = 250UL; // step size per SELECT+D-pad press in drone mode
 constexpr unsigned long FLOWLAPSE_DWELL_MAX_MS = 5000UL; // upper cap for controller adjustment
 constexpr float FLOWLAPSE_PREVIEW_SPEED_SCALE = 0.70f; // 1.0 = same as capture, <1 slower preview
+constexpr float FLOWLAPSE_PREVIEW_SPEED_BOOST = 3.0f; // L2 hold multiplier for fast preview (3x normal speed)
 constexpr unsigned long FLOWLAPSE_L3_RESET_HOLD_MS = 1500UL; // hold L3 to clear and re-arm recording quickly
 constexpr bool FLOWLAPSE_EASE_IN_OUT_ENABLED = true; // smooth segment acceleration/deceleration during capture motion
 constexpr float FLOWLAPSE_EASE_STRENGTH = 1.0f; // 0.0 = linear, 1.0 = full easing
@@ -1738,7 +1739,8 @@ void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
     float previewDistance = getFlowlapsePathTotalLength() * clampFlowlapse01(previewFraction);
     FlowlapseWaypoint previewTarget = sampleFlowlapsePointAtPathDistance(previewDistance, useCurvedPath);
 
-    float scaledPreviewDeltaSeconds = deltaSeconds * FLOWLAPSE_PREVIEW_SPEED_SCALE;
+    float previewSpeedMultiplier = ps2x.Button(PSB_L2) ? FLOWLAPSE_PREVIEW_SPEED_BOOST : FLOWLAPSE_PREVIEW_SPEED_SCALE;
+    float scaledPreviewDeltaSeconds = deltaSeconds * previewSpeedMultiplier;
     applyFlowlapseMotionTowardWaypoint(previewTarget, now, scaledPreviewDeltaSeconds);
 
     if (isFlowlapseTargetReached(previewTarget)) {
@@ -1772,7 +1774,8 @@ void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
   }
 
   const FlowlapseWaypoint& target = flowlapseWaypoints[flowlapseTargetWaypointIndex];
-  float scaledPreviewDeltaSeconds = deltaSeconds * FLOWLAPSE_PREVIEW_SPEED_SCALE;
+  float previewSpeedMultiplier = ps2x.Button(PSB_L2) ? FLOWLAPSE_PREVIEW_SPEED_BOOST : FLOWLAPSE_PREVIEW_SPEED_SCALE;
+  float scaledPreviewDeltaSeconds = deltaSeconds * previewSpeedMultiplier;
   applyFlowlapseMotionTowardWaypoint(target, now, scaledPreviewDeltaSeconds);
 
   if (isFlowlapseTargetReached(target)) {
