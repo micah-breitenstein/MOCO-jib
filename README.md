@@ -165,6 +165,7 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- **L1 + R1**: wipe the full Flowlapse course and re-arm recording
 	- **L2 + R2 (1st press)**: move the rig back to the **last** recorded waypoint
 	- **L2 + R2 (2nd press)**: rumble + delete that last point (repeat this two-step cycle to walk the path backward)
+	- **START + R1**: return to the first waypoint (jog from current position back to waypoint 1); only active when not already running preview/capture/undo/jog
 	- Hold **L3** for `FLOWLAPSE_L3_RESET_HOLD_MS` to quick-reset: clear course + re-arm recording
 - Capture behavior:
 	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
