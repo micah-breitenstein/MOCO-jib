@@ -145,6 +145,23 @@ Use this for dual-stick flying-drone style control.
 	- If both `L2` and `R2` are held together, L2 takes priority (micro-motion)
 - Exit Drone Mode by pressing **R3** again (toggle off)
 
+### Flowlapse pause/resume (Drone Mode only)
+
+Control capture timing when environmental factors change (wind, subject position, lighting).
+
+- **Press START during active Flowlapse capture** → **PAUSE**: motors stop immediately, capture timer halts, you can adjust conditions
+- **Press START again** → **RESUME**: rig picks up exactly where it paused, no loss of already-captured frames
+- Useful when:
+	- Wind direction/speed changes and you need to wait for conditions to stabilize
+	- Subject repositions or enters/exits framing
+	- Lighting changes (clouds, golden hour shift) and you want to wait for better light
+	- An unexpected interruption occurs but you're still committed to the shot
+	- You need to make a manual micro-adjustment to the rig position mid-capture
+- Safety:
+	- Combines with existing Flowlapse controls naturally (no new button conflicts)
+	- Can't accidentally clear or undo while paused (combo operations blocked)
+	- Resume picks up with the same motion tier and dwell settings
+
 ### Flowlapse (Drone Mode only)
 
 Flowlapse is a waypoint timelapse system for recording a multi-axis camera path and replaying it as a timelapse. It runs using the four Drone Mode axes (swing/lift/pan/tilt).
