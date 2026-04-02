@@ -3619,6 +3619,7 @@ void loop() {
   unsigned long now = millis();
 
   if (error != 0) {
+    stopAllMotors();
     if (now - lastControllerRetryMs >= CONTROLLER_RETRY_INTERVAL_MS) {
       lastControllerRetryMs = now;
       Serial.println(F("Controller init failed. Retrying config..."));
@@ -3631,11 +3632,13 @@ void loop() {
   }
 
   if (controllerType == 2) {
+    stopAllMotors();
     return;
   }
 
   const bool isDualShockType = (controllerType == 1 || controllerType == 3);
   if (!isDualShockType) {
+    stopAllMotors();
     if (!unsupportedControllerWarningShown) {
       Serial.print(F("Unsupported controller type: "));
       Serial.println(controllerType);
