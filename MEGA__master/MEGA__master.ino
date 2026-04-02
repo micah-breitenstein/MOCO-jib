@@ -441,8 +441,8 @@ bool lastDroneTiltActive = false;
 #define suppressDroneNextStartRelease packedFlags.suppressDroneNextStartRelease
 #define suppressDroneNextL3Release packedFlags.suppressDroneNextL3Release
 #define flowlapseL3HoldActive packedFlags.flowlapseL3HoldActive
-#define swingInMotion (isPackedStateSet(motionFlags, MOTION_FLAG_SWING))
-#define liftInMotion (isPackedStateSet(motionFlags, MOTION_FLAG_LIFT))
+#define swingInMotion (isPackedStateSet(motionFlags, MOTION_FLAG_SWING) || swingSoloMode != 0)
+#define liftInMotion (isPackedStateSet(motionFlags, MOTION_FLAG_LIFT) || liftSoloMode != 0)
 unsigned long flowlapseL3HoldStartMs = 0;
 unsigned long flowlapseDwellMs = FLOWLAPSE_WAYPOINT_DWELL_MS;
 unsigned long droneLastActivityMs = 0;
