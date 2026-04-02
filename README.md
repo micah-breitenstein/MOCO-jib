@@ -140,9 +140,9 @@ Use this for dual-stick flying-drone style control.
 - Focus stays on Triangle/Cross with Square/Circle speed control
 - In Drone Mode, **SELECT/START are remapped to Flowlapse controls** (timelapse/bounce mode selection is ignored while Drone Mode is active)
 - Drone speed modifiers while in Drone Mode:
-	- Hold `L2` for temporary precision mode (one speed tier slower)
+	- Hold `L2` for **micro-motion mode**: ultra-smooth cinematic movement at 0.25x speed (macro shots, interview push-ins, product framing)
 	- Hold `R2` for temporary boost mode (one speed tier faster, never above per-axis cap)
-	- If both `L2` and `R2` are held together, they resolve to neutral (no modifier)
+	- If both `L2` and `R2` are held together, L2 takes priority (micro-motion)
 - Exit Drone Mode by pressing **R3** again (toggle off)
 
 ### Flowlapse (Drone Mode only)
@@ -243,6 +243,7 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 - Logging:
 	- `DRONE_IDLE_TIMEOUT_MS` (disabled; idle auto-exit removed)
 	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
+	- `DRONE_MICRO_MOTION_SPEED_RATIO` (currently `0.25`) — L2 micro-motion multiplier for ultra-smooth cinematic control
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
 	- `FLOWLAPSE_LOOP_CAPTURE` (currently `false`) — set `true` to loop capture continuously from start after each pass
