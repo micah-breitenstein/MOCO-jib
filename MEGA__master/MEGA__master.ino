@@ -353,6 +353,7 @@ struct PackedFlags {
   uint8_t lastFlowlapseClearComboActive : 1;
   uint8_t lastFlowlapseDeleteLastComboActive : 1;
   uint8_t lastFlowlapseFrameModeToggleComboActive : 1;
+  uint8_t lastFlowlapseReturnToStartComboActive : 1;
   uint8_t lastDwellAdjustUpComboActive : 1;
   uint8_t lastDwellAdjustDownComboActive : 1;
   uint8_t suppressDroneNextSelectRelease : 1;
@@ -392,6 +393,7 @@ struct PackedFlags {
       lastFlowlapseClearComboActive(false),
       lastFlowlapseDeleteLastComboActive(false),
       lastFlowlapseFrameModeToggleComboActive(false),
+      lastFlowlapseReturnToStartComboActive(false),
       lastDwellAdjustUpComboActive(false),
       lastDwellAdjustDownComboActive(false),
       suppressDroneNextSelectRelease(false),
@@ -435,6 +437,7 @@ bool lastDroneTiltActive = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
+#define lastFlowlapseReturnToStartComboActive packedFlags.lastFlowlapseReturnToStartComboActive
 #define lastDwellAdjustUpComboActive packedFlags.lastDwellAdjustUpComboActive
 #define lastDwellAdjustDownComboActive packedFlags.lastDwellAdjustDownComboActive
 #define suppressDroneNextSelectRelease packedFlags.suppressDroneNextSelectRelease
@@ -2148,6 +2151,32 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
     }
     droneLastActivityMs = now;
   }
+
+  bool flowlapseReturnToStartComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_R1);
+  if (flowlapseReturnToStartComboActive && !lastFlowlapseReturnToStartComboActive) {
+    if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_JOG_RUNNING) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Flowlapse: cannot return-to-start while preview/capture/undo/jog is running."));
+    } else if (flowlapseWaypointCount == 0) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Flowlapse: no waypoints recorded yet."));
+    } else if (flowlapseJogIndex == 0) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Flowlapse: already at first waypoint."));
+    } else {
+      flowlapseJogIndex = 0;
+      flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
+      resetFlowlapseAxisTierState(now);
+      suppressDroneNextStartRelease = true;
+      startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      Serial.println(F("Flowlapse: returning to first waypoint via START+R1."));
+    }
+    droneLastActivityMs = now;
+  }
+  lastFlowlapseReturnToStartComboActive = flowlapseReturnToStartComboActive;
 
   if (ps2x.ButtonReleased(PSB_SELECT)) {
     if (suppressDroneNextSelectRelease) {
