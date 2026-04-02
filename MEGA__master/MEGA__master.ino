@@ -440,6 +440,7 @@ bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
 bool lastWaypointDwellAdjustUpComboActive = false;
 bool lastWaypointDwellAdjustDownComboActive = false;
+bool lastFlowlapseLoopToggleComboActive = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
@@ -454,6 +455,7 @@ bool lastWaypointDwellAdjustDownComboActive = false;
 #define liftInMotion (isPackedStateSet(motionFlags, MOTION_FLAG_LIFT) || liftSoloMode != 0)
 unsigned long flowlapseL3HoldStartMs = 0;
 unsigned long flowlapseDwellMs = FLOWLAPSE_WAYPOINT_DWELL_MS;
+bool flowlapsePingPongLoopEnabled = FLOWLAPSE_PING_PONG_LOOP;
 unsigned long droneLastActivityMs = 0;
 FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
 uint8_t flowlapseWaypointCount = 0;
@@ -1331,7 +1333,7 @@ void startFlowlapseCapture(unsigned long now) {
     Serial.print(flowlapseFrameCountTarget);
     Serial.print(F(" pathLength="));
     Serial.println(pathTotalLength, 2);
-    if (FLOWLAPSE_LOOP_CAPTURE || FLOWLAPSE_PING_PONG_LOOP) {
+    if (FLOWLAPSE_LOOP_CAPTURE || flowlapsePingPongLoopEnabled) {
       Serial.println(F("Flowlapse: loop/ping-pong disabled while frame-count mode is active."));
     }
   }
@@ -1349,6 +1351,7 @@ void enterDroneMode() {
   Serial.println(F("DRONE MODE ACTIVATED - timelapse/bounce locked out"));
   Serial.println(F("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L1+R1=wipe, L2+R2=undo last."));
   Serial.println(F("Flowlapse: START+SELECT+TRIANGLE toggles frame-count preview/capture mode."));
+  Serial.println(F("Flowlapse: START+SELECT+CIRCLE toggles ping-pong loop mode."));
   startDroneModeEnterRumbleFeedback();
 }
 
@@ -1689,7 +1692,7 @@ void completeFlowlapseCapture(unsigned long now) {
     Serial.println(F(" frames) — mode remains armed"));
   }
 
-  if (!flowlapseFrameCountModeActive && FLOWLAPSE_PING_PONG_LOOP && flowlapseWaypointCount >= 2) {
+  if (!flowlapseFrameCountModeActive && flowlapsePingPongLoopEnabled && flowlapseWaypointCount >= 2) {
     flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
     flowlapseCapturePhaseStartMs = now;
     flowlapseLastProgressLogMs = 0;
@@ -2051,6 +2054,39 @@ void adjustFlowlapseWaypointDwell(uint8_t waypointIndex, long delta) {
 }
 
 bool handleDroneFlowlapseButtons(unsigned long now) {
+  bool loopModeToggleComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_CIRCLE);
+  if (loopModeToggleComboActive && !lastFlowlapseLoopToggleComboActive) {
+    bool toggleAllowed = (flowlapseState != FLOWLAPSE_STATE_PREVIEW_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_CAPTURE_PAUSED)
+                      && (flowlapseState != FLOWLAPSE_STATE_UNDO_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_JOG_RUNNING);
+    suppressDroneNextSelectRelease = true;
+    suppressDroneNextStartRelease = true;
+
+    if (!toggleAllowed) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Flowlapse: loop toggle blocked while preview/capture/undo/jog is running."));
+    } else {
+      flowlapsePingPongLoopEnabled = !flowlapsePingPongLoopEnabled;
+      startFeedbackRumble(flowlapsePingPongLoopEnabled ? 2 : 1,
+                          FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS,
+                          FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      Serial.print(F("Flowlapse: ping-pong loop mode "));
+      Serial.println(flowlapsePingPongLoopEnabled ? "enabled via controller toggle." : "disabled via controller toggle.");
+      if (flowlapsePingPongLoopEnabled) {
+        Serial.println(F("Flowlapse: loop path pattern = 1 -> 2 -> ... -> N -> ... -> 2 -> 1 -> repeat."));
+      }
+    }
+
+    droneLastActivityMs = now;
+  }
+  lastFlowlapseLoopToggleComboActive = loopModeToggleComboActive;
+  if (loopModeToggleComboActive) {
+    stopAllMotors();
+    return true;
+  }
+
   bool frameModeToggleComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_TRIANGLE);
   if (frameModeToggleComboActive && !lastFlowlapseFrameModeToggleComboActive) {
     bool toggleAllowed = (flowlapseState != FLOWLAPSE_STATE_PREVIEW_RUNNING)

@@ -176,6 +176,18 @@ Set a different dwell for each waypoint instead of one global dwell for the whol
 	- Rack-focus timing pauses at only selected points
 	- Mixed pacing in one run (example: WP1=5s, WP2=0s, WP3=10s)
 
+### Loop mode (Drone Mode only)
+
+Enable continuous ping-pong motion for ambient or interview-style movement.
+
+- Toggle with **START + SELECT + CIRCLE**
+- When enabled, Flowlapse capture follows: **1 -> 2 -> 3 -> ... -> N -> ... -> 3 -> 2 -> 1 -> repeat**
+- Works for normal waypoint capture mode (disabled automatically in frame-count mode)
+- Useful for:
+	- Interviews (continuous subtle movement without restarting runs)
+	- Ambient motion shots
+	- YouTube filming where repeatable back-and-forth motion is desirable
+
 ### Flowlapse (Drone Mode only)
 
 Flowlapse is a waypoint timelapse system for recording a multi-axis camera path and replaying it as a timelapse. It runs using the four Drone Mode axes (swing/lift/pan/tilt).
@@ -189,6 +201,7 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
 	- **START while preview is running**: force-complete preview and move to **READY_FOR_CAPTURE** (useful if preview appears stuck)
 	- **START during capture**: pause capture; motors stop, timer halts. Press START again to resume
+	- **START + SELECT + CIRCLE**: toggle ping-pong loop mode (1→2→…→N→…→2→1→repeat)
 	- **START + SELECT + TRIANGLE**: toggle frame-count mode at runtime (no recompile needed); this changes whether preview/capture use equal-distance frame stops or normal waypoint stepping
 	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward (`current/total` waypoint index prints to Serial)
 	- **SELECT + D-pad UP/DOWN** adjusts the **global default dwell** used for newly recorded waypoints (250 ms steps, 0 to 5000 ms)
