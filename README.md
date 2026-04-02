@@ -16,6 +16,8 @@ Arduino-based multi-controller camera rig using one Arduino Mega master and five
 - Each folder contains a standalone `.ino` sketch for that board.
 - Upload the corresponding sketch to each target board (Mega master or Nano slave).
 - Keep serial/communication settings synchronized between master and all slaves.
+- Arduino Mega/Nano onboard LEDs are single-color only (no native RGB mode indicator support).
+- For color mode indicators (blue/green/red/yellow), add an external RGB LED (or NeoPixel) and map mode states in firmware.
 
 ## Dependencies
 
