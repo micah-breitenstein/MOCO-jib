@@ -162,6 +162,20 @@ Control capture timing when environmental factors change (wind, subject position
 	- Can't accidentally clear or undo while paused (combo operations blocked)
 	- Resume picks up with the same motion tier and dwell settings
 
+### Per-waypoint dwell time (Drone Mode only)
+
+Set a different dwell for each waypoint instead of one global dwell for the whole run.
+
+- Global default dwell is still adjusted with **SELECT + D-pad UP/DOWN** while recording
+- In ready states (**READY_FOR_PREVIEW** / **READY_FOR_CAPTURE**), jog to a waypoint with **D-pad LEFT/RIGHT**
+- Then use **TRIANGLE + D-pad UP/DOWN** to adjust dwell for the selected waypoint only
+- Serial prints explicit selected waypoint dwell values while jogging and editing
+- Great for:
+	- Product reveal holds at key angles
+	- Interview pauses on specific composition points
+	- Rack-focus timing pauses at only selected points
+	- Mixed pacing in one run (example: WP1=5s, WP2=0s, WP3=10s)
+
 ### Flowlapse (Drone Mode only)
 
 Flowlapse is a waypoint timelapse system for recording a multi-axis camera path and replaying it as a timelapse. It runs using the four Drone Mode axes (swing/lift/pan/tilt).
@@ -177,8 +191,9 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- **START during capture**: pause capture; motors stop, timer halts. Press START again to resume
 	- **START + SELECT + TRIANGLE**: toggle frame-count mode at runtime (no recompile needed); this changes whether preview/capture use equal-distance frame stops or normal waypoint stepping
 	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward (`current/total` waypoint index prints to Serial)
-	- **SELECT + D-pad UP/DOWN** (Drone Mode) increases/decreases Flowlapse dwell by 250 ms per press (0 to 5000 ms)
-	- Dwell adjustment rumble encodes current dwell in 250 ms steps (e.g., `1000 ms` = 4 pulses); `0 ms` plays a double pulse (disabled)
+	- **SELECT + D-pad UP/DOWN** adjusts the **global default dwell** used for newly recorded waypoints (250 ms steps, 0 to 5000 ms)
+	- **TRIANGLE + D-pad UP/DOWN** adjusts dwell for the **currently selected waypoint** in ready states
+	- Dwell adjustment rumble encodes dwell in 250 ms steps (e.g., `1000 ms` = 4 pulses); `0 ms` plays a double pulse (disabled)
 	- **START**: run actual Flowlapse capture when in **READY_FOR_CAPTURE** (if you skipped preview with START, press START again to begin capture)
 	- **L1 + R1**: wipe the full Flowlapse course and re-arm recording
 	- **L2 + R2 (1st press)**: move the rig back to the **last** recorded waypoint
@@ -203,7 +218,7 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- While frame-count mode is active, loop modes are explicitly disabled for the run (`FLOWLAPSE_LOOP_CAPTURE` and `FLOWLAPSE_PING_PONG_LOOP` are ignored with Serial notice)
 	- Motion is interpolated per-axis between recorded waypoints over repeated frame cycles
 	- With `FLOWLAPSE_CURVED_PATH_ENABLED = true`, capture move phase follows a smooth Catmull-Rom curved path through waypoints (fallback to linear path when fewer than 3 waypoints)
-	- Optional dwell/settle pause before each trigger uses `flowlapseDwellMs` (controller-adjustable in Drone Mode)
+	- Optional dwell/settle pause before each trigger uses the destination waypoint's dwell (`waypoint.dwellMs`), defaulting from `flowlapseDwellMs` when waypoint is recorded
 	- Serial capture progress logs include an estimated remaining time (`eta=Ns`)
 	- Set `FLOWLAPSE_LOOP_CAPTURE = true` to auto-restart capture from waypoint 0 after each full pass (default `false`)
 	- Set `FLOWLAPSE_PING_PONG_LOOP = true` to continuously reverse direction at path ends (forward/backward loop)

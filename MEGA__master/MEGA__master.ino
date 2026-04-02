@@ -292,6 +292,7 @@ struct FlowlapseWaypoint {
   float lift;
   float pan;
   float tilt;
+  uint16_t dwellMs;
 };
 
 enum FlowlapseState : uint8_t {
@@ -437,6 +438,8 @@ bool lastDroneSwingActive = false;
 bool lastDroneLiftActive = false;
 bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
+bool lastWaypointDwellAdjustUpComboActive = false;
+bool lastWaypointDwellAdjustDownComboActive = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
@@ -457,6 +460,7 @@ uint8_t flowlapseWaypointCount = 0;
 FlowlapseState flowlapseState = FLOWLAPSE_STATE_RECORDING;
 FlowlapseCapturePhase flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
 unsigned long flowlapseCapturePhaseStartMs = 0;
+unsigned long flowlapseCaptureDwellMs = 0;
 unsigned long flowlapsePreviewHoldUntilMs = 0;
 unsigned long flowlapseLastUpdateMs = 0;
 unsigned long flowlapseLastProgressLogMs = 0;
@@ -956,6 +960,7 @@ void resetFlowlapseSession(bool resetEstimatedPosition) {
   flowlapseState = FLOWLAPSE_STATE_RECORDING;
   flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
   flowlapseCapturePhaseStartMs = 0;
+  flowlapseCaptureDwellMs = 0;
   flowlapsePreviewHoldUntilMs = 0;
   flowlapseTargetWaypointIndex = 0;
   flowlapseCaptureAlignedToFirstWaypoint = false;
@@ -1117,6 +1122,7 @@ void captureFlowlapseWaypoint() {
   candidateWaypoint.lift = flowlapseCurrentLiftPos;
   candidateWaypoint.pan = flowlapseCurrentPanPos;
   candidateWaypoint.tilt = flowlapseCurrentTiltPos;
+  candidateWaypoint.dwellMs = static_cast<uint16_t>(flowlapseDwellMs);
 
   if (flowlapseWaypointCount > 0) {
     const FlowlapseWaypoint& previousWaypoint = flowlapseWaypoints[flowlapseWaypointCount - 1];
@@ -1297,6 +1303,7 @@ void startFlowlapseCapture(unsigned long now) {
   flowlapseCaptureDirection = 1;
   flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
   flowlapseCapturePhaseStartMs = now;
+  flowlapseCaptureDwellMs = 0;
   flowlapseLastProgressLogMs = 0;
   resetFlowlapseAxisTierState(now);
 
@@ -1901,6 +1908,8 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
       applyFlowlapseMotionTowardWaypoint(segmentTarget, now, deltaSeconds);
 
       if (moveElapsedMs >= moveDurationMs) {
+        unsigned long dwellForReachedStopMs = flowlapseDwellMs;
+
         flowlapseCurrentSwingPos = segmentTarget.swing;
         flowlapseCurrentLiftPos = segmentTarget.lift;
         flowlapseCurrentPanPos = segmentTarget.pan;
@@ -1909,6 +1918,11 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
         if (flowlapseFrameCountModeActive) {
           flowlapseFrameCountCurrentStopIndex++;
         } else {
+          uint8_t reachedWaypointIndex = flowlapseTargetWaypointIndex;
+          if (reachedWaypointIndex < flowlapseWaypointCount) {
+            dwellForReachedStopMs = flowlapseWaypoints[reachedWaypointIndex].dwellMs;
+          }
+
           if (flowlapseCaptureDirection >= 0) {
             flowlapseTargetWaypointIndex++;
           } else {
@@ -1924,7 +1938,8 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
         }
 
         stopAllMotors();
-        if (flowlapseDwellMs > 0) {
+        flowlapseCaptureDwellMs = dwellForReachedStopMs;
+        if (flowlapseCaptureDwellMs > 0) {
           flowlapseCapturePhase = FLOWLAPSE_CAPTURE_DWELL;
         } else {
           flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
@@ -1935,7 +1950,7 @@ void handleFlowlapseCaptureStep(unsigned long now, float deltaSeconds) {
 
     case FLOWLAPSE_CAPTURE_DWELL:
       stopAllMotors();
-      if (now - flowlapseCapturePhaseStartMs >= flowlapseDwellMs) {
+      if (now - flowlapseCapturePhaseStartMs >= flowlapseCaptureDwellMs) {
         flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
         flowlapseCapturePhaseStartMs = now;
       }
@@ -1998,6 +2013,40 @@ void adjustFlowlapseDwell(long delta) {
 
   uint8_t dwellStepCount = static_cast<uint8_t>(constrain(
       static_cast<int>(flowlapseDwellMs / FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS), 1, 20));
+  startFeedbackRumble(dwellStepCount, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+}
+
+void adjustFlowlapseWaypointDwell(uint8_t waypointIndex, long delta) {
+  if (waypointIndex >= flowlapseWaypointCount) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.println(F("Flowlapse: select a valid waypoint before editing dwell."));
+    return;
+  }
+
+  long newDwell = static_cast<long>(flowlapseWaypoints[waypointIndex].dwellMs) + delta;
+  if (newDwell < 0) newDwell = 0;
+  if (newDwell > static_cast<long>(FLOWLAPSE_DWELL_MAX_MS)) newDwell = static_cast<long>(FLOWLAPSE_DWELL_MAX_MS);
+
+  if (static_cast<uint16_t>(newDwell) == flowlapseWaypoints[waypointIndex].dwellMs) {
+    startLimitReachedRumbleFeedback();
+    Serial.println(F("Flowlapse: waypoint dwell limit reached."));
+    return;
+  }
+
+  flowlapseWaypoints[waypointIndex].dwellMs = static_cast<uint16_t>(newDwell);
+  Serial.print(F("Flowlapse: waypoint "));
+  Serial.print(waypointIndex + 1);
+  Serial.print(F(" dwell (ms) = "));
+  Serial.println(flowlapseWaypoints[waypointIndex].dwellMs);
+
+  if (flowlapseWaypoints[waypointIndex].dwellMs == 0) {
+    startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+    Serial.println(F("Flowlapse: waypoint dwell disabled (0 ms)."));
+    return;
+  }
+
+  uint8_t dwellStepCount = static_cast<uint8_t>(constrain(
+      static_cast<int>(flowlapseWaypoints[waypointIndex].dwellMs / FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS), 1, 20));
   startFeedbackRumble(dwellStepCount, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
 }
 
@@ -2140,6 +2189,19 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
 
   bool jogReadyState = (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW
                      || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE);
+  bool waypointDwellAdjUpComboActive = jogReadyState && ps2x.Button(PSB_TRIANGLE) && ps2x.Button(PSB_PAD_UP);
+  bool waypointDwellAdjDownComboActive = jogReadyState && ps2x.Button(PSB_TRIANGLE) && ps2x.Button(PSB_PAD_DOWN);
+
+  if (waypointDwellAdjUpComboActive && !lastWaypointDwellAdjustUpComboActive) {
+    adjustFlowlapseWaypointDwell(flowlapseJogIndex, static_cast<long>(FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS));
+    droneLastActivityMs = now;
+  }
+  if (waypointDwellAdjDownComboActive && !lastWaypointDwellAdjustDownComboActive) {
+    adjustFlowlapseWaypointDwell(flowlapseJogIndex, -static_cast<long>(FLOWLAPSE_DWELL_ADJUST_INCREMENT_MS));
+    droneLastActivityMs = now;
+  }
+  lastWaypointDwellAdjustUpComboActive = waypointDwellAdjUpComboActive;
+  lastWaypointDwellAdjustDownComboActive = waypointDwellAdjDownComboActive;
   if (jogReadyState && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
     if (flowlapseJogIndex < static_cast<uint8_t>(flowlapseWaypointCount - 1)) {
       flowlapseJogIndex++;
@@ -2151,6 +2213,8 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       Serial.print(flowlapseJogIndex + 1);
       Serial.print(F("/"));
       Serial.println(flowlapseWaypointCount);
+      Serial.print(F("Flowlapse: selected waypoint dwell (ms) = "));
+      Serial.println(flowlapseWaypoints[flowlapseJogIndex].dwellMs);
     } else {
       startLockoutDeniedRumbleFeedback();
       Serial.println(F("Flowlapse: already at last waypoint."));
@@ -2168,6 +2232,8 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       Serial.print(flowlapseJogIndex + 1);
       Serial.print(F("/"));
       Serial.println(flowlapseWaypointCount);
+      Serial.print(F("Flowlapse: selected waypoint dwell (ms) = "));
+      Serial.println(flowlapseWaypoints[flowlapseJogIndex].dwellMs);
     } else {
       startLockoutDeniedRumbleFeedback();
       Serial.println(F("Flowlapse: already at first waypoint."));
