@@ -314,6 +314,14 @@ enum FlowlapseCapturePhase : uint8_t {
   FLOWLAPSE_CAPTURE_DWELL
 };
 
+enum FlowlapseAccelerationProfile : uint8_t {
+  FLOWLAPSE_ACCEL_LINEAR = 0,
+  FLOWLAPSE_ACCEL_EASE_IN_OUT,
+  FLOWLAPSE_ACCEL_CINEMATIC_SLOW_START,
+  FLOWLAPSE_ACCEL_ROBOTIC_CONSTANT,
+  FLOWLAPSE_ACCEL_PROFILE_COUNT
+};
+
 constexpr uint8_t MOTION_FLAG_SWING = 0x01;
 constexpr uint8_t MOTION_FLAG_LIFT = 0x02;
 constexpr uint8_t DRONE_AXIS_LAST_SWING = 0x01;
@@ -456,6 +464,8 @@ bool lastFlowlapseLoopToggleComboActive = false;
 unsigned long flowlapseL3HoldStartMs = 0;
 unsigned long flowlapseDwellMs = FLOWLAPSE_WAYPOINT_DWELL_MS;
 bool flowlapsePingPongLoopEnabled = FLOWLAPSE_PING_PONG_LOOP;
+FlowlapseAccelerationProfile flowlapseAccelerationProfile =
+  FLOWLAPSE_EASE_IN_OUT_ENABLED ? FLOWLAPSE_ACCEL_EASE_IN_OUT : FLOWLAPSE_ACCEL_LINEAR;
 unsigned long droneLastActivityMs = 0;
 FlowlapseWaypoint flowlapseWaypoints[FLOWLAPSE_MAX_WAYPOINTS];
 uint8_t flowlapseWaypointCount = 0;
@@ -723,14 +733,46 @@ float getFlowlapsePathSegmentLength(uint8_t segmentIndex) {
   return decodeFlowlapseStoredLength(static_cast<uint16_t>(segmentEndStored - segmentStartStored));
 }
 
+const char* getFlowlapseAccelerationProfileName(FlowlapseAccelerationProfile profile) {
+  switch (profile) {
+    case FLOWLAPSE_ACCEL_LINEAR: return "linear";
+    case FLOWLAPSE_ACCEL_EASE_IN_OUT: return "ease in/out";
+    case FLOWLAPSE_ACCEL_CINEMATIC_SLOW_START: return "cinematic slow start";
+    case FLOWLAPSE_ACCEL_ROBOTIC_CONSTANT: return "robotic constant";
+    default: return "unknown";
+  }
+}
+
 float applyFlowlapseEaseInOut(float t) {
   float clampedT = clampFlowlapse01(t);
-  if (!FLOWLAPSE_EASE_IN_OUT_ENABLED) {
-    return clampedT;
+
+  switch (flowlapseAccelerationProfile) {
+    case FLOWLAPSE_ACCEL_LINEAR:
+      return clampedT;
+
+    case FLOWLAPSE_ACCEL_EASE_IN_OUT: {
+      float smoothStep = clampedT * clampedT * (3.0f - 2.0f * clampedT);
+      float easedStrength = clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH);
+      return clampedT + (smoothStep - clampedT) * easedStrength;
+    }
+
+    case FLOWLAPSE_ACCEL_CINEMATIC_SLOW_START: {
+      float easedStrength = clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH);
+      float easeInCubic = clampedT * clampedT * clampedT;
+      return clampedT + (easeInCubic - clampedT) * easedStrength;
+    }
+
+    case FLOWLAPSE_ACCEL_ROBOTIC_CONSTANT: {
+      constexpr float kStepCount = 6.0f;
+      if (clampedT >= 1.0f) {
+        return 1.0f;
+      }
+      return floor(clampedT * kStepCount) / kStepCount;
+    }
+
+    default:
+      return clampedT;
   }
-  float smoothStep = clampedT * clampedT * (3.0f - 2.0f * clampedT);
-  float easedStrength = clampFlowlapse01(FLOWLAPSE_EASE_STRENGTH);
-  return clampedT + (smoothStep - clampedT) * easedStrength;
 }
 
 FlowlapseWaypoint interpolateFlowlapseLinearPoint(uint8_t segmentStartIndex, float t) {
@@ -1352,6 +1394,7 @@ void enterDroneMode() {
   Serial.println(F("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L1+R1=wipe, L2+R2=undo last."));
   Serial.println(F("Flowlapse: START+SELECT+TRIANGLE toggles frame-count preview/capture mode."));
   Serial.println(F("Flowlapse: START+SELECT+CIRCLE toggles ping-pong loop mode."));
+  Serial.println(F("Flowlapse: TRIANGLE cycles acceleration profile in ready states (linear/ease/cinematic/robotic)."));
   startDroneModeEnterRumbleFeedback();
 }
 
@@ -2118,6 +2161,34 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   lastFlowlapseFrameModeToggleComboActive = frameModeToggleComboActive;
   if (frameModeToggleComboActive) {
     stopAllMotors();
+    return true;
+  }
+
+  bool accelProfileCycleEligible = (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW
+                                 || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE);
+  bool noAccelProfileConflictButtons = !ps2x.Button(PSB_SELECT)
+                                    && !ps2x.Button(PSB_START)
+                                    && !ps2x.Button(PSB_CROSS)
+                                    && !ps2x.Button(PSB_PAD_UP)
+                                    && !ps2x.Button(PSB_PAD_DOWN)
+                                    && !ps2x.Button(PSB_PAD_LEFT)
+                                    && !ps2x.Button(PSB_PAD_RIGHT);
+  bool accelProfileCycleChordActive = accelProfileCycleEligible && ps2x.Button(PSB_TRIANGLE) && noAccelProfileConflictButtons;
+  if (accelProfileCycleChordActive) {
+    stopAllMotors();
+  }
+  if (accelProfileCycleEligible && ps2x.ButtonReleased(PSB_TRIANGLE) && noAccelProfileConflictButtons) {
+    flowlapseAccelerationProfile = static_cast<FlowlapseAccelerationProfile>(
+        (static_cast<uint8_t>(flowlapseAccelerationProfile) + 1) % static_cast<uint8_t>(FLOWLAPSE_ACCEL_PROFILE_COUNT));
+    startFeedbackRumble(static_cast<uint8_t>(flowlapseAccelerationProfile) + 1,
+                        FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS,
+                        FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+    Serial.print(F("Flowlapse: acceleration profile = "));
+    Serial.println(getFlowlapseAccelerationProfileName(flowlapseAccelerationProfile));
+    droneLastActivityMs = now;
+    return true;
+  }
+  if (accelProfileCycleChordActive) {
     return true;
   }
 

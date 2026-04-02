@@ -188,6 +188,22 @@ Enable continuous ping-pong motion for ambient or interview-style movement.
 	- Ambient motion shots
 	- YouTube filming where repeatable back-and-forth motion is desirable
 
+### Acceleration curve selection (Drone Mode only)
+
+Choose how each Flowlapse move segment accelerates/decelerates at runtime.
+
+- In **READY_FOR_PREVIEW** or **READY_FOR_CAPTURE**, tap **TRIANGLE** to cycle acceleration profile
+- Profiles cycle in this order:
+	- `linear`
+	- `ease in/out`
+	- `cinematic slow start`
+	- `robotic constant`
+- Serial logs the active profile name; rumble pulse count (`1..4`) also indicates selected profile index
+- Useful for:
+	- Matching movement feel to shot intent without reflashing
+	- Soft cinematic starts for reveal shots
+	- Constant/mechanical pacing for product-style robotic moves
+
 ### Flowlapse (Drone Mode only)
 
 Flowlapse is a waypoint timelapse system for recording a multi-axis camera path and replaying it as a timelapse. It runs using the four Drone Mode axes (swing/lift/pan/tilt).
@@ -203,6 +219,7 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- **START during capture**: pause capture; motors stop, timer halts. Press START again to resume
 	- **START + SELECT + CIRCLE**: toggle ping-pong loop mode (1→2→…→N→…→2→1→repeat)
 	- **START + SELECT + TRIANGLE**: toggle frame-count mode at runtime (no recompile needed); this changes whether preview/capture use equal-distance frame stops or normal waypoint stepping
+	- **TRIANGLE** in ready states: cycle acceleration profile (`linear` / `ease in/out` / `cinematic slow start` / `robotic constant`)
 	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward (`current/total` waypoint index prints to Serial)
 	- **SELECT + D-pad UP/DOWN** adjusts the **global default dwell** used for newly recorded waypoints (250 ms steps, 0 to 5000 ms)
 	- **TRIANGLE + D-pad UP/DOWN** adjusts dwell for the **currently selected waypoint** in ready states
