@@ -157,6 +157,7 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- **1st SELECT**: stop waypoint recording (requires at least 2 waypoints); controller rumbles once per recorded waypoint as a count confirmation
 	- **2nd SELECT**: run preview pass through recorded waypoints for visual check
 	- **START while preview is running**: force-complete preview and move to **READY_FOR_CAPTURE** (useful if preview appears stuck)
+	- **START during capture**: pause capture; motors stop, timer halts. Press START again to resume
 	- **START + SELECT + TRIANGLE**: toggle frame-count mode at runtime (no recompile needed); this changes whether preview/capture use equal-distance frame stops or normal waypoint stepping
 	- While in ready states (after recording stop and after preview), tap **D-pad RIGHT/LEFT** to jog one waypoint forward/backward (`current/total` waypoint index prints to Serial)
 	- **SELECT + D-pad UP/DOWN** (Drone Mode) increases/decreases Flowlapse dwell by 250 ms per press (0 to 5000 ms)
@@ -167,6 +168,9 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- **L2 + R2 (2nd press)**: rumble + delete that last point (repeat this two-step cycle to walk the path backward)
 	- **START + R1**: return to the first waypoint (jog from current position back to waypoint 1); only active when not already running preview/capture/undo/jog
 	- **L2 hold during preview**: speed up preview playback to 3x normal speed for quick testing and path verification (release L2 to resume normal speed)
+- Capture pause/resume (useful if wind changes, subject moves, or lighting shifts):
+	- Press **START** during active capture to **pause**: motors stop immediately, capture timer halts
+	- Press **START** again to **resume** from the paused position (no loss of already-captured frames)
 	- Hold **L3** for `FLOWLAPSE_L3_RESET_HOLD_MS` to quick-reset: clear course + re-arm recording
 - Capture behavior:
 	- Trigger/pause uses `timelapseIntervalSeconds` (same camera interval timing model)
