@@ -1588,6 +1588,100 @@ void handleLiftAndTilt(uint8_t buttonCode, uint8_t liftNormalPin, uint8_t liftRe
                                 isTiltReversed, tiltNormalPin, tiltReversedPin, liftSoloMode, MOTION_FLAG_LIFT);
 }
 
+void handleSwingMotionGroup() {
+  bool soloLeftActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT);
+  bool soloRightActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
+
+  if (soloLeftActive) {
+    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+    swingSoloMode = 1;
+    setPackedState(motionFlags, MOTION_FLAG_SWING, false);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(panRight, LOW);
+    return;
+  }
+
+  if (soloRightActive) {
+    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+    swingSoloMode = 1;
+    setPackedState(motionFlags, MOTION_FLAG_SWING, false);
+    digitalWrite(panLeft, LOW);
+    digitalWrite(panRight, LOW);
+    return;
+  }
+
+  if (swingSoloMode != 0) {
+    digitalWrite(swingLeft, LOW);
+    digitalWrite(swingRight, LOW);
+    swingSoloMode = 0;
+  }
+
+  if (ps2x.Button(PSB_PAD_LEFT)) {
+    setPackedState(motionFlags, MOTION_FLAG_SWING, true);
+    setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
+    setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+  } else if (ps2x.Button(PSB_PAD_RIGHT)) {
+    setPackedState(motionFlags, MOTION_FLAG_SWING, true);
+    setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
+    setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+  } else {
+    if (isPackedStateSet(motionFlags, MOTION_FLAG_SWING)) {
+      digitalWrite(swingLeft, LOW);
+      digitalWrite(swingRight, LOW);
+      digitalWrite(panLeft, LOW);
+      digitalWrite(panRight, LOW);
+      setPackedState(motionFlags, MOTION_FLAG_SWING, false);
+    }
+  }
+}
+
+void handleLiftMotionGroup() {
+  bool soloUpActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_UP);
+  bool soloDownActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN);
+
+  if (soloUpActive) {
+    setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+    liftSoloMode = 1;
+    setPackedState(motionFlags, MOTION_FLAG_LIFT, false);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    return;
+  }
+
+  if (soloDownActive) {
+    setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+    liftSoloMode = 1;
+    setPackedState(motionFlags, MOTION_FLAG_LIFT, false);
+    digitalWrite(tiltUp, LOW);
+    digitalWrite(tiltDown, LOW);
+    return;
+  }
+
+  if (liftSoloMode != 0) {
+    digitalWrite(liftUp, LOW);
+    digitalWrite(liftDown, LOW);
+    liftSoloMode = 0;
+  }
+
+  if (ps2x.Button(PSB_PAD_UP)) {
+    setPackedState(motionFlags, MOTION_FLAG_LIFT, true);
+    setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
+    setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+  } else if (ps2x.Button(PSB_PAD_DOWN)) {
+    setPackedState(motionFlags, MOTION_FLAG_LIFT, true);
+    setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
+    setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+  } else {
+    if (isPackedStateSet(motionFlags, MOTION_FLAG_LIFT)) {
+      digitalWrite(liftUp, LOW);
+      digitalWrite(liftDown, LOW);
+      digitalWrite(tiltUp, LOW);
+      digitalWrite(tiltDown, LOW);
+      setPackedState(motionFlags, MOTION_FLAG_LIFT, false);
+    }
+  }
+}
+
 void activateTiltOnlyMotion(uint8_t normalPin, uint8_t reversedPin, const char* label) {
   Serial.println(label);
   digitalWrite(tiltSpeedUpOnly, HIGH);
@@ -2166,20 +2260,20 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
 
   bool accelProfileCycleEligible = (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW
                                  || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE);
-  bool noAccelProfileConflictButtons = !ps2x.Button(PSB_SELECT)
-                                    && !ps2x.Button(PSB_START)
+  bool noAccelProfileConflictButtons = !ps2x.Button(PSB_START)
                                     && !ps2x.Button(PSB_CROSS)
                                     && !ps2x.Button(PSB_PAD_UP)
                                     && !ps2x.Button(PSB_PAD_DOWN)
                                     && !ps2x.Button(PSB_PAD_LEFT)
                                     && !ps2x.Button(PSB_PAD_RIGHT);
-  bool accelProfileCycleChordActive = accelProfileCycleEligible && ps2x.Button(PSB_TRIANGLE) && noAccelProfileConflictButtons;
+  bool accelProfileCycleChordActive = accelProfileCycleEligible && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_TRIANGLE) && noAccelProfileConflictButtons;
   if (accelProfileCycleChordActive) {
     stopAllMotors();
   }
-  if (accelProfileCycleEligible && ps2x.ButtonReleased(PSB_TRIANGLE) && noAccelProfileConflictButtons) {
+  if (accelProfileCycleEligible && ps2x.ButtonReleased(PSB_TRIANGLE) && ps2x.Button(PSB_SELECT) && noAccelProfileConflictButtons) {
     flowlapseAccelerationProfile = static_cast<FlowlapseAccelerationProfile>(
         (static_cast<uint8_t>(flowlapseAccelerationProfile) + 1) % static_cast<uint8_t>(FLOWLAPSE_ACCEL_PROFILE_COUNT));
+    suppressDroneNextSelectRelease = true;
     startFeedbackRumble(static_cast<uint8_t>(flowlapseAccelerationProfile) + 1,
                         FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS,
                         FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
@@ -3946,18 +4040,12 @@ void loop() {
   handleAxisSpeedControl(PSB_L1, panSpeedUp, swingSpeedUp);
   handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown);
 
-  handleSwingOnly(PSB_PAD_LEFT, swingLeft, swingRight);
-  handleSwingOnly(PSB_PAD_RIGHT, swingRight, swingLeft);
-  handleSwingAndPan(PSB_PAD_LEFT, swingLeft, swingRight, panRight, panLeft);
-  handleSwingAndPan(PSB_PAD_RIGHT, swingRight, swingLeft, panLeft, panRight);
+  handleSwingMotionGroup();
 
   handlePanTrimAxis();
   handlePanAxis();
 
-  handleLiftOnly(PSB_PAD_UP, liftUp, liftDown);
-  handleLiftOnly(PSB_PAD_DOWN, liftDown, liftUp);
-  handleLiftAndTilt(PSB_PAD_UP, liftUp, liftDown, tiltDown, tiltUp);
-  handleLiftAndTilt(PSB_PAD_DOWN, liftDown, liftUp, tiltUp, tiltDown);
+  handleLiftMotionGroup();
 
   handleTiltTrimAxis();
   handleTiltAxis();
