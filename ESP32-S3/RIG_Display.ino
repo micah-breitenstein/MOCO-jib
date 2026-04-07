@@ -284,7 +284,7 @@ void setup()
   if (example_lvgl_lock(-1))
   {
     lv_obj_t *label = lv_label_create(lv_scr_act());
-    lv_label_set_text(label, "RIG");
+    lv_label_set_text(label, "MOCO jib");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_48, LV_PART_MAIN);
     lv_obj_center(label);
 

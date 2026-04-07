@@ -168,10 +168,10 @@ void app_main(void)
 
     /* RIG label */
     lv_obj_t *label = lv_label_create(lv_scr_act());
-    lv_label_set_text(label, "BIG RIG");
+    lv_label_set_text(label, "MOCO jib");
     lv_obj_set_style_text_font(label, &lv_font_montserrat_120, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_letter_space(label, 8, LV_PART_MAIN);
+    lv_obj_set_style_text_letter_space(label, 2, LV_PART_MAIN);
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_center(label);
 
