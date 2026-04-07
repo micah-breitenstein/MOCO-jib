@@ -1,6 +1,8 @@
-# MEGA + Nano Camera Rig
+# MOCO-jib
 
 Arduino-based multi-controller camera rig using one Arduino Mega master and five Arduino Nano slave controllers.
+
+Repository: https://github.com/micah-breitenstein/MOCO-jib
 
 ## Repository Structure
 
