@@ -493,6 +493,55 @@ You can reset persisted settings to defaults without reflashing.
 - The reset values are written to EEPROM immediately
 - **Lockout:** while timelapse, bounce, or drone mode is active, reset is denied and values are unchanged
 
+## Architecture: Button State Tracking
+
+### Why Live-State Polling Instead of Event-Based Handling
+
+The Mega firmware uses **live-state polling with edge detection** rather than the PS2X library's `ButtonReleased()` edge events. This architectural choice is critical for reliability:
+
+#### The Problem with ButtonReleased() Events
+
+The PS2X library provides `ButtonReleased()`, which returns `true` for exactly **one loop cycle** when a button transitions from pressed to released. This works fine in simple loop structures, but the Mega main loop has **multiple early-return paths** that can skip normal execution:
+
+- `handleEmergencyStop()` — all motors halt immediately if combo triggered
+- `handlePersistedSettingsReset()` — resets EEPROM values  
+- `handleDroneMode()` — switches entire execution context
+- Various state machines in Flowlapse/bounce modes
+
+If an early return fires **during the exact loop cycle when a ButtonReleased() event is active**, that event is missed. The button press was intended, but the firmware never processes it — and if that button controls a motor output pin, the pin can latch `HIGH` indefinitely, causing:
+
+- **Speed control malfunction:** Motors run at full speed uncontrollably
+- **Mode selection loss:** Timelapse/bounce/Flowlapse transitions fail silently
+- **Waypoint navigation failure:** Jog buttons don't advance between waypoints  
+- **State machine deadlock:** Flowlapse can't transition between recording→preview→capture phases
+
+#### The Solution: State Tracking with Edge Detection
+
+Instead, the firmware:
+
+1. **Tracks previous button state** with a global `bool` variable (e.g., `lastSelectButtonState`)
+2. **Reads current state** every loop from `ps2x.Button(PSB_...)` (always returns current state, no event loss)
+3. **Detects edges manually** by comparing `lastState && !currentState` (falling edge when released)
+4. **Updates tracking** at the end of the handler (`lastState = currentState`)
+
+This approach is **loop-interruption-safe** because:
+
+- Even if an early return fires mid-loop, the state variables are **persistent** across loop cycles
+- The edge detection happens on **comparison of actual live state**, not a one-shot event
+- Button presses are guaranteed to be detected in the **next loop cycle if an early return skipped the current one**
+
+#### Coverage in This Codebase
+
+All button input handlers now use live-state polling:
+
+- **Speed control** (axis outputs): 5 handlers tracking `SQUARE, CIRCLE, L1, L2, R1, R2`
+- **Mode selection** (timelapse/bounce):  `SELECT`, `START` releases
+- **Drone/Flowlapse navigation**: `L3` (waypoint capture), `PAD_LEFT/RIGHT` (jog), `TRIANGLE` (accel profile), `SELECT/START` (flowlapse state machine)
+- **Major mode toggle**: `R3` (Drone Mode enter/exit)
+- **Bounce stage advance**: `L3` (stage 0 → stage 1)
+
+All of these were refactored from `ButtonReleased()` to live-state tracking for total architectural consistency.
+
 ## Project Details Sheet
 
 - Full project details are documented here: https://docs.google.com/spreadsheets/d/1BU9yWQd8groFjTa8OWagQ6Nst10-R33pP6oTYL_nhLQ/edit?usp=sharing

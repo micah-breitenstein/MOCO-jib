@@ -451,6 +451,13 @@ bool lastWaypointDwellAdjustDownComboActive = false;
 bool lastFlowlapseLoopToggleComboActive = false;
 bool lastSelectButtonState = false;
 bool lastStartButtonState = false;
+bool lastTriangleButtonState = false;
+bool lastL3ButtonState = false;
+bool lastPadRightButtonState = false;
+bool lastPadLeftButtonState = false;
+bool lastDroneSelectButtonState = false;
+bool lastDroneStartButtonState = false;
+bool lastR3ButtonState = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
@@ -2257,7 +2264,11 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   if (accelProfileCycleChordActive) {
     stopAllMotors();
   }
-  if (accelProfileCycleEligible && ps2x.ButtonReleased(PSB_TRIANGLE) && ps2x.Button(PSB_SELECT) && noAccelProfileConflictButtons) {
+  bool currentTriangleButtonState = ps2x.Button(PSB_TRIANGLE);
+  bool triangleJustReleased = lastTriangleButtonState && !currentTriangleButtonState;
+  lastTriangleButtonState = currentTriangleButtonState;
+  
+  if (accelProfileCycleEligible && triangleJustReleased && ps2x.Button(PSB_SELECT) && noAccelProfileConflictButtons) {
     flowlapseAccelerationProfile = static_cast<FlowlapseAccelerationProfile>(
         (static_cast<uint8_t>(flowlapseAccelerationProfile) + 1) % static_cast<uint8_t>(FLOWLAPSE_ACCEL_PROFILE_COUNT));
     suppressDroneNextSelectRelease = true;
@@ -2366,7 +2377,11 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
     flowlapseL3HoldStartMs = 0;
   }
 
-  if (ps2x.ButtonReleased(PSB_L3)) {
+  bool currentL3ButtonState = ps2x.Button(PSB_L3);
+  bool l3JustReleased = lastL3ButtonState && !currentL3ButtonState;
+  lastL3ButtonState = currentL3ButtonState;
+  
+  if (l3JustReleased) {
     if (suppressDroneNextL3Release) {
       suppressDroneNextL3Release = false;
     } else if (flowlapseState == FLOWLAPSE_STATE_RECORDING) {
@@ -2390,7 +2405,12 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   }
   lastWaypointDwellAdjustUpComboActive = waypointDwellAdjUpComboActive;
   lastWaypointDwellAdjustDownComboActive = waypointDwellAdjDownComboActive;
-  if (jogReadyState && ps2x.ButtonReleased(PSB_PAD_RIGHT)) {
+  
+  bool currentPadRightButtonState = ps2x.Button(PSB_PAD_RIGHT);
+  bool padRightJustReleased = lastPadRightButtonState && !currentPadRightButtonState;
+  lastPadRightButtonState = currentPadRightButtonState;
+  
+  if (jogReadyState && padRightJustReleased) {
     if (flowlapseJogIndex < static_cast<uint8_t>(flowlapseWaypointCount - 1)) {
       flowlapseJogIndex++;
       flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
@@ -2409,7 +2429,11 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
     }
     droneLastActivityMs = now;
   }
-  if (jogReadyState && ps2x.ButtonReleased(PSB_PAD_LEFT)) {
+  bool currentPadLeftButtonState = ps2x.Button(PSB_PAD_LEFT);
+  bool padLeftJustReleased = lastPadLeftButtonState && !currentPadLeftButtonState;
+  lastPadLeftButtonState = currentPadLeftButtonState;
+  
+  if (jogReadyState && padLeftJustReleased) {
     if (flowlapseJogIndex > 0) {
       flowlapseJogIndex--;
       flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
@@ -2456,7 +2480,11 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   }
   lastFlowlapseReturnToStartComboActive = flowlapseReturnToStartComboActive;
 
-  if (ps2x.ButtonReleased(PSB_SELECT)) {
+  bool currentDroneSelectButtonState = ps2x.Button(PSB_SELECT);
+  bool droneSelectJustReleased = lastDroneSelectButtonState && !currentDroneSelectButtonState;
+  lastDroneSelectButtonState = currentDroneSelectButtonState;
+  
+  if (droneSelectJustReleased) {
     if (suppressDroneNextSelectRelease) {
       suppressDroneNextSelectRelease = false;
     } else {
@@ -2478,7 +2506,11 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   }
   }
 
-  if (ps2x.ButtonReleased(PSB_START)) {
+  bool currentDroneStartButtonState = ps2x.Button(PSB_START);
+  bool droneStartJustReleased = lastDroneStartButtonState && !currentDroneStartButtonState;
+  lastDroneStartButtonState = currentDroneStartButtonState;
+  
+  if (droneStartJustReleased) {
     if (suppressDroneNextStartRelease) {
       suppressDroneNextStartRelease = false;
     } else {
@@ -3255,7 +3287,11 @@ bool handlePersistedSettingsReset(unsigned long now) {
 }
 
 void handleDroneModeToggle() {
-  if (!ps2x.ButtonReleased(PSB_R3)) {
+  bool currentR3ButtonState = ps2x.Button(PSB_R3);
+  bool r3JustReleased = lastR3ButtonState && !currentR3ButtonState;
+  lastR3ButtonState = currentR3ButtonState;
+  
+  if (!r3JustReleased) {
     return;
   }
 
@@ -3669,9 +3705,13 @@ void handleBounceStage0(unsigned long now) {
 
   setBounceModeOutputs(bounce, true, HIGH);
 
-  if (ps2x.ButtonReleased(PSB_L3)) {
+  // Note: L3 state already tracked in lastL3ButtonState for drone mode
+  // Reuse same tracking since bounce and drone modes are mutually exclusive
+  bool currentL3State = ps2x.Button(PSB_L3);
+  if (lastL3ButtonState && !currentL3State) {
     advanceBounceToStage1();
   }
+  lastL3ButtonState = currentL3State;
 }
 
 void handleBounceStage1(unsigned long now) {
