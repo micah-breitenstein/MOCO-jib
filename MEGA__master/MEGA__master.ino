@@ -554,15 +554,9 @@ void detectControllerType() {
 }
 
 void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin) {
-  if (ps2x.Button(buttonCode)) {
-    digitalWrite(axis1Pin, HIGH);
-    digitalWrite(axis2Pin, HIGH);
-  }
-
-  if (ps2x.ButtonReleased(buttonCode)) {
-    digitalWrite(axis1Pin, LOW);
-    digitalWrite(axis2Pin, LOW);
-  }
+  uint8_t outputState = ps2x.Button(buttonCode) ? HIGH : LOW;
+  digitalWrite(axis1Pin, outputState);
+  digitalWrite(axis2Pin, outputState);
 }
 
 void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t state) {
@@ -1729,19 +1723,10 @@ void handleFocusAxis() {
   setDirectionalOutput(isFocusReversed, focusLeft, focusRight, triangleState);
   setDirectionalOutput(isFocusReversed, focusRight, focusLeft, crossState);
 
-  if (ps2x.Button(PSB_SQUARE)) {
-    digitalWrite(focusSpeedDown, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_SQUARE)) {
-    digitalWrite(focusSpeedDown, LOW);
-  }
-
-  if (ps2x.Button(PSB_CIRCLE)) {
-    digitalWrite(focusSpeedUp, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_CIRCLE)) {
-    digitalWrite(focusSpeedUp, LOW);
-  }
+  // Drive focus speed outputs from live button state every loop so speed
+  // control remains reliable even when release-edge events are skipped.
+  digitalWrite(focusSpeedDown, ps2x.Button(PSB_SQUARE) ? HIGH : LOW);
+  digitalWrite(focusSpeedUp, ps2x.Button(PSB_CIRCLE) ? HIGH : LOW);
 }
 
 // Returns true if the axis is active (outside deadband), false if stopped.
@@ -2446,6 +2431,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   if (flowlapseReturnToStartComboActive && !lastFlowlapseReturnToStartComboActive) {
     if (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
+        || flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED
         || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING
         || flowlapseState == FLOWLAPSE_STATE_JOG_RUNNING) {
       startLockoutDeniedRumbleFeedback();

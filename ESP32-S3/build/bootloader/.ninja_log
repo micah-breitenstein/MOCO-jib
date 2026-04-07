@@ -1,0 +1,225 @@
+# ninja log v6
+369	453	1775283186345410636	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_panic.c.obj	c7905f0964e4034d
+74	125	1775283186050602400	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_cache_esp32s2_esp32s3.c.obj	b21f103ab513bce5
+846	896	1775283186822360732	bootloader.elf	a27c7cccc5716a25
+105	223	1775283186081225218	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/rtc_clk_init.c.obj	66cd29ee51ae4f5e
+1	1329	1775283748931235765	build.ninja	4f31df40afce4d29
+1	1329	1775283748923371423	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_system/cmake_install.cmake	4f31df40afce4d29
+424	517	1775283186400214357	esp-idf/hal/CMakeFiles/__idf_hal.dir/cache_hal.c.obj	c0bb617174c0e245
+637	663	1775283186613831082	esp-idf/esp_bootloader_format/libesp_bootloader_format.a	211bc2d8e25acf8c
+523	559	1775283186499366359	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/touch_sensor_periph.c.obj	36eacc47ba44a122
+520	559	1775283186496387881	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/mpi_periph.c.obj	db440179fb91626a
+431	702	1775283186407341194	esp-idf/micro-ecc/CMakeFiles/__idf_micro-ecc.dir/uECC_verify_antifault.c.obj	233b4e028ff238fa
+1	1329	1775283748913702863	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/cmake_install.cmake	4f31df40afce4d29
+1	1329	1775283748913897697	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/cmake_install.cmake	4f31df40afce4d29
+551	584	1775283186528124665	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/cam_periph.c.obj	6bb969412f74357
+152	235	1775283186128380183	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/esp32s3/esp_efuse_rtc_calib.c.obj	85c2eba1b08295e4
+1	1329	1775283748922620127	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/efuse/cmake_install.cmake	4f31df40afce4d29
+718	743	1775283186694249506	esp-idf/micro-ecc/libmicro-ecc.a	6a45006d0ba098ec
+464	500	1775283186440248777	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/adc_periph.c.obj	cf93ea4569e1e9f1
+398	464	1775283186374570279	esp-idf/hal/CMakeFiles/__idf_hal.dir/efuse_hal.c.obj	ec137d20d89583ba
+512	564	1775283186488529832	esp-idf/efuse/libefuse.a	8854aedd606305d9
+743	796	1775283186719246623	esp-idf/soc/libsoc.a	8df44b0c6d4838d0
+896	989	1775283186964896508	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/.bin_timestamp	9b3bb909aa912940
+1	1329	1775283748917268968	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/micro-ecc/cmake_install.cmake	4f31df40afce4d29
+477	519	1775283186453127733	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/dedic_gpio_periph.c.obj	290193743f923c58
+522	565	1775283186498328644	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/sdmmc_periph.c.obj	6f08efa01c22ee61
+305	587	1775283186281431566	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/esp_image_format.c.obj	4b3b9257cf206efd
+821	846	1775283186797879119	esp-idf/main/libmain.a	f0880f3d63321bcf
+3	39	1775283681754060812	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+545	579	1775283186521088496	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/usb_dwc_periph.c.obj	4be082a84437855c
+663	687	1775283186639429160	esp-idf/spi_flash/libspi_flash.a	e57c5f0dabe25e26
+555	585	1775283186531279477	esp-idf/xtensa/CMakeFiles/__idf_xtensa.dir/eri.c.obj	6adc4cdf54054cba
+542	583	1775283186519045650	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/wdt_periph.c.obj	d17056bfc5fabe3c
+1	1329	1775283748928701041	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/partition_table/cmake_install.cmake	4f31df40afce4d29
+223	301	1775283186199575049	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_efuse.c.obj	47ad8399ed59f2b5
+553	583	1775283186529899968	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/power_supply_periph.c.obj	1ed5e23716fd1d91
+1	1329	1775283748925254394	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/lowpower/cmake_install.cmake	4f31df40afce4d29
+687	718	1775283186664083149	esp-idf/hal/libhal.a	ccb336d2e9701486
+510	555	1775283186487041822	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/timer_periph.c.obj	e4d23dcaa66df310
+497	527	1775283186473844197	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/sdm_periph.c.obj	d3df3cbab8d1c7d
+473	512	1775283186449239375	esp-idf/esp_system/libesp_system.a	29970d16da244ca7
+256	520	1775283186233042511	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/bootloader_flash/src/bootloader_flash.c.obj	b787d7e8bdb4509a
+4	100	1775283185980461082	esp-idf/log/CMakeFiles/__idf_log.dir/src/noos/log_timestamp.c.obj	becf7992c8d28a53
+485	522	1775283186461992831	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/pcnt_periph.c.obj	5ac505b94494c778
+364	510	1775283186340340646	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/esp32s3/bootloader_esp32s3.c.obj	cce659e810d74e59
+559	574	1775283186549430883	project_elf_src_esp32s3.c	c37d0fcd6835c3ea
+388	442	1775283186364565216	esp-idf/hal/CMakeFiles/__idf_hal.dir/hal_utils.c.obj	a5b02d836f6a5efe
+587	637	1775283186563142470	esp-idf/bootloader_support/libbootloader_support.a	b5a188a4866f65e8
+478	505	1775283186454324449	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/gdma_periph.c.obj	fab79babed73c5f9
+527	560	1775283186503548385	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/twai_periph.c.obj	158f2e0eb1855c7a
+505	542	1775283186481403162	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/temperature_sensor_periph.c.obj	e83d1c6178bf6e09
+3	39	1775283681754060812	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+559	601	1775283186535623254	esp-idf/main/CMakeFiles/__idf_main.dir/bootloader_start.c.obj	40f3d9d5dc455b38
+130	185	1775283186106144709	esp-idf/log/liblog.a	b7c07076fb71ad62
+386	478	1775283186363019497	esp-idf/spi_flash/CMakeFiles/__idf_spi_flash.dir/spi_flash_wrap.c.obj	2e012707fc134333
+559	574	1775283186549430883	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/project_elf_src_esp32s3.c	c37d0fcd6835c3ea
+414	473	1775283186390566630	esp-idf/esp_hw_support/libesp_hw_support.a	2831c022fdc5bddb
+205	443	1775283186181978688	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_common_loader.c.obj	6dace2954bf5a97b
+243	302	1775283186219467550	esp-idf/esp_rom/libesp_rom.a	845ab3e8adbbbcd7
+443	478	1775283186419744231	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/interrupts.c.obj	a35b9fe60c62acfb
+100	164	1775283186076664356	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/cpu_region_protect.c.obj	e7c42dc43eb9a427
+440	480	1775283186416160583	esp-idf/soc/CMakeFiles/__idf_soc.dir/lldesc.c.obj	129d051a07de0a88
+1	1329	1775283748922792503	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_security/cmake_install.cmake	4f31df40afce4d29
+82	208	1775283186058571950	esp-idf/esp_common/CMakeFiles/__idf_esp_common.dir/src/esp_err_to_name.c.obj	8d0ee06dc62e9616
+519	563	1775283186495431084	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/mcpwm_periph.c.obj	3856fab9dde8bb56
+417	505	1775283186393243188	esp-idf/hal/CMakeFiles/__idf_hal.dir/mmu_hal.c.obj	224b2c2990802f42
+555	598	1775283186531561395	esp-idf/xtensa/CMakeFiles/__idf_xtensa.dir/xt_trax.c.obj	52414847e92672a0
+453	494	1775283186430824467	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/uart_periph.c.obj	79cda1db27a98c61
+494	548	1775283186470937012	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/rmt_periph.c.obj	e2416d8fd2436a9c
+360	410	1775283186336178744	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/esp32s3/bootloader_soc.c.obj	2a90fdab5de0f7e1
+105	333	1775283186081630096	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/rtc_init.c.obj	5f327c7bd72a51d4
+5	86	1775283185981850799	esp-idf/log/CMakeFiles/__idf_log.dir/src/log_print.c.obj	b5a6994ba675aed4
+1	1329	1775283748925034642	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/mspi_timing_tuning/port/esp32s3/cmake_install.cmake	4f31df40afce4d29
+451	497	1775283186427962199	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/gpio_periph.c.obj	3ec2f35291131db0
+333	389	1775283186309948413	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_clock_loader.c.obj	55dac15e424dddef
+286	386	1775283186262900116	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/bootloader_flash/src/bootloader_flash_config_esp32s3.c.obj	11b5fb0a6780d4f3
+4	120	1775283185981055044	esp-idf/log/CMakeFiles/__idf_log.dir/src/buffer/log_buffers.c.obj	f6db82fd3f847918
+317	431	1775283186293595435	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_init.c.obj	566df1d9e21fb228
+301	359	1775283186277839710	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/flash_partitions.c.obj	e275e1af0a13843b
+302	349	1775283186278340755	esp-idf/esp_common/libesp_common.a	7471a15fa425476e
+251	317	1775283186228002354	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_random_esp32s3.c.obj	bf7687820fd0da
+131	215	1775283186108063804	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/esp32s3/esp_efuse_fields.c.obj	6d3aacac9da3801e
+5	102	1775283185981643798	esp-idf/log/CMakeFiles/__idf_log.dir/src/log_format_text.c.obj	60db05ed1d35a0e4
+242	313	1775283186218878004	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/secure_boot.c.obj	4a5f17c668702dc1
+60	123	1775283186037059189	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_wdt.c.obj	28447a74993eeec1
+275	369	1775283186251720670	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/bootloader_flash/src/flash_qio_mode.c.obj	e813d90c36863660
+195	347	1775283186171332454	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/src/esp_efuse_utility.c.obj	d5425493b1121f9a
+1	1329	1775283748914614868	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/xtensa/cmake_install.cmake	4f31df40afce4d29
+105	218	1775283186082030057	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/rtc_sleep.c.obj	72a41fce3e42647c
+1	1329	1775283748927296573	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_rom/cmake_install.cmake	4f31df40afce4d29
+76	105	1775283186052266577	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_cache_writeback_esp32s3.S.obj	eb4dc4fd3638f1ad
+208	301	1775283186184192660	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_clock_init.c.obj	228b84b38c86062e
+410	485	1775283186386426229	esp-idf/hal/CMakeFiles/__idf_hal.dir/esp32s3/efuse_hal.c.obj	2e5c3ceedf940f03
+480	544	1775283186456207336	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/ledc_periph.c.obj	ef1db5627e35b847
+168	286	1775283186144771370	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/src/esp_efuse_api.c.obj	3d7cda92feff8b4e
+500	555	1775283186476962384	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/i2s_periph.c.obj	9506b15cd5c35f32
+164	242	1775283186140361883	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/esp32s3/esp_efuse_utility.c.obj	65b028c43ff35c5c
+6	243	1775283185982920681	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_print.c.obj	887dad8e8e454c2
+201	386	1775283186177881037	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/src/efuse_controller/keys/with_key_purposes/esp_efuse_api_key.c.obj	8cb82525c73af7ea
+347	424	1775283186323236996	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_console.c.obj	7a282fd5aecef3e9
+185	256	1775283186161971145	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/src/esp_efuse_fields.c.obj	bf95d401219c2b17
+1	1329	1775283748928535498	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/cmake_install.cmake	4f31df40afce4d29
+102	414	1775283186078242699	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/rtc_clk.c.obj	5472f517701592e0
+1	1329	1775283748914787953	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/newlib/cmake_install.cmake	4f31df40afce4d29
+442	476	1775283186418275846	esp-idf/soc/CMakeFiles/__idf_soc.dir/dport_access_common.c.obj	cb2549ed8de603ef
+85	202	1775283186061521594	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/cpu.c.obj	b64e0f197fca9734
+896	989	1775283186964896508	.bin_timestamp	9b3bb909aa912940
+93	152	1775283186069733396	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/esp_memory_utils.c.obj	68b810c4f01bb53f
+123	201	1775283186099380624	esp-idf/esp_system/CMakeFiles/__idf_esp_system.dir/esp_err.c.obj	9973ccdf061604de
+9	85	1775283185985270779	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_gpio.c.obj	e1cfe1de88c6f27b
+120	195	1775283186096623107	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/chip_info.c.obj	127789167f16ea2c
+6	131	1775283185982205343	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_sys.c.obj	c2a5049515adb33a
+8	120	1775283185984565858	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_uart.c.obj	c5550e3575b63c7e
+1	1329	1775283748918075182	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/hal/cmake_install.cmake	4f31df40afce4d29
+4	129	1775283185980730708	esp-idf/log/CMakeFiles/__idf_log.dir/src/log_timestamp_common.c.obj	9cca7e2a7e1f170e
+386	451	1775283186362289368	esp-idf/esp_bootloader_format/CMakeFiles/__idf_esp_bootloader_format.dir/esp_bootloader_desc.c.obj	91969002fe995449
+548	594	1775283186524818519	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/rtc_io_periph.c.obj	75ee8b01c0ac5c3c
+1	1329	1775283748921469620	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/bootloader_support/cmake_install.cmake	4f31df40afce4d29
+389	439	1775283186365838182	esp-idf/hal/CMakeFiles/__idf_hal.dir/mpu_hal.c.obj	cbc15627533a87d9
+796	821	1775283186772152665	esp-idf/xtensa/libxtensa.a	9bef90ecaf6cf8b5
+45	74	1775283186021523341	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_longjmp.S.obj	27787cc7710f902d
+58	105	1775283186034722383	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_systimer.c.obj	c7264c03cd176458
+1	1329	1775283748929740589	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/main/cmake_install.cmake	4f31df40afce4d29
+215	275	1775283186191804583	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_mem.c.obj	de8bd61000b03e7c
+5	105	1775283185982027175	esp-idf/log/CMakeFiles/__idf_log.dir/src/log.c.obj	d5ead735fce3e64d
+1	1329	1775283748924556806	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/cmake_install.cmake	4f31df40afce4d29
+517	553	1775283186493441446	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/lcd_periph.c.obj	3072ffd43aac049d
+1	1329	1775283748928854292	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/bootloader/cmake_install.cmake	4f31df40afce4d29
+5	44	1775283185981200961	esp-idf/log/CMakeFiles/__idf_log.dir/src/noos/util.c.obj	38d1e86fa0ffc229
+1	1329	1775283748929003292	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/freertos/cmake_install.cmake	4f31df40afce4d29
+235	364	1775283186211347207	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/flash_encrypt.c.obj	65e892dbccbea3a7
+4	75	1775283185980896584	esp-idf/log/CMakeFiles/__idf_log.dir/src/noos/log_lock.c.obj	cddb39a2f2472fc6
+313	388	1775283186289673535	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_sha.c.obj	8344636e10a9bda0
+125	205	1775283186101307012	esp-idf/efuse/CMakeFiles/__idf_efuse.dir/esp32s3/esp_efuse_table.c.obj	87332c0305139134
+218	305	1775283186194847686	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_random.c.obj	c59da803a99d257b
+202	398	1775283186178955127	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_common.c.obj	bd880bc9b30d8bdc
+1	1329	1775283748926015523	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_common/cmake_install.cmake	4f31df40afce4d29
+478	523	1775283186454706535	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/spi_periph.c.obj	f4697ec9cba57e99
+86	168	1775283186063046770	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/esp_cpu_intr.c.obj	f61cabcedf2d77bc
+301	578	1775283186277143956	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_utility.c.obj	9e6cb07528817afc
+1	1329	1775283748919305981	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_bootloader_format/cmake_install.cmake	4f31df40afce4d29
+7	58	1775283185983762311	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_crc.c.obj	78d4450659c266a0
+505	551	1775283186481173327	esp-idf/soc/CMakeFiles/__idf_soc.dir/esp32s3/i2c_periph.c.obj	2aa227d389cc051f
+120	251	1775283186096286563	esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir/port/esp32s3/rtc_time.c.obj	75c5b898d66aa909
+574	594	1775283186550331264	CMakeFiles/bootloader.elf.dir/project_elf_src_esp32s3.c.obj	2b8056214f7472e6
+9	82	1775283185985117944	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_efuse.c.obj	96b9f350e4013820
+1	1329	1775283748919522483	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_app_format/cmake_install.cmake	4f31df40afce4d29
+349	417	1775283186325220884	esp-idf/bootloader_support/CMakeFiles/__idf_bootloader_support.dir/src/bootloader_console_loader.c.obj	c3406f9fd188cc2a
+1	1329	1775283748918673560	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/spi_flash/cmake_install.cmake	4f31df40afce4d29
+1	1329	1775283748924788682	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/port/esp32s3/cmake_install.cmake	4f31df40afce4d29
+5	60	1775283185981355587	esp-idf/log/CMakeFiles/__idf_log.dir/src/util.c.obj	30dc2b6ddb2de611
+8	93	1775283185984976568	esp-idf/esp_rom/CMakeFiles/__idf_esp_rom.dir/patches/esp_rom_spiflash.c.obj	36a4014d4b9af039
+1	1329	1775283748916672048	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/soc/cmake_install.cmake	4f31df40afce4d29
+1	1329	1775283748928340288	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/log/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	build.ninja	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/xtensa/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/newlib/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/soc/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/micro-ecc/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/hal/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/spi_flash/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_bootloader_format/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_app_format/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/bootloader_support/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/efuse/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_security/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_system/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/port/esp32s3/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/mspi_timing_tuning/port/esp32s3/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_hw_support/lowpower/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_common/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esp_rom/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/log/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/partition_table/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/bootloader/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/freertos/cmake_install.cmake	4f31df40afce4d29
+2	1334	1775283748931235765	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/main/cmake_install.cmake	4f31df40afce4d29
+3	38	1775283748939483567	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775283748939483567	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775283752330433358	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775283752330433358	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	41	1775283895034703461	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	41	1775283895034703461	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	39	1775283906032365713	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	39	1775283906032365713	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	37	1775283970028279199	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	37	1775283970028279199	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775283974661551462	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775283974661551462	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	42	1775284085967605118	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	42	1775284085967605118	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775284090716963364	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775284090716963364	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	43	1775284138432542102	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	43	1775284138432542102	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	50	1775284143244914768	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	50	1775284143244914768	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	42	1775284180886115981	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	42	1775284180886115981	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	38	1775284185551414705	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	38	1775284185551414705	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775284224771465861	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775284224771465861	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	37	1775284229433801941	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	37	1775284229433801941	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775284257186312651	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	38	1775284257186312651	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	39	1775284261888797308	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	39	1775284261888797308	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	39	1775284295257134198	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	39	1775284295257134198	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	40	1775284300042566878	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+3	40	1775284300042566878	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	39	1775284343937860541	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	39	1775284343937860541	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	38	1775284348621757047	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	38	1775284348621757047	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+5	43	1775285452615222820	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+5	43	1775285452615222820	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	38	1775285457453705516	esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
+4	38	1775285457453705516	/Users/micahbreitenstein/Downloads/to Micah/ESP32-S3/build/bootloader/esp-idf/esptool_py/CMakeFiles/bootloader_check_size	52dec72741363334
