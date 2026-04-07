@@ -449,6 +449,8 @@ bool lastDroneTiltActive = false;
 bool lastWaypointDwellAdjustUpComboActive = false;
 bool lastWaypointDwellAdjustDownComboActive = false;
 bool lastFlowlapseLoopToggleComboActive = false;
+bool lastSelectButtonState = false;
+bool lastStartButtonState = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
@@ -3421,25 +3423,37 @@ uint8_t stickPositionToMode(int stickX, int stickY) {
 }
 
 void updateTimelapseModeSelection() {
+  bool currentSelectButtonState = ps2x.Button(PSB_SELECT);
+  
   if (suppressNextSelectRelease) {
-    if (ps2x.ButtonReleased(PSB_SELECT)) {
+    // Detect release edge: was pressed, now not pressed
+    if (lastSelectButtonState && !currentSelectButtonState) {
       suppressNextSelectRelease = false;
     }
+    lastSelectButtonState = currentSelectButtonState;
     return;
   }
 
-  if (timelapseMode != 0 || !ps2x.ButtonReleased(PSB_SELECT)) {
+  // Detect release edge: was pressed (lastSelectButtonState=true), now not pressed (currentSelectButtonState=false)
+  bool selectJustReleased = lastSelectButtonState && !currentSelectButtonState;
+  
+  if (timelapseMode != 0 || !selectJustReleased) {
+    lastSelectButtonState = currentSelectButtonState;
     return;
   }
+  
   timelapseMode = stickPositionToMode(leftStickXvalue, leftStickYvalue);
   if (timelapseMode == 0) {
     Serial.println(F("Timelapse: stick near center at SELECT release, no mode started."));
+    lastSelectButtonState = currentSelectButtonState;
     return;
   }
   const char* tlLabel = getTimelapseModeLabel(timelapseMode);
   if (tlLabel != nullptr) {
     Serial.println(tlLabel);
   }
+  
+  lastSelectButtonState = currentSelectButtonState;
 }
 
 const char* getBounceModeSerialLabel(uint8_t mode) {
@@ -3457,19 +3471,29 @@ const char* getBounceModeSerialLabel(uint8_t mode) {
 }
 
 void updateBounceModeSelection() {
+  bool currentStartButtonState = ps2x.Button(PSB_START);
+  
   if (suppressNextStartRelease) {
-    if (ps2x.ButtonReleased(PSB_START)) {
+    // Detect release edge: was pressed, now not pressed
+    if (lastStartButtonState && !currentStartButtonState) {
       suppressNextStartRelease = false;
     }
+    lastStartButtonState = currentStartButtonState;
     return;
   }
 
-  if (bounce != 0 || !ps2x.ButtonReleased(PSB_START)) {
+  // Detect release edge: was pressed (lastStartButtonState=true), now not pressed (currentStartButtonState=false)
+  bool startJustReleased = lastStartButtonState && !currentStartButtonState;
+  
+  if (bounce != 0 || !startJustReleased) {
+    lastStartButtonState = currentStartButtonState;
     return;
   }
+  
   bounce = stickPositionToMode(leftStickXvalue, leftStickYvalue);
   if (bounce == 0) {
     Serial.println(F("Bounce: stick near center at START release, no mode started."));
+    lastStartButtonState = currentStartButtonState;
     return;
   }
   const char* bounceLabel = getBounceModeSerialLabel(bounce);
