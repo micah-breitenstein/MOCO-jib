@@ -21,6 +21,12 @@ Repository: https://github.com/micah-breitenstein/MOCO-jib
 - Arduino Mega/Nano onboard LEDs are single-color only (no native RGB mode indicator support).
 - For color mode indicators (blue/green/red/yellow), add an external RGB LED (or NeoPixel) and map mode states in firmware.
 
+### Latest Mega speed-control fixes
+
+- `MEGA__master/MEGA__master.ino` restores original-style press/release handling for shoulder speed controls (`L1/L2/R1/R2`) so speed command lines are driven HIGH on press and LOW on release.
+- Focus direction/speed controls were aligned to the same original press/release pattern (`TRIANGLE/CROSS` and `SQUARE/CIRCLE`).
+- Startup default speed stage is now preset to stage `3` for swing/lift only (per test request), while pan/tilt startup behavior remains unchanged.
+
 ## Dependencies
 
 - Required Arduino library: `PS2X_lib` (for `#include <PS2X_lib.h>` in the Mega sketch)
