@@ -146,6 +146,9 @@ constexpr uint8_t PERSISTED_SETTINGS_VERSION = 3;
 constexpr uint8_t PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED = 0x01;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
+constexpr uint8_t DEFAULT_AXIS_SPEED_STAGE = 3; // 0=slowest, 4=fastest
+constexpr unsigned long SPEED_STAGE_PULSE_HIGH_MS = 25;
+constexpr unsigned long SPEED_STAGE_PULSE_LOW_MS = 25;
 constexpr int STICK_MIN = 0;
 constexpr int STICK_CENTER = 128;
 constexpr int STICK_MAX = 255;
@@ -563,9 +566,34 @@ void detectControllerType() {
 }
 
 void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin) {
-  uint8_t outputState = ps2x.Button(buttonCode) ? HIGH : LOW;
-  digitalWrite(axis1Pin, outputState);
-  digitalWrite(axis2Pin, outputState);
+  if (ps2x.Button(buttonCode)) {
+    digitalWrite(axis1Pin, HIGH);
+    digitalWrite(axis2Pin, HIGH);
+  }
+
+  if (ps2x.ButtonReleased(buttonCode)) {
+    digitalWrite(axis1Pin, LOW);
+    digitalWrite(axis2Pin, LOW);
+  }
+}
+
+void pulseSpeedStageUpPin(uint8_t speedUpPin) {
+  digitalWrite(speedUpPin, HIGH);
+  delay(SPEED_STAGE_PULSE_HIGH_MS);
+  digitalWrite(speedUpPin, LOW);
+  delay(SPEED_STAGE_PULSE_LOW_MS);
+}
+
+void applyDefaultAxisSpeedStage(uint8_t speedUpPin, uint8_t targetStage) {
+  uint8_t clampedStage = static_cast<uint8_t>(constrain(static_cast<int>(targetStage), 0, 4));
+  for (uint8_t i = 0; i < clampedStage; ++i) {
+    pulseSpeedStageUpPin(speedUpPin);
+  }
+}
+
+void applyStartupDefaultSpeedStages() {
+  applyDefaultAxisSpeedStage(swingSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
+  applyDefaultAxisSpeedStage(liftSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
 }
 
 void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t state) {
@@ -1727,15 +1755,35 @@ void handleButtonDirection(uint8_t buttonCode, bool isReversed,
 }
 
 void handleFocusAxis() {
-  uint8_t triangleState = ps2x.Button(PSB_TRIANGLE) ? HIGH : LOW;
-  uint8_t crossState = ps2x.Button(PSB_CROSS) ? HIGH : LOW;
-  setDirectionalOutput(isFocusReversed, focusLeft, focusRight, triangleState);
-  setDirectionalOutput(isFocusReversed, focusRight, focusLeft, crossState);
+  if (ps2x.Button(PSB_TRIANGLE)) {
+    setDirectionalOutput(isFocusReversed, focusLeft, focusRight, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
+    digitalWrite(focusLeft, LOW);
+    digitalWrite(focusRight, LOW);
+  }
 
-  // Drive focus speed outputs from live button state every loop so speed
-  // control remains reliable even when release-edge events are skipped.
-  digitalWrite(focusSpeedDown, ps2x.Button(PSB_SQUARE) ? HIGH : LOW);
-  digitalWrite(focusSpeedUp, ps2x.Button(PSB_CIRCLE) ? HIGH : LOW);
+  if (ps2x.Button(PSB_CROSS)) {
+    setDirectionalOutput(isFocusReversed, focusRight, focusLeft, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_CROSS)) {
+    digitalWrite(focusLeft, LOW);
+    digitalWrite(focusRight, LOW);
+  }
+
+  if (ps2x.Button(PSB_SQUARE)) {
+    digitalWrite(focusSpeedDown, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_SQUARE)) {
+    digitalWrite(focusSpeedDown, LOW);
+  }
+
+  if (ps2x.Button(PSB_CIRCLE)) {
+    digitalWrite(focusSpeedUp, HIGH);
+  }
+  if (ps2x.ButtonReleased(PSB_CIRCLE)) {
+    digitalWrite(focusSpeedUp, LOW);
+  }
 }
 
 // Returns true if the axis is active (outside deadband), false if stopped.
@@ -3969,6 +4017,11 @@ void setup() {
   for (size_t i = 0; i < sizeof(dipSwitchPins) / sizeof(dipSwitchPins[0]); ++i) {
     pinMode(dipSwitchPins[i], INPUT_PULLUP);
   }
+
+  stopAllMotors();
+  applyStartupDefaultSpeedStages();
+  Serial.print(F("Startup speed stage set to "));
+  Serial.println(DEFAULT_AXIS_SPEED_STAGE);
 
   resetTimelapseState();
 
