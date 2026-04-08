@@ -3,6 +3,7 @@ idf_component_register(
         "main.c"
         "esp_lcd_sh8601.c"
         "lv_font_montserrat_120.c"
+        "lv_font_montserrat_150.c"
     INCLUDE_DIRS
         "."
 )
