@@ -27,6 +27,78 @@ Repository: https://github.com/micah-breitenstein/MOCO-jib
 - Focus direction/speed controls were aligned to the same original press/release pattern (`TRIANGLE/CROSS` and `SQUARE/CIRCLE`).
 - Startup default speed stage is now preset to stage `3` for swing/lift only (per test request), while pan/tilt startup behavior remains unchanged.
 
+## Setup and Flashing
+
+### Hardware required
+
+- Arduino Mega 2560 (master)
+- 5× Arduino Nano (one per axis: swing, pan, lift, tilt, focus)
+- DualShock 2 (PS2) controller + receiver
+- USB-A to USB-B cable (for Mega)
+- USB-A to Mini-USB cables (for Nanos)
+
+### Prerequisites
+
+Install [Arduino CLI](https://arduino.github.io/arduino-cli/) and the AVR core:
+
+```sh
+brew install arduino-cli          # macOS (Homebrew)
+arduino-cli core update-index
+arduino-cli core install arduino:avr
+```
+
+Install the `PS2X_lib` library from the vendored copy:
+
+```sh
+cp -r third_party/PS2X_lib ~/Documents/Arduino/libraries/PS2X_lib
+```
+
+### Flashing the Mega master
+
+1. Connect the Mega via USB.
+2. Find the port:
+   ```sh
+   arduino-cli board list
+   # Look for "Arduino Mega or Mega 2560" — port is usually /dev/cu.usbmodem* on macOS
+   ```
+3. Upload:
+   ```sh
+   arduino-cli upload -p /dev/cu.usbmodem101 --fqbn arduino:avr:mega MEGA__master
+   # Replace /dev/cu.usbmodem101 with your actual port
+   ```
+4. Confirm boot over serial (optional):
+   ```sh
+   arduino-cli monitor -p /dev/cu.usbmodem101 -c baudrate=9600
+   # Should print "Startup speed stage set to 3" and controller type
+   ```
+
+### Flashing a Nano slave
+
+1. Connect the target Nano via USB.
+2. Find its port with `arduino-cli board list`.
+3. Upload the matching sketch (replace `NANO_slave_1_SWING` and port as needed):
+   ```sh
+   arduino-cli upload -p /dev/cu.usbmodem201 --fqbn arduino:avr:nano:cpu=atmega328 NANO_slave_1_SWING
+   ```
+4. Repeat for each axis slave (`NANO_slave_2_PAN`, `NANO_slave_3_LIFT`, `NANO_slave_4_TILT`, `NANO_slave_5_FOCUS`).
+
+> **Note:** Some Nano clones require `cpu=atmega328old` instead of `cpu=atmega328`. If upload fails with a sync error, try the `old` variant.
+
+### Flashing from VS Code
+
+- The default build task (`Cmd+Shift+B`) compiles the Mega sketch.
+- For upload, run the command directly in the VS Code terminal (no upload task is configured by default).
+
+### First boot checklist
+
+After flashing the Mega and at least one Nano slave, power up and verify:
+
+1. Serial monitor shows `Startup speed stage set to 3` (swing + lift)
+2. Controller connects — Serial shows `DualShock Controller found`
+3. D-pad moves the expected axis
+4. L1/L2 step swing/lift speed up and down (press once per stage)
+5. R1/R2 step lift/tilt speed up and down
+
 ## Dependencies
 
 - Required Arduino library: `PS2X_lib` (for `#include <PS2X_lib.h>` in the Mega sketch)
