@@ -198,6 +198,8 @@ static void example_lvgl_port_task(void *arg)
 }
 
 static lv_obj_t *status_label = NULL;
+static unsigned long test_message_time = 0;
+static bool test_message_sent = false;
 
 void updateDisplayStatus(const char* msg) {
   ESP_LOGI(TAG, "Display update: %s", msg);
@@ -319,6 +321,10 @@ void setup()
   lvgl_mux = xSemaphoreCreateMutex();
   assert(lvgl_mux);
   xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
+  
+  // TEST: Send error message after 3 seconds to test rendering
+  test_message_time = millis() + 3000;
+  
   //Lock the mutex due to the LVGL APIs are not thread-safe
   if (example_lvgl_lock(-1))
   {
@@ -333,4 +339,11 @@ void setup()
 void loop()
 {
   handleSerialInput();
+  
+  // TEST: Display controller error after 3 seconds to verify rendering
+  if (!test_message_sent && millis() >= test_message_time) {
+    updateDisplayStatus("CONTROLLER_ERROR:\nNo controller found");
+    test_message_sent = true;
+    ESP_LOGI(TAG, "TEST MESSAGE SENT: Controller error display working!");
+  }
 }
