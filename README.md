@@ -99,6 +99,56 @@ After flashing the Mega and at least one Nano slave, power up and verify:
 4. L1/L2 step swing/lift speed up and down (press once per stage)
 5. R1/R2 step lift/tilt speed up and down
 
+### Mega ↔ SparkFun level shifter ↔ ESP32-S3 wiring
+
+Use the SparkFun bi-directional logic level converter to safely connect the Arduino Mega's 5V UART pins to the ESP32-S3 boards' 3.3V UART pins.
+
+#### SparkFun board power/reference pins
+
+- `HV` → Mega `5V`
+- `LV` → `3.3V` from one ESP32-S3 board or another stable 3.3V source
+- `GND` → common ground shared by Mega, SparkFun board, and both ESP32-S3 boards
+
+> Bench-testing note: if both ESP32-S3 boards are powered by USB from this computer, keep them USB-powered and still tie their grounds to the Mega/SparkFun ground.
+
+#### SparkFun channel labels
+
+The SparkFun board channels pair straight across:
+
+- `HV1` ↔ `LV1`
+- `HV2` ↔ `LV2`
+- `HV3` ↔ `LV3`
+- `HV4` ↔ `LV4`
+
+Board silkscreen reference:
+
+- Top row: `HV4`, `HV3`, `GND`, `HV`, `HV2`, `HV1`
+- Bottom row: `LV4`, `LV3`, `GND`, `LV`, `LV2`, `LV1`
+
+#### UART wiring for two ESP32-S3 boards
+
+Recommended Mega serial assignments:
+
+- `Serial1` (`TX1=18`, `RX1=19`) → display ESP32-S3
+- `Serial2` (`TX2=16`, `RX2=17`) → RGB matrix ESP32-S3
+
+Wire the channels like this:
+
+- `HV1` ↔ `LV1`: Mega `TX1` (pin `18`) → display ESP32-S3 `RX`
+- `HV2` ↔ `LV2`: Mega `RX1` (pin `19`) ← display ESP32-S3 `TX`
+- `HV3` ↔ `LV3`: Mega `TX2` (pin `16`) → RGB ESP32-S3 `RX`
+- `HV4` ↔ `LV4`: Mega `RX2` (pin `17`) ← RGB ESP32-S3 `TX`
+
+UART rule reminder: `TX` always goes to the other board's `RX`, and `RX` goes to the other board's `TX`.
+
+#### Wiring checklist
+
+- Use a small breadboard so the SparkFun board sits cleanly with one pin per row
+- Do **not** connect Mega UART pins directly to ESP32-S3 RX pins without the level shifter
+- Do **not** tie the `3.3V` outputs of both ESP32-S3 boards together; use only one `3.3V` source for the SparkFun `LV` reference
+- Do **not** power ESP32-S3 boards from the Mega `3.3V` pin on the final rig; use a dedicated 3.3V regulator or the ESPs' own regulated supply
+- Always share ground between Mega, SparkFun board, and both ESP32-S3 boards
+
 ## Dependencies
 
 - Required Arduino library: `PS2X_lib` (for `#include <PS2X_lib.h>` in the Mega sketch)
