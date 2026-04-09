@@ -197,8 +197,47 @@ static void example_lvgl_port_task(void *arg)
   }
 }
 
+static lv_obj_t *status_label = NULL;
+
+void updateDisplayStatus(const char* msg) {
+  ESP_LOGI(TAG, "Display update: %s", msg);
+  if (example_lvgl_lock(-1)) {
+    if (status_label == NULL) {
+      status_label = lv_label_create(lv_scr_act());
+      lv_obj_set_style_text_font(status_label, &lv_font_montserrat_24, LV_PART_MAIN);
+      lv_obj_center(status_label);
+    }
+    lv_label_set_text(status_label, msg);
+    example_lvgl_unlock();
+  }
+}
+
+void handleSerialInput() {
+  if (Serial1.available()) {
+    String line = Serial1.readStringUntil('\n');
+    line.trim();
+    if (line.length() > 0) {
+      if (line.startsWith("CONTROLLER_ERROR:")) {
+        String msg = line.substring(17); // skip "CONTROLLER_ERROR:"
+        updateDisplayStatus(msg.c_str());
+      }
+      else if (line.startsWith("CONTROLLER_OK:")) {
+        String msg = line.substring(14); // skip "CONTROLLER_OK:"
+        updateDisplayStatus(msg.c_str());
+      }
+      else if (line.startsWith("MODE:")) {
+        String msg = "Mode: " + line.substring(5);
+        ESP_LOGI(TAG, "%s", msg.c_str());
+      }
+      ESP_LOGI(TAG, "Received from Mega: %s", line.c_str());
+    }
+  }
+}
+
 void setup()
 {
+  Serial1.begin(9600, SERIAL_8N1, 9, 10);
+  
   static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
   static lv_disp_drv_t disp_drv;      // contains callback functions
 #if EXAMPLE_PIN_NUM_BK_LIGHT >= 0
@@ -293,5 +332,5 @@ void setup()
 }
 void loop()
 {
-  
+  handleSerialInput();
 }

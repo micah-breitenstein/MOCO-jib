@@ -565,6 +565,23 @@ void detectControllerType() {
   }
 }
 
+void sendToDisplayESP(const char* msg) {
+  if (Serial1) {
+    Serial1.println(msg);
+  }
+}
+
+void sendToRGBESP(const char* msg) {
+  if (Serial2) {
+    Serial2.println(msg);
+  }
+}
+
+void broadcastStatus(const char* msg) {
+  sendToDisplayESP(msg);
+  sendToRGBESP(msg);
+}
+
 void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin) {
   if (ps2x.Button(buttonCode)) {
     digitalWrite(axis1Pin, HIGH);
@@ -3971,6 +3988,8 @@ void printDroneTuningProfile() {
 void setup() {
 
   Serial.begin(9600);
+  Serial1.begin(9600);
+  Serial2.begin(9600);
   bool persistedSettingsLoaded = loadPersistedSettings();
   updateIntervalMs();
 
@@ -4064,9 +4083,11 @@ void loop() {
     if (now - lastControllerRetryMs >= CONTROLLER_RETRY_INTERVAL_MS) {
       lastControllerRetryMs = now;
       Serial.println(F("Controller init failed. Retrying config..."));
+      broadcastStatus("CONTROLLER_ERROR:No controller found, check wiring.");
       configureController();
       if (error == 0) {
         detectControllerType();
+        broadcastStatus("CONTROLLER_OK:DualShock connected.");
       }
     }
     return;
