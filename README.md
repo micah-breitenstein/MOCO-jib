@@ -178,9 +178,26 @@ UART rule reminder: `TX` always goes to the other board's `RX`, and `RX` goes to
 
 Use `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` to drive the onboard 8×8 matrix from Mega status messages.
 
+#### Flashing the matrix ESP32-S3
+
+1. Connect the matrix ESP32-S3 board via USB.
+2. Find its port:
+   ```sh
+   arduino-cli board list
+   # Look for "ESP32-S3" — port is usually /dev/cu.usbmodem* on macOS
+   ```
+3. Compile and upload:
+   ```sh
+   arduino-cli compile --fqbn esp32:esp32:esp32s3 ESP32-S3-Matrix/ESP32_S3_Matrix_Status && \
+   arduino-cli upload -p /dev/cu.usbmodem11101 --fqbn esp32:esp32:esp32s3 ESP32-S3-Matrix/ESP32_S3_Matrix_Status
+   # Replace /dev/cu.usbmodem11101 with your actual port
+   ```
+
+#### Matrix behavior
+
 - UART mapping in sketch defaults to `RX=GPIO40`, `TX=GPIO41`, `9600 baud`
-- `CONTROLLER_ERROR:*` sets the matrix to solid red
-- `CONTROLLER_OK:*` clears matrix back to off
+- `CONTROLLER_ERROR:*` sets the matrix to red with animating pink twinkles
+- `CONTROLLER_OK:*` displays white pulsing breathing animation
 
 Recommended Mega serial path for matrix:
 

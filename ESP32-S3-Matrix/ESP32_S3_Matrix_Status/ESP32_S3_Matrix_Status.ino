@@ -1,4 +1,5 @@
 #include <Adafruit_NeoPixel.h>
+#include <math.h>
 
 constexpr uint8_t UART_RX_PIN = 44;
 constexpr uint8_t UART_TX_PIN = 43;
@@ -16,6 +17,8 @@ unsigned long lastTwinkleMs = 0;
 unsigned long lastStatusRxMs = 0;
 unsigned long lastOkPulseMs = 0;
 uint8_t lastOkPulseLevel = 0;
+uint8_t okPulseDitherAccumulator = 0;
+float okPulseSmoothedLevel = 0.0f;
 
 constexpr unsigned long TWINKLE_FAST_PHASE_MS = 3200;
 constexpr unsigned long TWINKLE_SLOW_PHASE_MS = 1200;
@@ -24,9 +27,9 @@ constexpr unsigned long TWINKLE_UPDATE_FAST_MS = 14;
 constexpr unsigned long TWINKLE_UPDATE_SLOW_MS = 28;
 constexpr unsigned long TWINKLE_CYCLE_FAST_MS = 360;
 constexpr unsigned long TWINKLE_CYCLE_SLOW_MS = 620;
-constexpr unsigned long OK_PULSE_CYCLE_MS = 1800;
-constexpr uint8_t OK_PULSE_MIN_LEVEL = 50;
-constexpr uint8_t OK_PULSE_MAX_LEVEL = 64;
+constexpr unsigned long OK_PULSE_CYCLE_MS = 2000;
+constexpr uint8_t OK_PULSE_MIN_LEVEL = 60;
+constexpr uint8_t OK_PULSE_MAX_LEVEL = 90;
 constexpr uint8_t BASE_ERROR_RED = 200;
 constexpr uint8_t TWINKLE_WHITE_PEAK = 200;
 constexpr uint8_t RANDOM_TWINKLE_CHANCE_PERCENT = 22;
@@ -121,6 +124,28 @@ void fillMatrix(uint8_t r, uint8_t g, uint8_t b) {
   matrixStrip.show();
 }
 
+void renderOkPulseFrame(uint8_t pulseBase, uint8_t frac255) {
+  uint8_t distributedLevel = pulseBase;
+  uint8_t distributedBlue = (pulseBase * 4) / 5;
+
+  for (uint16_t i = 0; i < MATRIX_LED_COUNT; ++i) {
+    uint16_t orderedIndex = i;
+    uint32_t threshold = ((uint32_t)orderedIndex * 255U) / MATRIX_LED_COUNT;
+
+    if (pulseBase < OK_PULSE_MAX_LEVEL && threshold < frac255) {
+      distributedLevel = pulseBase + 1;
+      distributedBlue = (distributedLevel * 4) / 5;
+    } else {
+      distributedLevel = pulseBase;
+      distributedBlue = (pulseBase * 4) / 5;
+    }
+
+    matrixStrip.setPixelColor(i, matrixStrip.Color(distributedLevel, distributedLevel, distributedBlue));
+  }
+
+  matrixStrip.show();
+}
+
 void showError() {
   errorActive = true;
   lastStatusRxMs = millis();
@@ -133,7 +158,9 @@ void showOk() {
   lastStatusRxMs = millis();
   lastOkPulseMs = lastStatusRxMs;
   lastOkPulseLevel = 0;
-  fillMatrix(OK_PULSE_MIN_LEVEL, OK_PULSE_MIN_LEVEL, OK_PULSE_MIN_LEVEL);
+  okPulseDitherAccumulator = 0;
+  okPulseSmoothedLevel = OK_PULSE_MIN_LEVEL;
+  fillMatrix(OK_PULSE_MIN_LEVEL, OK_PULSE_MIN_LEVEL, (OK_PULSE_MIN_LEVEL * 4) / 5);
 }
 
 void handleStatusLine(const String& line) {
@@ -165,7 +192,7 @@ void setup() {
   randomSeed((uint32_t)(micros() ^ millis()));
 
   matrixStrip.begin();
-  matrixStrip.setBrightness(64);
+  matrixStrip.setBrightness(32);
   fillMatrix(50, 50, 50);
   delay(200);
   showOk();
@@ -201,22 +228,28 @@ void loop() {
     }
   } else {
     unsigned long phase = now % OK_PULSE_CYCLE_MS;
-    unsigned long halfCycle = OK_PULSE_CYCLE_MS / 2;
-    unsigned long ramp = (phase <= halfCycle) ? phase : (OK_PULSE_CYCLE_MS - phase);
-
-    if (halfCycle == 0) {
-      halfCycle = 1;
+    float phaseRatio = (float)phase / (float)OK_PULSE_CYCLE_MS;
+    float eased = 0.5f - 0.5f * cosf(phaseRatio * 6.28318530718f);
+    float pulseFloat = OK_PULSE_MIN_LEVEL + eased * (float)(OK_PULSE_MAX_LEVEL - OK_PULSE_MIN_LEVEL);
+    if (pulseFloat > okPulseSmoothedLevel) {
+      okPulseSmoothedLevel += (pulseFloat - okPulseSmoothedLevel) * 0.35f;
+    } else {
+      okPulseSmoothedLevel += (pulseFloat - okPulseSmoothedLevel) * 0.18f;
     }
 
-    uint8_t pulseLevel = OK_PULSE_MIN_LEVEL +
-                         (uint8_t)((ramp * (OK_PULSE_MAX_LEVEL - OK_PULSE_MIN_LEVEL)) / halfCycle);
+    uint8_t pulseBase = (uint8_t)okPulseSmoothedLevel;
+    uint8_t pulseLevel = pulseBase;
+    uint8_t frac255 = (uint8_t)((okPulseSmoothedLevel - (float)pulseBase) * 255.0f);
 
-    if (now - lastOkPulseMs >= 20) {
+    okPulseDitherAccumulator = (uint8_t)(okPulseDitherAccumulator + frac255);
+    if (okPulseDitherAccumulator < frac255 && pulseLevel < OK_PULSE_MAX_LEVEL) {
+      pulseLevel++;
+    }
+
+    if (now - lastOkPulseMs >= 5) {
       lastOkPulseMs = now;
-      if (pulseLevel != lastOkPulseLevel) {
-        lastOkPulseLevel = pulseLevel;
-        fillMatrix(pulseLevel, pulseLevel, pulseLevel);
-      }
+      lastOkPulseLevel = pulseLevel;
+      renderOkPulseFrame(pulseBase, frac255);
     }
   }
 
