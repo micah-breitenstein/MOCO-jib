@@ -238,7 +238,7 @@ void handleSerialInput() {
 
 void setup()
 {
-  Serial1.begin(9600, SERIAL_8N1, 9, 10);
+  Serial1.begin(9600, SERIAL_8N1, 40, 41);
   
   static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
   static lv_disp_drv_t disp_drv;      // contains callback functions
