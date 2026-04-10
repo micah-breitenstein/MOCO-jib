@@ -132,12 +132,22 @@ Recommended Mega serial assignments:
 - `Serial1` (`TX1=18`, `RX1=19`) → display ESP32-S3
 - `Serial2` (`TX2=16`, `RX2=17`) → RGB matrix ESP32-S3
 
+ESP-side UART pins used by current sketches:
+
+- Display ESP32-S3 (`ESP32-S3/RIG_Display.ino`): `RX=GPIO9`, `TX=GPIO10` (`Serial1.begin(9600, SERIAL_8N1, 9, 10)`)
+- Matrix ESP32-S3: pick one free UART pair in your matrix sketch (recommended test pair: `RX=GPIO44`, `TX=GPIO43`) and keep that mapping documented next to `Serial1.begin(...)` or `Serial2.begin(...)`
+
 Wire the channels like this:
 
 - `HV1` ↔ `LV1`: Mega `TX1` (pin `18`) → display ESP32-S3 `RX`
 - `HV2` ↔ `LV2`: Mega `RX1` (pin `19`) ← display ESP32-S3 `TX`
 - `HV3` ↔ `LV3`: Mega `TX2` (pin `16`) → RGB ESP32-S3 `RX`
 - `HV4` ↔ `LV4`: Mega `RX2` (pin `17`) ← RGB ESP32-S3 `TX`
+
+If you use the recommended matrix test pair above, the practical map is:
+
+- `HV3` ↔ `LV3`: Mega `TX2` (pin `16`) → matrix ESP32-S3 `GPIO44` (`RX`)
+- `HV4` ↔ `LV4`: Mega `RX2` (pin `17`) ← matrix ESP32-S3 `GPIO43` (`TX`)
 
 UART rule reminder: `TX` always goes to the other board's `RX`, and `RX` goes to the other board's `TX`.
 
