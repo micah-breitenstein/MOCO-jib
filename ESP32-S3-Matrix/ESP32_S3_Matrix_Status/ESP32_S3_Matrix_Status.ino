@@ -63,7 +63,7 @@ void showError() {
 void showOk() {
   errorActive = false;
   lastStatusRxMs = millis();
-  fillMatrix(14, 14, 14);
+  fillMatrix(64, 64, 64);
 }
 
 void handleStatusLine(const String& line) {
