@@ -1,6 +1,8 @@
 #include <string.h>
+#include <stdbool.h>
 
 #include "driver/spi_master.h"
+#include "driver/uart.h"
 #include "esp_err.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
@@ -15,6 +17,7 @@
 #include "lvgl.h"
 
 extern const lv_font_t lv_font_montserrat_150;
+extern const lv_font_t lv_font_montserrat_48;
 
 static const char *TAG = "RIG";
 
@@ -37,13 +40,21 @@ static const char *TAG = "RIG";
 #define LVGL_TASK_STACK_SIZE (6 * 1024)
 #define LVGL_TASK_PRIORITY 2
 #define LVGL_BUF_HEIGHT (LCD_V_RES / 10)
-#define TEST_FORCE_CONTROLLER_ERROR 1
+#define TEST_FORCE_CONTROLLER_ERROR 0
 #define TEST_FORCE_CONTROLLER_ERROR_DELAY_MS 3000
+
+#define STATUS_UART_PORT UART_NUM_1
+#define STATUS_UART_RX_PIN GPIO_NUM_40
+#define STATUS_UART_TX_PIN GPIO_NUM_41
+#define STATUS_UART_BAUDRATE 9600
+#define STATUS_UART_BUF_SIZE 512
+#define STATUS_SIGNAL_TIMEOUT_MS 3500
 
 static SemaphoreHandle_t lvgl_mux = NULL;
 static lv_obj_t *label_moco = NULL;
 static lv_obj_t *label_jib = NULL;
 static lv_obj_t *status_label = NULL;
+static bool status_error_active = false;
 
 static const sh8601_lcd_init_cmd_t lcd_init_cmds[] = {
     {0xFE, (uint8_t[]){0x20}, 1, 0},
@@ -133,25 +144,114 @@ static void lvgl_task(void *arg)
     }
 }
 
+static void show_status_on_display(const char *msg, bool is_error)
+{
+    status_error_active = is_error;
+
+    if (is_error) {
+        if (label_moco) {
+            lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (label_jib) {
+            lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        if (status_label == NULL) {
+            status_label = lv_label_create(lv_scr_act());
+            lv_obj_set_style_text_color(status_label, lv_color_white(), LV_PART_MAIN);
+            lv_obj_set_style_text_font(status_label, &lv_font_montserrat_48, LV_PART_MAIN);
+            lv_obj_set_style_text_line_space(status_label, 8, LV_PART_MAIN);
+            lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+            lv_label_set_long_mode(status_label, LV_LABEL_LONG_WRAP);
+            lv_obj_set_width(status_label, LCD_H_RES - 40);
+        }
+
+        lv_label_set_text(status_label, msg);
+        lv_obj_center(status_label);
+        lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+
+    if (status_label) {
+        lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (label_moco) {
+        lv_obj_clear_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (label_jib) {
+        lv_obj_clear_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void status_uart_task(void *arg)
+{
+    (void)arg;
+    uint8_t byte = 0;
+    char line[256];
+    size_t line_len = 0;
+    uint64_t last_status_rx_ms = esp_timer_get_time() / 1000ULL;
+
+    while (1) {
+        uint64_t now_ms = esp_timer_get_time() / 1000ULL;
+        if (status_error_active && (now_ms - last_status_rx_ms > STATUS_SIGNAL_TIMEOUT_MS)) {
+            if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                show_status_on_display(NULL, false);
+                xSemaphoreGive(lvgl_mux);
+            }
+            last_status_rx_ms = now_ms;
+        }
+
+        int len = uart_read_bytes(STATUS_UART_PORT, &byte, 1, pdMS_TO_TICKS(100));
+        if (len <= 0) {
+            continue;
+        }
+
+        if (byte == '\r') {
+            continue;
+        }
+
+        if (byte == '\n') {
+            if (line_len == 0) {
+                continue;
+            }
+
+            line[line_len] = '\0';
+            ESP_LOGI(TAG, "Mega status: %s", line);
+            last_status_rx_ms = now_ms;
+
+            if (strncmp(line, "CONTROLLER_ERROR:", 17) == 0) {
+                const char *msg = line + 17;
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    show_status_on_display(msg, true);
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "CONTROLLER_OK:", 14) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    show_status_on_display(NULL, false);
+                    xSemaphoreGive(lvgl_mux);
+                }
+            }
+
+            line_len = 0;
+            continue;
+        }
+
+        if (line_len < sizeof(line) - 1) {
+            line[line_len++] = (char)byte;
+        } else {
+            line_len = 0;
+        }
+    }
+}
+
+#if TEST_FORCE_CONTROLLER_ERROR
 static void show_controller_error_cb(lv_timer_t *timer)
 {
     (void)timer;
-    if (label_moco) {
-        lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-    }
-    if (label_jib) {
-        lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
-    }
-    if (status_label == NULL) {
-        status_label = lv_label_create(lv_scr_act());
-        lv_obj_set_style_text_color(status_label, lv_color_white(), LV_PART_MAIN);
-        lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
-        lv_obj_center(status_label);
-    }
-    lv_label_set_text(status_label, "No controller found");
-    lv_obj_center(status_label);
+    show_status_on_display("NO CONTROLLER\nFOUND", true);
     lv_timer_del(timer);
 }
+#endif
 
 void app_main(void)
 {
@@ -221,6 +321,19 @@ void app_main(void)
     lvgl_mux = xSemaphoreCreateMutex();
     assert(lvgl_mux);
     xTaskCreate(lvgl_task, "lvgl", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
+
+    const uart_config_t uart_cfg = {
+        .baud_rate = STATUS_UART_BAUDRATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+    ESP_ERROR_CHECK(uart_driver_install(STATUS_UART_PORT, STATUS_UART_BUF_SIZE, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(STATUS_UART_PORT, &uart_cfg));
+    ESP_ERROR_CHECK(uart_set_pin(STATUS_UART_PORT, STATUS_UART_TX_PIN, STATUS_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    xTaskCreate(status_uart_task, "status_uart", 4096, NULL, 3, NULL);
 
     xSemaphoreTake(lvgl_mux, portMAX_DELAY);
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);

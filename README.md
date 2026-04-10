@@ -12,6 +12,7 @@ Repository: https://github.com/micah-breitenstein/MOCO-jib
 - `NANO_slave_3_LIFT/NANO_slave_3_LIFT.ino` — lift axis slave
 - `NANO_slave_4_TILT/NANO_slave_4_TILT.ino` — tilt axis slave
 - `NANO_slave_5_FOCUS/NANO_slave_5_FOCUS.ino` — focus axis slave
+- `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (`CONTROLLER_ERROR` → red)
 
 ## Notes
 
@@ -144,6 +145,20 @@ Wire the channels like this:
 - `HV3` ↔ `LV3`: Mega `TX2` (pin `16`) → RGB ESP32-S3 `RX`
 - `HV4` ↔ `LV4`: Mega `RX2` (pin `17`) ← RGB ESP32-S3 `TX`
 
+Current bench wiring (as wired):
+
+- Mega `TX1` (yellow) is on `HV1`
+- Mega `RX1` is on `HV2`
+- Mega `TX2` is on `HV3`
+- Mega `RX2` is on `HV4`
+
+Matching low-voltage side should be:
+
+- `LV1` → display ESP `GPIO9` (`RX`)
+- `LV2` ← display ESP `GPIO10` (`TX`)
+- `LV3` → matrix ESP `GPIO44` (`RX`, recommended test pin)
+- `LV4` ← matrix ESP `GPIO43` (`TX`, recommended test pin)
+
 If you use the recommended matrix test pair above, the practical map is:
 
 - `HV3` ↔ `LV3`: Mega `TX2` (pin `16`) → matrix ESP32-S3 `GPIO44` (`RX`)
@@ -158,6 +173,21 @@ UART rule reminder: `TX` always goes to the other board's `RX`, and `RX` goes to
 - Do **not** tie the `3.3V` outputs of both ESP32-S3 boards together; use only one `3.3V` source for the SparkFun `LV` reference
 - Do **not** power ESP32-S3 boards from the Mega `3.3V` pin on the final rig; use a dedicated 3.3V regulator or the ESPs' own regulated supply
 - Always share ground between Mega, SparkFun board, and both ESP32-S3 boards
+
+### Waveshare ESP32-S3 Matrix status test
+
+Use `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` to drive the onboard 8×8 matrix from Mega status messages.
+
+- UART mapping in sketch defaults to `RX=GPIO40`, `TX=GPIO41`, `9600 baud`
+- `CONTROLLER_ERROR:*` sets the matrix to solid red
+- `CONTROLLER_OK:*` clears matrix back to off
+
+Recommended Mega serial path for matrix:
+
+- Mega `TX2` (pin `16`) → level shifter `HV3` ↔ `LV3` → matrix ESP `GPIO40` (`RX`)
+- Mega `RX2` (pin `17`) ← level shifter `HV4` ↔ `LV4` ← matrix ESP `GPIO41` (`TX`)
+
+If your matrix board routes the LED data line to a different GPIO, update `MATRIX_DATA_PIN` in the sketch before flashing.
 
 ## Dependencies
 

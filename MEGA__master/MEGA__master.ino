@@ -146,6 +146,7 @@ constexpr uint8_t PERSISTED_SETTINGS_VERSION = 3;
 constexpr uint8_t PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED = 0x01;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
+constexpr unsigned long CONTROLLER_OK_BROADCAST_INTERVAL_MS = 1500;
 constexpr uint8_t DEFAULT_AXIS_SPEED_STAGE = 3; // 0=slowest, 4=fastest
 constexpr unsigned long SPEED_STAGE_PULSE_HIGH_MS = 25;
 constexpr unsigned long SPEED_STAGE_PULSE_LOW_MS = 25;
@@ -521,6 +522,7 @@ unsigned long flowlapsePanTierLastChangeMs = 0;
 unsigned long flowlapseTiltTierLastChangeMs = 0;
 
 unsigned long lastControllerRetryMs = 0;
+unsigned long lastControllerOkBroadcastMs = 0;
 #define unsupportedControllerWarningShown packedFlags.unsupportedControllerWarningShown
 #define rumbleSeparatorActive packedFlags.rumbleSeparatorActive
 #define chainStepDistAfterInterval packedFlags.chainStepDistAfterInterval
@@ -4047,6 +4049,12 @@ void setup() {
   delay(CONTROLLER_STARTUP_DELAY_MS);
   configureController();
   detectControllerType();
+  if (error == 0) {
+    const bool isDualShockAtBoot = (controllerType == 1 || controllerType == 3);
+    if (isDualShockAtBoot) {
+      broadcastStatus("CONTROLLER_OK:DualShock connected.");
+    }
+  }
   Serial.println(F("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds."));
   Serial.println(F("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms."));
   Serial.println(F("START + SELECT + SQUARE toggles controller rumble mute."));
@@ -4110,6 +4118,11 @@ void loop() {
   }
 
   unsupportedControllerWarningShown = false;
+
+  if (now - lastControllerOkBroadcastMs >= CONTROLLER_OK_BROADCAST_INTERVAL_MS) {
+    broadcastStatus("CONTROLLER_OK:DualShock connected.");
+    lastControllerOkBroadcastMs = now;
+  }
 
   handleIntervalRumbleFeedback(now);
   ps2x.read_gamepad(false, rumbleMuted ? 0 : vibrate);
