@@ -138,12 +138,6 @@ void showOk() {
 
 void handleStatusLine(const String& line) {
   if (line.startsWith("CONTROLLER_ERROR:")) {
-    if (line.indexOf("No controller found") >= 0) {
-      showOk();
-      Serial.println("Matrix status: NO CONTROLLER -> IDLE PULSE");
-      return;
-    }
-
     showError();
     Serial.println("Matrix status: ERROR -> RED");
     return;
@@ -172,8 +166,8 @@ void setup() {
 
   matrixStrip.begin();
   matrixStrip.setBrightness(64);
-  fillMatrix(0, 64, 0);
-  delay(300);
+  fillMatrix(50, 50, 50);
+  delay(200);
   showOk();
   lastStatusRxMs = millis();
 
