@@ -135,8 +135,8 @@ Recommended Mega serial assignments:
 
 ESP-side UART pins used by current sketches:
 
-- Display ESP32-S3 (`ESP32-S3/RIG_Display.ino`): `RX=GPIO9`, `TX=GPIO10` (`Serial1.begin(9600, SERIAL_8N1, 9, 10)`)
-- Matrix ESP32-S3: pick one free UART pair in your matrix sketch (recommended test pair: `RX=GPIO44`, `TX=GPIO43`) and keep that mapping documented next to `Serial1.begin(...)` or `Serial2.begin(...)`
+- Display ESP32-S3 (2.41" AMOLED): `RX=GPIO40`, `TX=GPIO41` (status UART at `9600`)
+- Matrix ESP32-S3: dedicated UART header pins `RX`/`TX` are used, mapped in sketch as `RX=GPIO44`, `TX=GPIO43`
 
 Wire the channels like this:
 
@@ -154,10 +154,10 @@ Current bench wiring (as wired):
 
 Matching low-voltage side should be:
 
-- `LV1` → display ESP `GPIO9` (`RX`)
-- `LV2` ← display ESP `GPIO10` (`TX`)
-- `LV3` → matrix ESP `GPIO44` (`RX`, recommended test pin)
-- `LV4` ← matrix ESP `GPIO43` (`TX`, recommended test pin)
+- `LV1` → display ESP `GPIO40` (`RX`)
+- `LV2` ← display ESP `GPIO41` (`TX`)
+- `LV3` → matrix ESP `RX` header pin (`GPIO44`)
+- `LV4` ← matrix ESP `TX` header pin (`GPIO43`)
 
 If you use the recommended matrix test pair above, the practical map is:
 
