@@ -14,6 +14,8 @@ String lineBuffer;
 bool errorActive = false;
 unsigned long lastTwinkleMs = 0;
 unsigned long lastStatusRxMs = 0;
+unsigned long lastOkPulseMs = 0;
+uint8_t lastOkPulseLevel = 0;
 
 constexpr unsigned long TWINKLE_FAST_PHASE_MS = 3200;
 constexpr unsigned long TWINKLE_SLOW_PHASE_MS = 1200;
@@ -22,6 +24,9 @@ constexpr unsigned long TWINKLE_UPDATE_FAST_MS = 14;
 constexpr unsigned long TWINKLE_UPDATE_SLOW_MS = 28;
 constexpr unsigned long TWINKLE_CYCLE_FAST_MS = 360;
 constexpr unsigned long TWINKLE_CYCLE_SLOW_MS = 620;
+constexpr unsigned long OK_PULSE_CYCLE_MS = 1800;
+constexpr uint8_t OK_PULSE_MIN_LEVEL = 50;
+constexpr uint8_t OK_PULSE_MAX_LEVEL = 64;
 constexpr uint8_t BASE_ERROR_RED = 200;
 constexpr uint8_t TWINKLE_WHITE_PEAK = 200;
 constexpr uint8_t RANDOM_TWINKLE_CHANCE_PERCENT = 22;
@@ -126,11 +131,19 @@ void showError() {
 void showOk() {
   errorActive = false;
   lastStatusRxMs = millis();
-  fillMatrix(64, 64, 64);
+  lastOkPulseMs = lastStatusRxMs;
+  lastOkPulseLevel = 0;
+  fillMatrix(OK_PULSE_MIN_LEVEL, OK_PULSE_MIN_LEVEL, OK_PULSE_MIN_LEVEL);
 }
 
 void handleStatusLine(const String& line) {
   if (line.startsWith("CONTROLLER_ERROR:")) {
+    if (line.indexOf("No controller found") >= 0) {
+      showOk();
+      Serial.println("Matrix status: NO CONTROLLER -> IDLE PULSE");
+      return;
+    }
+
     showError();
     Serial.println("Matrix status: ERROR -> RED");
     return;
@@ -158,7 +171,7 @@ void setup() {
   randomSeed((uint32_t)(micros() ^ millis()));
 
   matrixStrip.begin();
-  matrixStrip.setBrightness(32);
+  matrixStrip.setBrightness(64);
   fillMatrix(0, 64, 0);
   delay(300);
   showOk();
@@ -191,6 +204,25 @@ void loop() {
     if (now - lastTwinkleMs >= updateInterval) {
       lastTwinkleMs = now;
       renderErrorTwinkleFrame(now, twinkleCycle);
+    }
+  } else {
+    unsigned long phase = now % OK_PULSE_CYCLE_MS;
+    unsigned long halfCycle = OK_PULSE_CYCLE_MS / 2;
+    unsigned long ramp = (phase <= halfCycle) ? phase : (OK_PULSE_CYCLE_MS - phase);
+
+    if (halfCycle == 0) {
+      halfCycle = 1;
+    }
+
+    uint8_t pulseLevel = OK_PULSE_MIN_LEVEL +
+                         (uint8_t)((ramp * (OK_PULSE_MAX_LEVEL - OK_PULSE_MIN_LEVEL)) / halfCycle);
+
+    if (now - lastOkPulseMs >= 20) {
+      lastOkPulseMs = now;
+      if (pulseLevel != lastOkPulseLevel) {
+        lastOkPulseLevel = pulseLevel;
+        fillMatrix(pulseLevel, pulseLevel, pulseLevel);
+      }
     }
   }
 
