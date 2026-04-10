@@ -24,6 +24,52 @@ constexpr unsigned long TWINKLE_CYCLE_FAST_MS = 360;
 constexpr unsigned long TWINKLE_CYCLE_SLOW_MS = 620;
 constexpr uint8_t BASE_ERROR_RED = 200;
 constexpr uint8_t TWINKLE_WHITE_PEAK = 200;
+constexpr uint8_t RANDOM_TWINKLE_CHANCE_PERCENT = 22;
+constexpr unsigned long RANDOM_TWINKLE_MIN_MS = 90;
+constexpr unsigned long RANDOM_TWINKLE_MAX_MS = 260;
+constexpr unsigned long RANDOM_TWINKLE_GAP_MIN_MS = 35;
+constexpr unsigned long RANDOM_TWINKLE_GAP_MAX_MS = 420;
+constexpr uint8_t RANDOM_TWINKLE_PEAK_MIN = 70;
+constexpr uint8_t RANDOM_TWINKLE_PEAK_MAX = 170;
+
+unsigned long randomTwinkleStartMs[MATRIX_LED_COUNT] = {0};
+unsigned long randomTwinkleEndMs[MATRIX_LED_COUNT] = {0};
+unsigned long randomTwinkleNextMs[MATRIX_LED_COUNT] = {0};
+uint8_t randomTwinklePeak[MATRIX_LED_COUNT] = {0};
+
+void resetRandomTwinkleSchedule(unsigned long nowMs) {
+  for (uint16_t i = 0; i < MATRIX_LED_COUNT; ++i) {
+    randomTwinkleStartMs[i] = 0;
+    randomTwinkleEndMs[i] = 0;
+    randomTwinklePeak[i] = 0;
+
+    if (i % 3 == 0) {
+      randomTwinkleNextMs[i] = 0;
+    } else {
+      randomTwinkleNextMs[i] = nowMs + (unsigned long)random(RANDOM_TWINKLE_GAP_MIN_MS, RANDOM_TWINKLE_GAP_MAX_MS + 1);
+    }
+  }
+}
+
+void updateRandomTwinkles(unsigned long nowMs) {
+  for (uint16_t i = 0; i < MATRIX_LED_COUNT; ++i) {
+    if (i % 3 == 0) {
+      continue;
+    }
+
+    if (nowMs < randomTwinkleNextMs[i]) {
+      continue;
+    }
+
+    if (random(100) < RANDOM_TWINKLE_CHANCE_PERCENT) {
+      randomTwinkleStartMs[i] = nowMs;
+      randomTwinkleEndMs[i] = nowMs + (unsigned long)random(RANDOM_TWINKLE_MIN_MS, RANDOM_TWINKLE_MAX_MS + 1);
+      randomTwinklePeak[i] = (uint8_t)random(RANDOM_TWINKLE_PEAK_MIN, RANDOM_TWINKLE_PEAK_MAX + 1);
+    }
+
+    randomTwinkleNextMs[i] = nowMs + (unsigned long)random(RANDOM_TWINKLE_GAP_MIN_MS, RANDOM_TWINKLE_GAP_MAX_MS + 1);
+  }
+}
 
 void renderErrorTwinkleFrame(unsigned long nowMs, unsigned long twinkleCycleMs) {
   const unsigned long halfCycle = twinkleCycleMs / 2;
@@ -37,6 +83,22 @@ void renderErrorTwinkleFrame(unsigned long nowMs, unsigned long twinkleCycleMs) 
       unsigned long phase = (nowMs + (i * 83UL)) % twinkleCycleMs;
       unsigned long ramp = (phase <= halfCycle) ? phase : (twinkleCycleMs - phase);
       uint8_t white = (uint8_t)((ramp * TWINKLE_WHITE_PEAK) / halfCycle);
+
+      uint16_t redMixed = (uint16_t)BASE_ERROR_RED + white;
+      r = (redMixed > 255U) ? 255U : (uint8_t)redMixed;
+      g = white / 10;
+      b = white;
+    } else if (randomTwinkleEndMs[i] > randomTwinkleStartMs[i] && nowMs < randomTwinkleEndMs[i]) {
+      unsigned long duration = randomTwinkleEndMs[i] - randomTwinkleStartMs[i];
+      unsigned long elapsed = nowMs - randomTwinkleStartMs[i];
+      unsigned long halfDuration = duration / 2;
+
+      if (halfDuration == 0) {
+        halfDuration = 1;
+      }
+
+      unsigned long ramp = (elapsed <= halfDuration) ? elapsed : (duration - elapsed);
+      uint8_t white = (uint8_t)((ramp * randomTwinklePeak[i]) / halfDuration);
 
       uint16_t redMixed = (uint16_t)BASE_ERROR_RED + white;
       r = (redMixed > 255U) ? 255U : (uint8_t)redMixed;
@@ -57,6 +119,7 @@ void fillMatrix(uint8_t r, uint8_t g, uint8_t b) {
 void showError() {
   errorActive = true;
   lastStatusRxMs = millis();
+  resetRandomTwinkleSchedule(lastStatusRxMs);
   renderErrorTwinkleFrame(millis(), TWINKLE_CYCLE_FAST_MS);
 }
 
@@ -92,6 +155,7 @@ void handleStatusLine(const String& line) {
 void setup() {
   Serial.begin(115200);
   Serial1.begin(UART_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
+  randomSeed((uint32_t)(micros() ^ millis()));
 
   matrixStrip.begin();
   matrixStrip.setBrightness(32);
@@ -116,6 +180,8 @@ void loop() {
   }
 
   if (errorActive) {
+    updateRandomTwinkles(now);
+
     const unsigned long phaseSpan = TWINKLE_FAST_PHASE_MS + TWINKLE_SLOW_PHASE_MS;
     const unsigned long phasePos = now % phaseSpan;
     bool fastPhase = phasePos < TWINKLE_FAST_PHASE_MS;
