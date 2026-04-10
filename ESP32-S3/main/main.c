@@ -37,8 +37,13 @@ static const char *TAG = "RIG";
 #define LVGL_TASK_STACK_SIZE (6 * 1024)
 #define LVGL_TASK_PRIORITY 2
 #define LVGL_BUF_HEIGHT (LCD_V_RES / 10)
+#define TEST_FORCE_CONTROLLER_ERROR 1
+#define TEST_FORCE_CONTROLLER_ERROR_DELAY_MS 3000
 
 static SemaphoreHandle_t lvgl_mux = NULL;
+static lv_obj_t *label_moco = NULL;
+static lv_obj_t *label_jib = NULL;
+static lv_obj_t *status_label = NULL;
 
 static const sh8601_lcd_init_cmd_t lcd_init_cmds[] = {
     {0xFE, (uint8_t[]){0x20}, 1, 0},
@@ -128,6 +133,26 @@ static void lvgl_task(void *arg)
     }
 }
 
+static void show_controller_error_cb(lv_timer_t *timer)
+{
+    (void)timer;
+    if (label_moco) {
+        lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (label_jib) {
+        lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (status_label == NULL) {
+        status_label = lv_label_create(lv_scr_act());
+        lv_obj_set_style_text_color(status_label, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_obj_center(status_label);
+    }
+    lv_label_set_text(status_label, "No controller found");
+    lv_obj_center(status_label);
+    lv_timer_del(timer);
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "Initialize SPI bus");
@@ -201,7 +226,7 @@ void app_main(void)
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, LV_PART_MAIN);
 
-    lv_obj_t *label_moco = lv_label_create(lv_scr_act());
+    label_moco = lv_label_create(lv_scr_act());
     lv_label_set_text(label_moco, "MOCO");
     lv_obj_set_style_text_font(label_moco, &lv_font_montserrat_150, LV_PART_MAIN);
     lv_obj_set_style_text_color(label_moco, lv_color_white(), LV_PART_MAIN);
@@ -212,7 +237,7 @@ void app_main(void)
     lv_obj_set_style_text_color(label_moco, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_opa(label_moco, LV_OPA_COVER, LV_PART_MAIN);
 
-    lv_obj_t *label_jib = lv_label_create(lv_scr_act());
+    label_jib = lv_label_create(lv_scr_act());
     lv_label_set_text(label_jib, "jib");
     lv_obj_set_style_text_font(label_jib, &lv_font_montserrat_150, LV_PART_MAIN);
     lv_obj_set_style_text_color(label_jib, lv_color_white(), LV_PART_MAIN);
@@ -241,6 +266,10 @@ void app_main(void)
     lv_anim_set_time(&anim_reveal, 12000);
     lv_anim_set_path_cb(&anim_reveal, lv_anim_path_ease_in_out);
     lv_anim_start(&anim_reveal);
+
+#if TEST_FORCE_CONTROLLER_ERROR
+    lv_timer_create(show_controller_error_cb, TEST_FORCE_CONTROLLER_ERROR_DELAY_MS, NULL);
+#endif
 
     xSemaphoreGive(lvgl_mux);
 
