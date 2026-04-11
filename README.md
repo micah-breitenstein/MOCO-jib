@@ -49,16 +49,18 @@ The rig is composed of three coordinated subsystems:
 
 ### 💡 Feedback Layer (ESP32-S3)
 
-#### Display (LVGL UI)
+#### 📺 Display (LVGL UI)
 
 - Shows system status, errors, and mode transitions
+- Provides immediate feedback without needing a serial monitor
 
-#### RGB Matrices (ESP32-S3 #1 + ESP32-S3 #2)
+#### 🌈 RGB Matrix
 
-- ESP32-S3 RGB Matrix #1: idle breathing animation (system OK), error state (red + animated twinkle), mode indicators (color-coded states)
-- ESP32-S3 RGB Matrix #2: mirrored state/mode feedback for dual-sided visibility and redundancy
+- Idle breathing animation (system OK)
+- Error state (red with animated twinkle)
+- Mode indicators (color-coded states)
 
-All subsystems are synchronized via a lightweight UART protocol.
+All feedback devices are driven by the Mega via a lightweight UART protocol and remain synchronized with system state in real time.
 
 ### High-Level System Diagram
 
