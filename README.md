@@ -35,6 +35,8 @@ Repository: https://github.com/micah-breitenstein/MOCO-jib
 - Arduino Mega 2560 (master)
 - 5× Arduino Nano (one per axis: swing, pan, lift, tilt, focus)
 - DualShock 2 (PS2) controller + receiver
+- Optional: ESP32-S3 display board (2.41" AMOLED status display)
+- Optional: ESP32-S3 matrix board (8×8 RGB status matrix)
 - USB-A to USB-B cable (for Mega)
 - USB-A to Mini-USB cables (for Nanos)
 
@@ -53,6 +55,23 @@ Install the `PS2X_lib` library from the vendored copy:
 ```sh
 cp -r third_party/PS2X_lib ~/Documents/Arduino/libraries/PS2X_lib
 ```
+
+### PS2 receiver wiring (Mega 2560)
+
+Current Mega pin map from `MEGA__master/MEGA__master.ino`:
+
+- `DAT` → Mega pin `10` (`PS2_DAT`)
+- `CMD` → Mega pin `9` (`PS2_CMD`)
+- `ATT` / `SEL` / `CS` → Mega pin `8` (`PS2_SEL`)
+- `CLK` → Mega pin `11` (`PS2_CLK`)
+- `VCC` → Mega `5V`
+- `GND` → Mega `GND`
+
+Notes:
+
+- Receiver label names vary by board (`ATT`, `SEL`, or `CS`) but this is the same chip-select line.
+- Keep a common ground between Mega and receiver.
+- If your receiver has `3.3V` and `5V` options, use the level expected by your specific receiver module.
 
 ### Flashing the Mega master
 
