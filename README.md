@@ -21,7 +21,7 @@ Repository: https://github.com/micah-breitenstein/MOCO-jib
 - Upload the corresponding sketch to each target board (Mega master or Nano slave).
 - Keep serial/communication settings synchronized between master and all slaves.
 - Arduino Mega/Nano onboard LEDs are single-color only (no native RGB mode indicator support).
-- For color mode indicators (blue/green/red/yellow), add an external RGB LED (or NeoPixel) and map mode states in firmware.
+- For color mode indicators (blue/green/red/yellow), use the optional ESP32-S3 matrix status firmware (`ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino`).
 
 ### Latest Mega speed-control fixes
 
