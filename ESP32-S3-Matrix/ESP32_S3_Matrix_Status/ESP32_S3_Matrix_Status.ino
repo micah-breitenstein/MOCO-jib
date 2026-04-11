@@ -30,6 +30,7 @@ constexpr unsigned long TWINKLE_UPDATE_SLOW_MS = 28;
 constexpr unsigned long TWINKLE_CYCLE_FAST_MS = 360;
 constexpr unsigned long TWINKLE_CYCLE_SLOW_MS = 620;
 constexpr unsigned long OK_PULSE_CYCLE_MS = 2000;
+constexpr unsigned long MODE_INDICATOR_DURATION_MS = 1800;
 constexpr uint8_t RANDOM_TWINKLE_CHANCE_PERCENT = 12;
 constexpr unsigned long RANDOM_TWINKLE_MIN_MS = 90;
 constexpr unsigned long RANDOM_TWINKLE_MAX_MS = 260;
@@ -117,6 +118,11 @@ uint8_t randomTwinklePeak[MATRIX_LED_COUNT] = {0};
 uint8_t structuredStride = 2;
 uint8_t structuredStrideIndex = 0;
 unsigned long nextStructuredStrideChangeMs = 0;
+bool modeIndicatorActive = false;
+unsigned long modeIndicatorUntilMs = 0;
+uint8_t modeIndicatorR = 0;
+uint8_t modeIndicatorG = 0;
+uint8_t modeIndicatorB = 0;
 
 void updateStructuredStride(unsigned long nowMs) {
   if (nextStructuredStrideChangeMs == 0) {
@@ -281,6 +287,7 @@ void showError() {
 
 void showOk() {
   errorActive = false;
+  modeIndicatorActive = false;
   lastStatusRxMs = millis();
   applyPulseBrightnessSetting();
   lastOkPulseMs = lastStatusRxMs;
@@ -288,6 +295,39 @@ void showOk() {
   okPulseDitherAccumulator = 0;
   okPulseSmoothedLevel = okPulseMinLevel;
   fillMatrix(okPulseMinLevel, okPulseMinLevel, (uint8_t)(((uint16_t)okPulseMinLevel * okPulseBlueScale) / 255U));
+}
+
+void showModeIndicator(const String& modeText) {
+  uint8_t r = 100;
+  uint8_t g = 100;
+  uint8_t b = 100;
+
+  if (modeText.startsWith("DRONE")) {
+    r = 130;
+    g = 20;
+    b = 170;
+  } else if (modeText.startsWith("TIMELAPSE")) {
+    r = 170;
+    g = 120;
+    b = 0;
+  } else if (modeText.startsWith("BOUNCE")) {
+    r = 0;
+    g = 130;
+    b = 170;
+  } else if (modeText.startsWith("MANUAL")) {
+    r = 120;
+    g = 120;
+    b = 120;
+  }
+
+  errorActive = false;
+  applyPulseBrightnessSetting();
+  modeIndicatorActive = true;
+  modeIndicatorUntilMs = millis() + MODE_INDICATOR_DURATION_MS;
+  modeIndicatorR = r;
+  modeIndicatorG = g;
+  modeIndicatorB = b;
+  fillMatrix(modeIndicatorR, modeIndicatorG, modeIndicatorB);
 }
 
 void handleStatusLine(const String& line) {
@@ -304,8 +344,11 @@ void handleStatusLine(const String& line) {
   }
 
   if (line.startsWith("MODE:")) {
-    Serial.print("Matrix received mode update: ");
-    Serial.println(line);
+    String modeMsg = line.substring(5);
+    modeMsg.trim();
+    showModeIndicator(modeMsg);
+    Serial.print("Matrix mode indicator: ");
+    Serial.println(modeMsg);
     return;
   }
 
@@ -354,6 +397,12 @@ void loop() {
     if (now - lastTwinkleMs >= updateInterval) {
       lastTwinkleMs = now;
       renderErrorTwinkleFrame(now, twinkleCycle);
+    }
+  } else if (modeIndicatorActive) {
+    if (now >= modeIndicatorUntilMs) {
+      showOk();
+    } else {
+      fillMatrix(modeIndicatorR, modeIndicatorG, modeIndicatorB);
     }
   } else {
     unsigned long phase = now % OK_PULSE_CYCLE_MS;

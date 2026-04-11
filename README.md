@@ -1,8 +1,83 @@
 # MOCO-jib
 
-Arduino-based multi-controller camera rig using one Arduino Mega master and five Arduino Nano slave controllers.
+MOCO Jib — Multi-Axis Motion Control Camera Rig
 
-Repository: https://github.com/micah-breitenstein/MOCO-jib
+A fully programmable, multi-axis motion control system for cinematic camera movement, timelapse, and automated capture workflows.
+
+This system combines:
+
+- 🎮 DualShock controller input for real-time manual and drone-style control
+- 🤖 Distributed motor control using an Arduino Mega + 5 Nano axis controllers
+- 🧠 Advanced motion modes including timelapse, bounce (MoCo), and Flowlapse waypoint capture
+- 📡 Real-time system feedback via:
+	- ESP32-S3 AMOLED display (status + UI)
+	- ESP32-S3 RGB matrix (state + motion feedback)
+- 🔁 UART-based status architecture keeping all subsystems synchronized without a tethered laptop
+
+Designed for smooth, repeatable cinematic motion — from manual operation to fully automated multi-axis timelapse sequences.
+
+## 🧩 System Architecture
+
+The rig is composed of three coordinated subsystems:
+
+### 🎮 Control Layer (Arduino Mega)
+
+- Processes DualShock controller input
+- Manages motion modes (manual, timelapse, bounce, drone, flowlapse)
+- Sends control signals to Nano motor controllers
+- Broadcasts system state over UART (CONTROLLER_OK, ERROR, MODE)
+
+### ⚙️ Motion Layer (Arduino Nano Slaves)
+
+- One Nano per axis: swing, pan, lift, tilt, focus
+- Receives speed/direction signals from Mega
+- Executes motor control with speed-stage logic
+
+### 💡 Feedback Layer (ESP32-S3)
+
+#### Display (LVGL UI)
+
+- Shows system status, errors, and mode transitions
+
+#### RGB Matrix
+
+- Idle breathing animation (system OK)
+- Error state (red + animated twinkle)
+- Mode indicators (color-coded states)
+
+All subsystems are synchronized via a lightweight UART protocol.
+
+```mermaid
+flowchart TD
+
+	%% Controller
+	A["🎮 DualShock Controller"] --> B["🧠 Arduino Mega (Master Controller)"]
+
+	%% Motion Layer
+	B --> C1["⚙️ Nano - Swing"]
+	B --> C2["⚙️ Nano - Pan"]
+	B --> C3["⚙️ Nano - Lift"]
+	B --> C4["⚙️ Nano - Tilt"]
+	B --> C5["⚙️ Nano - Focus"]
+
+	%% Feedback Layer
+	B -->|UART Serial1| D["📺 ESP32-S3 Display (LVGL UI)"]
+	B -->|UART Serial2| E["🌈 ESP32-S3 RGB Matrix"]
+
+	%% Display Details
+	D --> D1["Status Messages"]
+	D --> D2["Mode Indicators"]
+	D --> D3["Error Display"]
+
+	%% Matrix Details
+	E --> E1["Idle Pulse (OK)"]
+	E --> E2["Error Twinkle"]
+	E --> E3["Mode Colors"]
+
+	%% Notes
+	classDef highlight fill:#1f2937,color:#fff,stroke:#38bdf8;
+	class B highlight;
+```
 
 ## Repository Structure
 

@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "driver/spi_master.h"
 #include "driver/uart.h"
@@ -49,12 +50,15 @@ static const char *TAG = "RIG";
 #define STATUS_UART_BAUDRATE 9600
 #define STATUS_UART_BUF_SIZE 512
 #define STATUS_SIGNAL_TIMEOUT_MS 3500
+#define MODE_MESSAGE_DURATION_MS 1800
 
 static SemaphoreHandle_t lvgl_mux = NULL;
 static lv_obj_t *label_moco = NULL;
 static lv_obj_t *label_jib = NULL;
 static lv_obj_t *status_label = NULL;
 static bool status_error_active = false;
+static bool mode_message_active = false;
+static uint64_t mode_message_until_ms = 0;
 
 static const sh8601_lcd_init_cmd_t lcd_init_cmds[] = {
     {0xFE, (uint8_t[]){0x20}, 1, 0},
@@ -183,6 +187,42 @@ static void show_status_on_display(const char *msg, bool is_error)
     }
 }
 
+static void show_mode_message_on_display(const char *mode_msg, uint64_t now_ms)
+{
+    if (mode_msg == NULL || mode_msg[0] == '\0') {
+        mode_message_active = false;
+        show_status_on_display(NULL, false);
+        return;
+    }
+
+    status_error_active = false;
+    mode_message_active = true;
+    mode_message_until_ms = now_ms + MODE_MESSAGE_DURATION_MS;
+
+    if (label_moco) {
+        lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (label_jib) {
+        lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (status_label == NULL) {
+        status_label = lv_label_create(lv_scr_act());
+        lv_obj_set_style_text_color(status_label, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_text_font(status_label, &lv_font_montserrat_48, LV_PART_MAIN);
+        lv_obj_set_style_text_line_space(status_label, 8, LV_PART_MAIN);
+        lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_long_mode(status_label, LV_LABEL_LONG_WRAP);
+        lv_obj_set_width(status_label, LCD_H_RES - 40);
+    }
+
+    char mode_text[96];
+    snprintf(mode_text, sizeof(mode_text), "MODE\n%s", mode_msg);
+    lv_label_set_text(status_label, mode_text);
+    lv_obj_center(status_label);
+    lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+}
+
 static void status_uart_task(void *arg)
 {
     (void)arg;
@@ -195,10 +235,19 @@ static void status_uart_task(void *arg)
         uint64_t now_ms = esp_timer_get_time() / 1000ULL;
         if (status_error_active && (now_ms - last_status_rx_ms > STATUS_SIGNAL_TIMEOUT_MS)) {
             if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                mode_message_active = false;
                 show_status_on_display(NULL, false);
                 xSemaphoreGive(lvgl_mux);
             }
             last_status_rx_ms = now_ms;
+        }
+
+        if (mode_message_active && now_ms >= mode_message_until_ms) {
+            if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                mode_message_active = false;
+                show_status_on_display(NULL, false);
+                xSemaphoreGive(lvgl_mux);
+            }
         }
 
         int len = uart_read_bytes(STATUS_UART_PORT, &byte, 1, pdMS_TO_TICKS(100));
@@ -222,12 +271,20 @@ static void status_uart_task(void *arg)
             if (strncmp(line, "CONTROLLER_ERROR:", 17) == 0) {
                 const char *msg = line + 17;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    mode_message_active = false;
                     show_status_on_display(msg, true);
                     xSemaphoreGive(lvgl_mux);
                 }
             } else if (strncmp(line, "CONTROLLER_OK:", 14) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    mode_message_active = false;
                     show_status_on_display(NULL, false);
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "MODE:", 5) == 0) {
+                const char *mode_msg = line + 5;
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    show_mode_message_on_display(mode_msg, now_ms);
                     xSemaphoreGive(lvgl_mux);
                 }
             }

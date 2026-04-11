@@ -1,5 +1,7 @@
 #include <EEPROM.h>
 #include <PS2X_lib.h>  //for v1.6
+#include <stdio.h>
+#include <string.h>
 
 constexpr uint8_t PS2_DAT = 10;
 constexpr uint8_t PS2_CMD = 9;
@@ -134,6 +136,17 @@ uint8_t bounce = 0;
 uint8_t stage = 0;
 unsigned long bouncePhaseStartMs = 0;
 unsigned long bounceMoveDurationMs = 0;
+
+enum StatusModeKind : uint8_t {
+  STATUS_MODE_MANUAL = 0,
+  STATUS_MODE_DRONE,
+  STATUS_MODE_TIMELAPSE,
+  STATUS_MODE_BOUNCE
+};
+
+StatusModeKind lastBroadcastModeKind = STATUS_MODE_MANUAL;
+uint8_t lastBroadcastModeVariant = 0;
+bool modeStatusInitialized = false;
 
 constexpr uint8_t DIP_SWITCH_1 = 35;
 constexpr uint8_t DIP_SWITCH_2 = 43;
@@ -3573,6 +3586,49 @@ const char* getBounceModeSerialLabel(uint8_t mode) {
   }
 }
 
+void broadcastModeStatusIfChanged() {
+  StatusModeKind currentModeKind = STATUS_MODE_MANUAL;
+  uint8_t currentModeVariant = 0;
+
+  if (droneMode) {
+    currentModeKind = STATUS_MODE_DRONE;
+  } else if (timelapseMode != 0) {
+    currentModeKind = STATUS_MODE_TIMELAPSE;
+    currentModeVariant = timelapseMode;
+  } else if (bounce != 0) {
+    currentModeKind = STATUS_MODE_BOUNCE;
+    currentModeVariant = bounce;
+  }
+
+  if (modeStatusInitialized
+      && currentModeKind == lastBroadcastModeKind
+      && currentModeVariant == lastBroadcastModeVariant) {
+    return;
+  }
+
+  char modeLine[96];
+  switch (currentModeKind) {
+    case STATUS_MODE_DRONE:
+      strcpy(modeLine, "MODE:DRONE");
+      break;
+    case STATUS_MODE_TIMELAPSE:
+      snprintf(modeLine, sizeof(modeLine), "MODE:TIMELAPSE %u", currentModeVariant);
+      break;
+    case STATUS_MODE_BOUNCE:
+      snprintf(modeLine, sizeof(modeLine), "MODE:BOUNCE %u", currentModeVariant);
+      break;
+    case STATUS_MODE_MANUAL:
+    default:
+      strcpy(modeLine, "MODE:MANUAL");
+      break;
+  }
+
+  broadcastStatus(modeLine);
+  modeStatusInitialized = true;
+  lastBroadcastModeKind = currentModeKind;
+  lastBroadcastModeVariant = currentModeVariant;
+}
+
 void updateBounceModeSelection() {
   bool currentStartButtonState = ps2x.Button(PSB_START);
   
@@ -4169,6 +4225,7 @@ void loop() {
   if (droneMode) {
     float flowlapseDeltaSeconds = getFlowlapseDeltaSeconds(now);
     handleDroneFlowlapseWorkflow(now, flowlapseDeltaSeconds);
+    broadcastModeStatusIfChanged();
     return;
   }
 
@@ -4194,4 +4251,5 @@ void loop() {
   updateBounceModeSelection();
   handleBounceStage0(now);
   handleBounceStage1(now);
+  broadcastModeStatusIfChanged();
 }
