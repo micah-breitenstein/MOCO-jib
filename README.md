@@ -18,15 +18,17 @@ Designed for smooth, repeatable cinematic motion — from manual operation to fu
 
 ## 🎥 Demo
 
+<div align="center">
+
 ### 🎮 Real-Time Multi-Axis Control (Drone Mode)
 
-Precision-controlled multi-axis motion with real-time feedback and cinematic intent
+<img src="assets/multi-axis-crane.gif" alt="Multi-Axis Motion in Action" width="700" />
 
-<p align="center">
-	<img src="assets/multi-axis-crane.gif" alt="Multi-Axis Motion in Action" width="700" />
-</p>
+*Precision-controlled multi-axis motion with real-time feedback and cinematic intent*
 
-<p align="center"><em>Precision-controlled multi-axis motion with real-time feedback and cinematic intent</em></p>
+<sub>No post-processing — direct output from the rig</sub>
+
+</div>
 
 ## 🧩 System Architecture
 
@@ -95,7 +97,7 @@ flowchart TD
 	class B highlight;
 ```
 
-	## 🎬 What This System Can Do
+## 🎬 What This System Can Do
 
 	- Smooth multi-axis cinematic camera motion
 	- Repeatable motion paths (bounce / MoCo)
