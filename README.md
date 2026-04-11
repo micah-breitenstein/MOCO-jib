@@ -12,6 +12,7 @@ Repository: https://github.com/micah-breitenstein/MOCO-jib
 - `NANO_slave_3_LIFT/NANO_slave_3_LIFT.ino` — lift axis slave
 - `NANO_slave_4_TILT/NANO_slave_4_TILT.ino` — tilt axis slave
 - `NANO_slave_5_FOCUS/NANO_slave_5_FOCUS.ino` — focus axis slave
+- `ESP32-S3/RIG_Display.ino` — optional AMOLED status display firmware
 - `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (`CONTROLLER_ERROR` → red)
 
 ## Notes
