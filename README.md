@@ -18,7 +18,9 @@ Designed for smooth, repeatable cinematic motion — from manual operation to fu
 
 ## 🎥 Demo
 
-### Drone Mode
+### 🎮 Real-Time Multi-Axis Control (Drone Mode)
+
+Precision-controlled multi-axis motion with real-time feedback and cinematic intent
 
 <p align="center">
 	<img src="assets/multi-axis-crane.gif" alt="Multi-Axis Motion in Action" width="700" />
