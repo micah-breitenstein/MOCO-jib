@@ -62,6 +62,8 @@ The rig is composed of three coordinated subsystems:
 
 All feedback devices are driven by the Mega via a lightweight UART protocol and remain synchronized with system state in real time.
 
+Designed to be extensible — additional feedback devices can be added via the same UART protocol.
+
 ### High-Level System Diagram
 
 The following diagram shows how controller input, motion control, and ESP32-S3 feedback layers connect.
