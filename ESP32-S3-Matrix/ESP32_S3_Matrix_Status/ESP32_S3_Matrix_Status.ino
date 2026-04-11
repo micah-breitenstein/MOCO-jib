@@ -22,28 +22,136 @@ float okPulseSmoothedLevel = 0.0f;
 
 constexpr unsigned long TWINKLE_FAST_PHASE_MS = 3200;
 constexpr unsigned long TWINKLE_SLOW_PHASE_MS = 1200;
+constexpr unsigned long STRUCTURED_STRIDE_MIN_INTERVAL_MS = 700;
+constexpr unsigned long STRUCTURED_STRIDE_MAX_INTERVAL_MS = 2200;
 constexpr unsigned long STATUS_SIGNAL_TIMEOUT_MS = 3500;
 constexpr unsigned long TWINKLE_UPDATE_FAST_MS = 14;
 constexpr unsigned long TWINKLE_UPDATE_SLOW_MS = 28;
 constexpr unsigned long TWINKLE_CYCLE_FAST_MS = 360;
 constexpr unsigned long TWINKLE_CYCLE_SLOW_MS = 620;
 constexpr unsigned long OK_PULSE_CYCLE_MS = 2000;
-constexpr uint8_t OK_PULSE_MIN_LEVEL = 60;
-constexpr uint8_t OK_PULSE_MAX_LEVEL = 90;
-constexpr uint8_t BASE_ERROR_RED = 200;
-constexpr uint8_t TWINKLE_WHITE_PEAK = 200;
-constexpr uint8_t RANDOM_TWINKLE_CHANCE_PERCENT = 22;
+constexpr uint8_t RANDOM_TWINKLE_CHANCE_PERCENT = 12;
 constexpr unsigned long RANDOM_TWINKLE_MIN_MS = 90;
 constexpr unsigned long RANDOM_TWINKLE_MAX_MS = 260;
 constexpr unsigned long RANDOM_TWINKLE_GAP_MIN_MS = 35;
 constexpr unsigned long RANDOM_TWINKLE_GAP_MAX_MS = 420;
+constexpr uint8_t BACKGROUND_ROW_SHIMMER_PEAK = 0;
 constexpr uint8_t RANDOM_TWINKLE_PEAK_MIN = 70;
 constexpr uint8_t RANDOM_TWINKLE_PEAK_MAX = 170;
+
+enum class PulseBrightnessSetting : uint8_t {
+  LEVEL_LOW,
+  LEVEL_MEDIUM,
+  LEVEL_HIGH,
+  LEVEL_ULTRA
+};
+
+enum class ErrorBrightnessSetting : uint8_t {
+  LEVEL_LOW,
+  LEVEL_MEDIUM,
+  LEVEL_HIGH,
+  LEVEL_ULTRA
+};
+
+struct PulseBrightnessProfile {
+  uint8_t stripBrightness;
+  uint8_t pulseMinLevel;
+  uint8_t pulseMaxLevel;
+  uint8_t blueScale;
+};
+
+struct ErrorBrightnessProfile {
+  uint8_t stripBrightness;
+  uint8_t baseRed;
+  uint8_t twinkleWhitePeak;
+  uint8_t randomPeakMin;
+  uint8_t randomPeakMax;
+};
+
+constexpr PulseBrightnessSetting OK_PULSE_BRIGHTNESS_SETTING = PulseBrightnessSetting::LEVEL_LOW;
+constexpr ErrorBrightnessSetting ERROR_BRIGHTNESS_SETTING = ErrorBrightnessSetting::LEVEL_LOW;
+
+uint8_t okPulseMinLevel = 60;
+uint8_t okPulseMaxLevel = 90;
+uint8_t okPulseBlueScale = 255;
+uint8_t baseErrorRed = 200;
+uint8_t twinkleWhitePeak = 200;
+uint8_t randomTwinklePeakMin = 70;
+uint8_t randomTwinklePeakMax = 170;
+uint8_t errorStripBrightness = 255;
+
+PulseBrightnessProfile getPulseBrightnessProfile(PulseBrightnessSetting setting) {
+  switch (setting) {
+    case PulseBrightnessSetting::LEVEL_LOW:
+      return {5, 68, 82, 255};
+    case PulseBrightnessSetting::LEVEL_MEDIUM:
+      return {64, 68, 82, 204};
+    case PulseBrightnessSetting::LEVEL_HIGH:
+      return {128, 68, 82, 204};
+    case PulseBrightnessSetting::LEVEL_ULTRA:
+      return {255, 68, 82, 204};
+  }
+
+  return {5, 68, 82, 255};
+}
+
+ErrorBrightnessProfile getErrorBrightnessProfile(ErrorBrightnessSetting setting) {
+  switch (setting) {
+    case ErrorBrightnessSetting::LEVEL_LOW:
+      return {48, 80, 80, 30, 70};
+    case ErrorBrightnessSetting::LEVEL_MEDIUM:
+      return {96, 130, 130, 45, 105};
+    case ErrorBrightnessSetting::LEVEL_HIGH:
+      return {160, 170, 170, 60, 140};
+    case ErrorBrightnessSetting::LEVEL_ULTRA:
+      return {255, 220, 220, 80, 190};
+  }
+
+  return {255, 220, 220, 80, 190};
+}
 
 unsigned long randomTwinkleStartMs[MATRIX_LED_COUNT] = {0};
 unsigned long randomTwinkleEndMs[MATRIX_LED_COUNT] = {0};
 unsigned long randomTwinkleNextMs[MATRIX_LED_COUNT] = {0};
 uint8_t randomTwinklePeak[MATRIX_LED_COUNT] = {0};
+uint8_t structuredStride = 2;
+uint8_t structuredStrideIndex = 0;
+unsigned long nextStructuredStrideChangeMs = 0;
+
+void updateStructuredStride(unsigned long nowMs) {
+  if (nextStructuredStrideChangeMs == 0) {
+    nextStructuredStrideChangeMs = nowMs + (unsigned long)random(STRUCTURED_STRIDE_MIN_INTERVAL_MS, STRUCTURED_STRIDE_MAX_INTERVAL_MS + 1);
+    return;
+  }
+
+  if (nowMs < nextStructuredStrideChangeMs) {
+    return;
+  }
+
+  constexpr uint8_t STRIDE_SEQUENCE[] = {2};
+  constexpr uint8_t STRIDE_SEQUENCE_COUNT = sizeof(STRIDE_SEQUENCE) / sizeof(STRIDE_SEQUENCE[0]);
+  structuredStrideIndex = (uint8_t)((structuredStrideIndex + 1) % STRIDE_SEQUENCE_COUNT);
+  structuredStride = STRIDE_SEQUENCE[structuredStrideIndex];
+  nextStructuredStrideChangeMs = nowMs + (unsigned long)random(STRUCTURED_STRIDE_MIN_INTERVAL_MS, STRUCTURED_STRIDE_MAX_INTERVAL_MS + 1);
+}
+
+bool isStructuredPixel(uint16_t index, unsigned long nowMs) {
+  (void)nowMs;
+  if (structuredStride <= 1) {
+    return true;
+  }
+
+  return (index % structuredStride) == 0U;
+}
+
+void applyErrorBrightnessSetting() {
+  ErrorBrightnessProfile profile = getErrorBrightnessProfile(ERROR_BRIGHTNESS_SETTING);
+  errorStripBrightness = profile.stripBrightness;
+  baseErrorRed = profile.baseRed;
+  twinkleWhitePeak = profile.twinkleWhitePeak;
+  randomTwinklePeakMin = profile.randomPeakMin;
+  randomTwinklePeakMax = profile.randomPeakMax;
+}
 
 void resetRandomTwinkleSchedule(unsigned long nowMs) {
   for (uint16_t i = 0; i < MATRIX_LED_COUNT; ++i) {
@@ -61,7 +169,7 @@ void resetRandomTwinkleSchedule(unsigned long nowMs) {
 
 void updateRandomTwinkles(unsigned long nowMs) {
   for (uint16_t i = 0; i < MATRIX_LED_COUNT; ++i) {
-    if (i % 3 == 0) {
+    if (isStructuredPixel(i, nowMs)) {
       continue;
     }
 
@@ -72,7 +180,7 @@ void updateRandomTwinkles(unsigned long nowMs) {
     if (random(100) < RANDOM_TWINKLE_CHANCE_PERCENT) {
       randomTwinkleStartMs[i] = nowMs;
       randomTwinkleEndMs[i] = nowMs + (unsigned long)random(RANDOM_TWINKLE_MIN_MS, RANDOM_TWINKLE_MAX_MS + 1);
-      randomTwinklePeak[i] = (uint8_t)random(RANDOM_TWINKLE_PEAK_MIN, RANDOM_TWINKLE_PEAK_MAX + 1);
+      randomTwinklePeak[i] = (uint8_t)random(randomTwinklePeakMin, randomTwinklePeakMax + 1);
     }
 
     randomTwinkleNextMs[i] = nowMs + (unsigned long)random(RANDOM_TWINKLE_GAP_MIN_MS, RANDOM_TWINKLE_GAP_MAX_MS + 1);
@@ -83,16 +191,21 @@ void renderErrorTwinkleFrame(unsigned long nowMs, unsigned long twinkleCycleMs) 
   const unsigned long halfCycle = twinkleCycleMs / 2;
 
   for (uint16_t i = 0; i < MATRIX_LED_COUNT; ++i) {
-    uint8_t r = BASE_ERROR_RED;
-    uint8_t g = 0;
-    uint8_t b = 0;
+    unsigned long pixelPhase = (nowMs + ((unsigned long)i * 53UL)) % twinkleCycleMs;
+    unsigned long pixelRamp = (pixelPhase <= halfCycle) ? pixelPhase : (twinkleCycleMs - pixelPhase);
+    uint8_t pixelShimmer = (uint8_t)((pixelRamp * BACKGROUND_ROW_SHIMMER_PEAK) / halfCycle);
 
-    if (i % 3 == 0) {
+    uint16_t baseRedMixed = (uint16_t)baseErrorRed + (pixelShimmer / 2);
+    uint8_t r = (baseRedMixed > 255U) ? 255U : (uint8_t)baseRedMixed;
+    uint8_t g = pixelShimmer / 12;
+    uint8_t b = pixelShimmer / 2;
+
+    if (isStructuredPixel(i, nowMs)) {
       unsigned long phase = (nowMs + (i * 83UL)) % twinkleCycleMs;
       unsigned long ramp = (phase <= halfCycle) ? phase : (twinkleCycleMs - phase);
-      uint8_t white = (uint8_t)((ramp * TWINKLE_WHITE_PEAK) / halfCycle);
+      uint8_t white = (uint8_t)((ramp * twinkleWhitePeak) / halfCycle);
 
-      uint16_t redMixed = (uint16_t)BASE_ERROR_RED + white;
+      uint16_t redMixed = (uint16_t)baseErrorRed + white;
       r = (redMixed > 255U) ? 255U : (uint8_t)redMixed;
       g = white / 10;
       b = white;
@@ -108,7 +221,7 @@ void renderErrorTwinkleFrame(unsigned long nowMs, unsigned long twinkleCycleMs) 
       unsigned long ramp = (elapsed <= halfDuration) ? elapsed : (duration - elapsed);
       uint8_t white = (uint8_t)((ramp * randomTwinklePeak[i]) / halfDuration);
 
-      uint16_t redMixed = (uint16_t)BASE_ERROR_RED + white;
+      uint16_t redMixed = (uint16_t)baseErrorRed + white;
       r = (redMixed > 255U) ? 255U : (uint8_t)redMixed;
       g = white / 10;
       b = white;
@@ -124,20 +237,28 @@ void fillMatrix(uint8_t r, uint8_t g, uint8_t b) {
   matrixStrip.show();
 }
 
+void applyPulseBrightnessSetting() {
+  PulseBrightnessProfile profile = getPulseBrightnessProfile(OK_PULSE_BRIGHTNESS_SETTING);
+  okPulseMinLevel = profile.pulseMinLevel;
+  okPulseMaxLevel = profile.pulseMaxLevel;
+  okPulseBlueScale = profile.blueScale;
+  matrixStrip.setBrightness(profile.stripBrightness);
+}
+
 void renderOkPulseFrame(uint8_t pulseBase, uint8_t frac255) {
   uint8_t distributedLevel = pulseBase;
-  uint8_t distributedBlue = (pulseBase * 4) / 5;
+  uint8_t distributedBlue = (uint8_t)(((uint16_t)pulseBase * okPulseBlueScale) / 255U);
 
   for (uint16_t i = 0; i < MATRIX_LED_COUNT; ++i) {
     uint16_t orderedIndex = i;
     uint32_t threshold = ((uint32_t)orderedIndex * 255U) / MATRIX_LED_COUNT;
 
-    if (pulseBase < OK_PULSE_MAX_LEVEL && threshold < frac255) {
+    if (pulseBase < okPulseMaxLevel && threshold < frac255) {
       distributedLevel = pulseBase + 1;
-      distributedBlue = (distributedLevel * 4) / 5;
+      distributedBlue = (uint8_t)(((uint16_t)distributedLevel * okPulseBlueScale) / 255U);
     } else {
       distributedLevel = pulseBase;
-      distributedBlue = (pulseBase * 4) / 5;
+      distributedBlue = (uint8_t)(((uint16_t)pulseBase * okPulseBlueScale) / 255U);
     }
 
     matrixStrip.setPixelColor(i, matrixStrip.Color(distributedLevel, distributedLevel, distributedBlue));
@@ -149,6 +270,11 @@ void renderOkPulseFrame(uint8_t pulseBase, uint8_t frac255) {
 void showError() {
   errorActive = true;
   lastStatusRxMs = millis();
+  applyErrorBrightnessSetting();
+  matrixStrip.setBrightness(errorStripBrightness);
+  structuredStride = 2;
+  structuredStrideIndex = 0;
+  nextStructuredStrideChangeMs = 0;
   resetRandomTwinkleSchedule(lastStatusRxMs);
   renderErrorTwinkleFrame(millis(), TWINKLE_CYCLE_FAST_MS);
 }
@@ -156,11 +282,12 @@ void showError() {
 void showOk() {
   errorActive = false;
   lastStatusRxMs = millis();
+  applyPulseBrightnessSetting();
   lastOkPulseMs = lastStatusRxMs;
   lastOkPulseLevel = 0;
   okPulseDitherAccumulator = 0;
-  okPulseSmoothedLevel = OK_PULSE_MIN_LEVEL;
-  fillMatrix(OK_PULSE_MIN_LEVEL, OK_PULSE_MIN_LEVEL, (OK_PULSE_MIN_LEVEL * 4) / 5);
+  okPulseSmoothedLevel = okPulseMinLevel;
+  fillMatrix(okPulseMinLevel, okPulseMinLevel, (uint8_t)(((uint16_t)okPulseMinLevel * okPulseBlueScale) / 255U));
 }
 
 void handleStatusLine(const String& line) {
@@ -192,7 +319,8 @@ void setup() {
   randomSeed((uint32_t)(micros() ^ millis()));
 
   matrixStrip.begin();
-  matrixStrip.setBrightness(32);
+  applyPulseBrightnessSetting();
+  applyErrorBrightnessSetting();
   fillMatrix(50, 50, 50);
   delay(200);
   showOk();
@@ -214,6 +342,7 @@ void loop() {
   }
 
   if (errorActive) {
+    updateStructuredStride(now);
     updateRandomTwinkles(now);
 
     const unsigned long phaseSpan = TWINKLE_FAST_PHASE_MS + TWINKLE_SLOW_PHASE_MS;
@@ -230,7 +359,7 @@ void loop() {
     unsigned long phase = now % OK_PULSE_CYCLE_MS;
     float phaseRatio = (float)phase / (float)OK_PULSE_CYCLE_MS;
     float eased = 0.5f - 0.5f * cosf(phaseRatio * 6.28318530718f);
-    float pulseFloat = OK_PULSE_MIN_LEVEL + eased * (float)(OK_PULSE_MAX_LEVEL - OK_PULSE_MIN_LEVEL);
+    float pulseFloat = okPulseMinLevel + eased * (float)(okPulseMaxLevel - okPulseMinLevel);
     if (pulseFloat > okPulseSmoothedLevel) {
       okPulseSmoothedLevel += (pulseFloat - okPulseSmoothedLevel) * 0.35f;
     } else {
@@ -242,7 +371,7 @@ void loop() {
     uint8_t frac255 = (uint8_t)((okPulseSmoothedLevel - (float)pulseBase) * 255.0f);
 
     okPulseDitherAccumulator = (uint8_t)(okPulseDitherAccumulator + frac255);
-    if (okPulseDitherAccumulator < frac255 && pulseLevel < OK_PULSE_MAX_LEVEL) {
+    if (okPulseDitherAccumulator < frac255 && pulseLevel < okPulseMaxLevel) {
       pulseLevel++;
     }
 
