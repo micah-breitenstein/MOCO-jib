@@ -1,6 +1,6 @@
-# MOCO-jib
+# 🎥 MOCO Jib
 
-MOCO Jib — Multi-Axis Motion Control Camera Rig
+### Multi-Axis Motion Control Camera Rig
 
 A fully programmable, multi-axis motion control system for cinematic camera movement, timelapse, and automated capture workflows.
 
@@ -15,6 +15,16 @@ This system combines:
 - 🔁 UART-based status architecture keeping all subsystems synchronized without a tethered laptop
 
 Designed for smooth, repeatable cinematic motion — from manual operation to fully automated multi-axis timelapse sequences.
+
+## 🎥 Demo
+
+### Drone Mode
+
+<p align="center">
+	<img src="assets/multi-axis-crane.gif" alt="Multi-Axis Motion in Action" width="700" />
+</p>
+
+<p align="center"><em>Precision-controlled multi-axis motion with real-time feedback and cinematic intent</em></p>
 
 ## 🧩 System Architecture
 
@@ -46,6 +56,10 @@ The rig is composed of three coordinated subsystems:
 - Mode indicators (color-coded states)
 
 All subsystems are synchronized via a lightweight UART protocol.
+
+### High-Level System Diagram
+
+The following diagram shows how controller input, motion control, and ESP32-S3 feedback layers connect.
 
 ```mermaid
 flowchart TD
@@ -79,6 +93,16 @@ flowchart TD
 	class B highlight;
 ```
 
+	## 🎬 What This System Can Do
+
+	- Smooth multi-axis cinematic camera motion
+	- Repeatable motion paths (bounce / MoCo)
+	- Automated timelapse capture
+	- Waypoint-based camera paths (Flowlapse)
+	- Drone-style dual-stick control
+	- Real-time feedback via display + RGB matrix
+	- Controller-based configuration (no reflashing needed)
+
 ## Repository Structure
 
 - `MEGA__master/MEGA__master.ino` — main controller logic
@@ -87,7 +111,7 @@ flowchart TD
 - `NANO_slave_3_LIFT/NANO_slave_3_LIFT.ino` — lift axis slave
 - `NANO_slave_4_TILT/NANO_slave_4_TILT.ino` — tilt axis slave
 - `NANO_slave_5_FOCUS/NANO_slave_5_FOCUS.ino` — focus axis slave
-- `ESP32-S3/RIG_Display.ino` — optional AMOLED status display firmware
+- `ESP32-S3/RIG_Display.ino` — ESP32-S3 display firmware (real-time status + UI)
 - `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (`CONTROLLER_ERROR` → red)
 
 ## Notes
