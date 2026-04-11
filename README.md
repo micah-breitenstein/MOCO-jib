@@ -53,11 +53,10 @@ The rig is composed of three coordinated subsystems:
 
 - Shows system status, errors, and mode transitions
 
-#### RGB Matrix
+#### RGB Matrices (ESP32-S3 #1 + ESP32-S3 #2)
 
-- Idle breathing animation (system OK)
-- Error state (red + animated twinkle)
-- Mode indicators (color-coded states)
+- ESP32-S3 RGB Matrix #1: idle breathing animation (system OK), error state (red + animated twinkle), mode indicators (color-coded states)
+- ESP32-S3 RGB Matrix #2: mirrored state/mode feedback for dual-sided visibility and redundancy
 
 All subsystems are synchronized via a lightweight UART protocol.
 
