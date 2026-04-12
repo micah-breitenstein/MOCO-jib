@@ -236,12 +236,16 @@ constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
 constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.25f; // L2 micro-motion multiplier
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mode with R3
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
+constexpr unsigned long DRONE_UI_BROADCAST_INTERVAL_MS = 10;
 
 constexpr uint8_t FLOWLAPSE_MAX_WAYPOINTS = 8;
 constexpr bool FLOWLAPSE_LOOP_CAPTURE = false; // if true, capture auto-restarts after completing
 constexpr unsigned long FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS = 90;
 constexpr unsigned long FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS = 180;
 constexpr uint8_t FLOWLAPSE_WAYPOINT_RUMBLE_PULSES = 1;
+constexpr uint8_t FLOWLAPSE_WIPE_RUMBLE_PULSES = 3;
+constexpr unsigned long FLOWLAPSE_WIPE_RUMBLE_ON_MS = 180;
+constexpr unsigned long FLOWLAPSE_WIPE_RUMBLE_TOTAL_MS = 320;
 constexpr unsigned long FLOWLAPSE_PREVIEW_POINT_HOLD_MS = 700;
 constexpr uint8_t FLOWLAPSE_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr unsigned long FLOWLAPSE_TIER_RAMP_INTERVAL_MS = 450;
@@ -463,6 +467,10 @@ bool lastDroneSwingActive = false;
 bool lastDroneLiftActive = false;
 bool lastDronePanActive = false;
 bool lastDroneTiltActive = false;
+int8_t lastDroneSwingDirection = 0;
+int8_t lastDroneLiftDirection = 0;
+int8_t lastDronePanDirection = 0;
+int8_t lastDroneTiltDirection = 0;
 bool lastWaypointDwellAdjustUpComboActive = false;
 bool lastWaypointDwellAdjustDownComboActive = false;
 bool lastFlowlapseLoopToggleComboActive = false;
@@ -533,6 +541,11 @@ unsigned long flowlapseSwingTierLastChangeMs = 0;
 unsigned long flowlapseLiftTierLastChangeMs = 0;
 unsigned long flowlapsePanTierLastChangeMs = 0;
 unsigned long flowlapseTiltTierLastChangeMs = 0;
+unsigned long lastDroneUiBroadcastMs = 0;
+int8_t lastBroadcastSwing = 0;
+int8_t lastBroadcastLift = 0;
+int8_t lastBroadcastPan = 0;
+int8_t lastBroadcastTilt = 0;
 
 unsigned long lastControllerRetryMs = 0;
 unsigned long lastControllerOkBroadcastMs = 0;
@@ -1466,6 +1479,10 @@ void exitDroneMode() {
   lastDronePrecisionModeActive = false;
   lastDroneBoostModeActive = false;
   droneAxisLastActiveFlags = 0;
+  lastDroneSwingDirection = 0;
+  lastDroneLiftDirection = 0;
+  lastDronePanDirection = 0;
+  lastDroneTiltDirection = 0;
   resetFlowlapseSession(true);
   droneLastActivityMs = 0;
   stopAllMotors();
@@ -1483,6 +1500,124 @@ void logDroneAxisStateIfChanged(bool current, uint8_t axisMask, const char* axis
     }
     setPackedState(droneAxisLastActiveFlags, axisMask, current);
   }
+}
+
+void logDroneSwingStateIfChanged(bool current, int8_t direction) {
+  bool lastActive = isPackedStateSet(droneAxisLastActiveFlags, DRONE_AXIS_LAST_SWING);
+  int8_t currentDirection = current ? direction : 0;
+
+  if (current != lastActive || currentDirection != lastDroneSwingDirection) {
+    if (DRONE_SERIAL_LOG_ENABLED) {
+      Serial.print(F("Drone axis | swing "));
+      if (!current) {
+        Serial.println(F("STOPPED"));
+      } else if (currentDirection > 0) {
+        Serial.println(F("MOVING RIGHT"));
+      } else if (currentDirection < 0) {
+        Serial.println(F("MOVING LEFT"));
+      } else {
+        Serial.println(F("MOVING"));
+      }
+    }
+
+    setPackedState(droneAxisLastActiveFlags, DRONE_AXIS_LAST_SWING, current);
+    lastDroneSwingDirection = currentDirection;
+  }
+}
+
+void logDroneLiftStateIfChanged(bool current, int8_t direction) {
+  bool lastActive = isPackedStateSet(droneAxisLastActiveFlags, DRONE_AXIS_LAST_LIFT);
+  int8_t currentDirection = current ? direction : 0;
+
+  if (current != lastActive || currentDirection != lastDroneLiftDirection) {
+    if (DRONE_SERIAL_LOG_ENABLED) {
+      Serial.print(F("Drone axis | lift "));
+      if (!current) {
+        Serial.println(F("STOPPED"));
+      } else if (currentDirection > 0) {
+        Serial.println(F("MOVING UP"));
+      } else if (currentDirection < 0) {
+        Serial.println(F("MOVING DOWN"));
+      } else {
+        Serial.println(F("MOVING"));
+      }
+    }
+
+    setPackedState(droneAxisLastActiveFlags, DRONE_AXIS_LAST_LIFT, current);
+    lastDroneLiftDirection = currentDirection;
+  }
+}
+
+void logDronePanStateIfChanged(bool current, int8_t direction) {
+  bool lastActive = isPackedStateSet(droneAxisLastActiveFlags, DRONE_AXIS_LAST_PAN);
+  int8_t currentDirection = current ? direction : 0;
+
+  if (current != lastActive || currentDirection != lastDronePanDirection) {
+    if (DRONE_SERIAL_LOG_ENABLED) {
+      Serial.print(F("Drone axis | pan "));
+      if (!current) {
+        Serial.println(F("STOPPED"));
+      } else if (currentDirection > 0) {
+        Serial.println(F("MOVING RIGHT"));
+      } else if (currentDirection < 0) {
+        Serial.println(F("MOVING LEFT"));
+      } else {
+        Serial.println(F("MOVING"));
+      }
+    }
+
+    setPackedState(droneAxisLastActiveFlags, DRONE_AXIS_LAST_PAN, current);
+    lastDronePanDirection = currentDirection;
+  }
+}
+
+void logDroneTiltStateIfChanged(bool current, int8_t direction) {
+  bool lastActive = isPackedStateSet(droneAxisLastActiveFlags, DRONE_AXIS_LAST_TILT);
+  int8_t currentDirection = current ? direction : 0;
+
+  if (current != lastActive || currentDirection != lastDroneTiltDirection) {
+    if (DRONE_SERIAL_LOG_ENABLED) {
+      Serial.print(F("Drone axis | tilt "));
+      if (!current) {
+        Serial.println(F("STOPPED"));
+      } else if (currentDirection > 0) {
+        Serial.println(F("MOVING UP"));
+      } else if (currentDirection < 0) {
+        Serial.println(F("MOVING DOWN"));
+      } else {
+        Serial.println(F("MOVING"));
+      }
+    }
+
+    setPackedState(droneAxisLastActiveFlags, DRONE_AXIS_LAST_TILT, current);
+    lastDroneTiltDirection = currentDirection;
+  }
+}
+
+void broadcastDroneUiStateIfDue(int8_t swingDirection, int8_t liftDirection, int8_t panDirection, int8_t tiltDirection) {
+  unsigned long now = millis();
+  bool stateChanged = (swingDirection != lastBroadcastSwing ||
+                       liftDirection  != lastBroadcastLift  ||
+                       panDirection   != lastBroadcastPan   ||
+                       tiltDirection  != lastBroadcastTilt);
+
+  // Send immediately on change; use interval only as keepalive when idle
+  if (!stateChanged && (now - lastDroneUiBroadcastMs < DRONE_UI_BROADCAST_INTERVAL_MS)) {
+    return;
+  }
+
+  char stateLine[64];
+  snprintf(stateLine, sizeof(stateLine), "DRONE_STICK:%d,%d,%d,%d",
+           static_cast<int>(swingDirection),
+           static_cast<int>(liftDirection),
+           static_cast<int>(panDirection),
+           static_cast<int>(tiltDirection));
+  sendToDisplayESP(stateLine);
+  lastDroneUiBroadcastMs = now;
+  lastBroadcastSwing = swingDirection;
+  lastBroadcastLift  = liftDirection;
+  lastBroadcastPan   = panDirection;
+  lastBroadcastTilt  = tiltDirection;
 }
 
 void logDroneSpeedModifierStateIfChanged() {
@@ -1860,14 +1995,43 @@ void handleDroneStickControl() {
   bool swingActive = applyDroneAxisControl(leftStickXvalue, isSwingReversed, swingLeft, swingRight, swingSpeedUp, swingSpeedDown, DRONE_SWING_DEADBAND, DRONE_SWING_MAX_SPEED_TIER, DRONE_SWING_EXPO_PERCENT);
   bool liftActive  = applyDroneAxisControl(leftStickYvalue, isLiftReversed, liftUp, liftDown, liftSpeedUp, liftSpeedDown, DRONE_LIFT_DEADBAND, DRONE_LIFT_MAX_SPEED_TIER, DRONE_LIFT_EXPO_PERCENT);
 
+  int8_t swingDirection = 0;
+  if (leftStickXvalue < STICK_CENTER - DRONE_SWING_DEADBAND) {
+    swingDirection = -1;
+  } else if (leftStickXvalue > STICK_CENTER + DRONE_SWING_DEADBAND) {
+    swingDirection = 1;
+  }
+
+  int8_t liftDirection = 0;
+  if (leftStickYvalue < STICK_CENTER - DRONE_LIFT_DEADBAND) {
+    liftDirection = 1;
+  } else if (leftStickYvalue > STICK_CENTER + DRONE_LIFT_DEADBAND) {
+    liftDirection = -1;
+  }
+
   // Right stick controls pan (X) and tilt (Y)
   bool panActive  = applyDroneAxisControl(rightStickXvalue, isPanReversed, panLeft, panRight, panSpeedUp, panSpeedDown, DRONE_PAN_DEADBAND, DRONE_PAN_MAX_SPEED_TIER, DRONE_PAN_EXPO_PERCENT);
   bool tiltActive = applyDroneAxisControl(rightStickYvalue, isTiltReversed, tiltUp, tiltDown, tiltSpeedUp, tiltSpeedDown, DRONE_TILT_DEADBAND, DRONE_TILT_MAX_SPEED_TIER, DRONE_TILT_EXPO_PERCENT);
 
-  logDroneAxisStateIfChanged(swingActive, DRONE_AXIS_LAST_SWING, "swing");
-  logDroneAxisStateIfChanged(liftActive,  DRONE_AXIS_LAST_LIFT,  "lift");
-  logDroneAxisStateIfChanged(panActive,   DRONE_AXIS_LAST_PAN,   "pan");
-  logDroneAxisStateIfChanged(tiltActive,  DRONE_AXIS_LAST_TILT,  "tilt");
+  int8_t panDirection = 0;
+  if (rightStickXvalue < STICK_CENTER - DRONE_PAN_DEADBAND) {
+    panDirection = -1;
+  } else if (rightStickXvalue > STICK_CENTER + DRONE_PAN_DEADBAND) {
+    panDirection = 1;
+  }
+
+  int8_t tiltDirection = 0;
+  if (rightStickYvalue < STICK_CENTER - DRONE_TILT_DEADBAND) {
+    tiltDirection = 1;
+  } else if (rightStickYvalue > STICK_CENTER + DRONE_TILT_DEADBAND) {
+    tiltDirection = -1;
+  }
+
+  logDroneSwingStateIfChanged(swingActive, swingDirection);
+  logDroneLiftStateIfChanged(liftActive, liftDirection);
+  logDronePanStateIfChanged(panActive, panDirection);
+  logDroneTiltStateIfChanged(tiltActive, tiltDirection);
+  broadcastDroneUiStateIfDue(swingDirection, liftDirection, panDirection, tiltDirection);
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
@@ -2376,7 +2540,9 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
     } else {
       resetFlowlapseSession(false);
       stopAllMotors();
-      startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      startFeedbackRumble(FLOWLAPSE_WIPE_RUMBLE_PULSES,
+                          FLOWLAPSE_WIPE_RUMBLE_ON_MS,
+                          FLOWLAPSE_WIPE_RUMBLE_TOTAL_MS);
       Serial.println(F("Flowlapse: full course wiped. Recording re-armed."));
     }
 
@@ -3401,6 +3567,7 @@ bool handleEmergencyStop() {
   if (!emergencyStopComboActive) {
     if (lastEmergencyStopComboActive) {
       Serial.println(F("EMERGENCY STOP RELEASED | controls re-enabled"));
+      broadcastStatus("EMERGENCY_STOP:RELEASED");
       startEmergencyReleaseRumbleFeedback();
       stopIntervalRumbleFeedback();
     }
@@ -3410,6 +3577,7 @@ bool handleEmergencyStop() {
 
   if (!lastEmergencyStopComboActive) {
     logEmergencyStopEvent();
+    broadcastStatus("EMERGENCY_STOP:ACTIVE");
     resetTimelapseState();
     resetBounceState();
     if (droneMode) {
@@ -4045,9 +4213,9 @@ void printDroneTuningProfile() {
 
 void setup() {
 
-  Serial.begin(9600);
-  Serial1.begin(9600);
-  Serial2.begin(9600);
+  Serial.begin(115200);
+  Serial1.begin(115200);
+  Serial2.begin(115200);
   bool persistedSettingsLoaded = loadPersistedSettings();
   updateIntervalMs();
 

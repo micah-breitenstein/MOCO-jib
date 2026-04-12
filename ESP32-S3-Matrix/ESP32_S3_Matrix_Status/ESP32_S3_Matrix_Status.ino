@@ -3,7 +3,7 @@
 
 constexpr uint8_t UART_RX_PIN = 44;
 constexpr uint8_t UART_TX_PIN = 43;
-constexpr uint32_t UART_BAUD = 9600;
+constexpr uint32_t UART_BAUD = 115200;
 
 // Set this to the actual onboard RGB matrix data pin for your Waveshare board.
 constexpr uint8_t MATRIX_DATA_PIN = 14;
@@ -13,6 +13,8 @@ Adafruit_NeoPixel matrixStrip(MATRIX_LED_COUNT, MATRIX_DATA_PIN, NEO_RGB + NEO_K
 
 String lineBuffer;
 bool errorActive = false;
+bool emergencyStopActive = false;
+bool droneModeActive = false;
 unsigned long lastTwinkleMs = 0;
 unsigned long lastStatusRxMs = 0;
 unsigned long lastOkPulseMs = 0;
@@ -274,6 +276,8 @@ void renderOkPulseFrame(uint8_t pulseBase, uint8_t frac255) {
 }
 
 void showError() {
+  emergencyStopActive = false;
+  droneModeActive = false;
   errorActive = true;
   lastStatusRxMs = millis();
   applyErrorBrightnessSetting();
@@ -286,6 +290,8 @@ void showError() {
 }
 
 void showOk() {
+  emergencyStopActive = false;
+  droneModeActive = false;
   errorActive = false;
   modeIndicatorActive = false;
   lastStatusRxMs = millis();
@@ -330,7 +336,55 @@ void showModeIndicator(const String& modeText) {
   fillMatrix(modeIndicatorR, modeIndicatorG, modeIndicatorB);
 }
 
+void showEmergencyStopActive() {
+  emergencyStopActive = true;
+  droneModeActive = false;
+  errorActive = false;
+  modeIndicatorActive = false;
+  applyErrorBrightnessSetting();
+  matrixStrip.setBrightness(errorStripBrightness);
+  structuredStride = 2;
+  structuredStrideIndex = 0;
+  nextStructuredStrideChangeMs = 0;
+  unsigned long nowMs = millis();
+  resetRandomTwinkleSchedule(nowMs);
+  lastTwinkleMs = nowMs;
+  renderErrorTwinkleFrame(nowMs, TWINKLE_CYCLE_FAST_MS);
+}
+
+void showEmergencyStopReleased() {
+  emergencyStopActive = false;
+  showOk();
+}
+
+void showDroneModeHold() {
+  emergencyStopActive = false;
+  errorActive = false;
+  modeIndicatorActive = false;
+  droneModeActive = true;
+  applyPulseBrightnessSetting();
+  fillMatrix(130, 20, 170);
+}
+
 void handleStatusLine(const String& line) {
+  if (line.startsWith("EMERGENCY_STOP:ACTIVE")
+      || (line.startsWith("EMERGENCY STOP") && line.indexOf("RELEASED") < 0)) {
+    showEmergencyStopActive();
+    Serial.println("Matrix status: EMERGENCY STOP -> FLASH RED");
+    return;
+  }
+
+  if (line.startsWith("EMERGENCY_STOP:RELEASED") || line.startsWith("EMERGENCY STOP RELEASED")) {
+    showEmergencyStopReleased();
+    Serial.println("Matrix status: EMERGENCY STOP RELEASED -> OK");
+    return;
+  }
+
+  if (emergencyStopActive) {
+    Serial.println("Matrix status: emergency latched, ignoring non-release status line");
+    return;
+  }
+
   if (line.startsWith("CONTROLLER_ERROR:")) {
     showError();
     Serial.println("Matrix status: ERROR -> RED");
@@ -338,17 +392,25 @@ void handleStatusLine(const String& line) {
   }
 
   if (line.startsWith("CONTROLLER_OK:")) {
-    showOk();
-    Serial.println("Matrix status: OK -> OFF");
+    if (!droneModeActive) {
+      showOk();
+      Serial.println("Matrix status: OK -> OFF");
+    }
     return;
   }
 
   if (line.startsWith("MODE:")) {
     String modeMsg = line.substring(5);
     modeMsg.trim();
-    showModeIndicator(modeMsg);
-    Serial.print("Matrix mode indicator: ");
-    Serial.println(modeMsg);
+    if (modeMsg.startsWith("DRONE")) {
+      showDroneModeHold();
+      Serial.println("Matrix mode indicator: DRONE (latched pink)");
+    } else {
+      droneModeActive = false;
+      showModeIndicator(modeMsg);
+      Serial.print("Matrix mode indicator: ");
+      Serial.println(modeMsg);
+    }
     return;
   }
 
@@ -379,12 +441,28 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  if (errorActive && (now - lastStatusRxMs > STATUS_SIGNAL_TIMEOUT_MS)) {
+  if (!emergencyStopActive && errorActive && (now - lastStatusRxMs > STATUS_SIGNAL_TIMEOUT_MS)) {
     showOk();
     Serial.println("Matrix status timeout -> OK (dim green)");
   }
 
-  if (errorActive) {
+  if (emergencyStopActive) {
+    const unsigned long phaseSpan = TWINKLE_FAST_PHASE_MS + TWINKLE_SLOW_PHASE_MS;
+    const unsigned long phasePos = now % phaseSpan;
+    bool fastPhase = phasePos < TWINKLE_FAST_PHASE_MS;
+    unsigned long updateInterval = fastPhase ? TWINKLE_UPDATE_FAST_MS : TWINKLE_UPDATE_SLOW_MS;
+    unsigned long twinkleCycle = fastPhase ? TWINKLE_CYCLE_FAST_MS : TWINKLE_CYCLE_SLOW_MS;
+
+    updateStructuredStride(now);
+    updateRandomTwinkles(now);
+
+    if (now - lastTwinkleMs >= updateInterval) {
+      lastTwinkleMs = now;
+      renderErrorTwinkleFrame(now, twinkleCycle);
+    }
+  } else if (droneModeActive) {
+    fillMatrix(130, 20, 170);
+  } else if (errorActive) {
     updateStructuredStride(now);
     updateRandomTwinkles(now);
 

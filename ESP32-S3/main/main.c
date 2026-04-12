@@ -38,6 +38,7 @@ static const char *TAG = "RIG";
 #define LCD_QSPI_WRITE_CMD 0x02U
 
 #define LVGL_TICK_PERIOD_MS 2
+#define LVGL_TASK_MAX_DELAY_MS 10
 #define LVGL_TASK_STACK_SIZE (6 * 1024)
 #define LVGL_TASK_PRIORITY 2
 #define LVGL_BUF_HEIGHT (LCD_V_RES / 10)
@@ -47,18 +48,73 @@ static const char *TAG = "RIG";
 #define STATUS_UART_PORT UART_NUM_1
 #define STATUS_UART_RX_PIN GPIO_NUM_40
 #define STATUS_UART_TX_PIN GPIO_NUM_41
-#define STATUS_UART_BAUDRATE 9600
+#define STATUS_UART_BAUDRATE 115200
 #define STATUS_UART_BUF_SIZE 512
 #define STATUS_SIGNAL_TIMEOUT_MS 3500
 #define MODE_MESSAGE_DURATION_MS 1800
+#define DRONE_STICK_MIN_VISIBLE_PULSE_MS 20
+
+typedef enum {
+    DISPLAY_MODE_MANUAL = 0,
+    DISPLAY_MODE_DRONE,
+    DISPLAY_MODE_TIMELAPSE,
+    DISPLAY_MODE_BOUNCE,
+    DISPLAY_MODE_ERROR,
+} DisplayMode;
+
+typedef enum {
+    DRONE_LIFT_NEUTRAL = 0,
+    DRONE_LIFT_UP,
+    DRONE_LIFT_DOWN,
+} DroneLiftDisplayState;
+
+typedef enum {
+    DRONE_HORIZ_NEUTRAL = 0,
+    DRONE_HORIZ_LEFT,
+    DRONE_HORIZ_RIGHT,
+} DroneHorizontalDisplayState;
+
+typedef enum {
+    DRONE_TILT_NEUTRAL = 0,
+    DRONE_TILT_UP,
+    DRONE_TILT_DOWN,
+} DroneTiltDisplayState;
 
 static SemaphoreHandle_t lvgl_mux = NULL;
 static lv_obj_t *label_moco = NULL;
 static lv_obj_t *label_jib = NULL;
 static lv_obj_t *status_label = NULL;
+static lv_obj_t *drone_title_label = NULL;
+static lv_obj_t *drone_subtitle_label = NULL;
+static lv_obj_t *drone_left_ring = NULL;
+static lv_obj_t *drone_right_ring = NULL;
+static lv_obj_t *drone_left_stick = NULL;
+static lv_obj_t *drone_right_stick = NULL;
+static lv_obj_t *drone_center_line = NULL;
 static bool status_error_active = false;
 static bool mode_message_active = false;
 static uint64_t mode_message_until_ms = 0;
+static DisplayMode current_display_mode = DISPLAY_MODE_MANUAL;
+static DisplayMode last_non_error_mode = DISPLAY_MODE_MANUAL;
+static bool controller_connected = false;
+static bool emergency_stop_active = false;
+static bool restore_mode_after_message = false;
+static DisplayMode mode_to_restore_after_message = DISPLAY_MODE_MANUAL;
+static DroneLiftDisplayState drone_lift_display_state = DRONE_LIFT_NEUTRAL;
+static DroneHorizontalDisplayState drone_swing_display_state = DRONE_HORIZ_NEUTRAL;
+static DroneHorizontalDisplayState drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
+static DroneTiltDisplayState drone_tilt_display_state = DRONE_TILT_NEUTRAL;
+static uint64_t drone_swing_pulse_start_ms = 0;
+static uint64_t drone_lift_pulse_start_ms = 0;
+static uint64_t drone_pan_pulse_start_ms = 0;
+static uint64_t drone_tilt_pulse_start_ms = 0;
+
+#define DRONE_LEFT_STICK_BASE_X 145
+#define DRONE_LEFT_STICK_BASE_Y 265
+#define DRONE_RIGHT_STICK_BASE_X 435
+#define DRONE_RIGHT_STICK_BASE_Y 265
+#define DRONE_LIFT_INDICATOR_OFFSET 46
+#define DRONE_HORIZ_INDICATOR_OFFSET 46
 
 static const sh8601_lcd_init_cmd_t lcd_init_cmds[] = {
     {0xFE, (uint8_t[]){0x20}, 1, 0},
@@ -138,8 +194,8 @@ static void lvgl_task(void *arg)
         if (xSemaphoreTake(lvgl_mux, portMAX_DELAY) == pdTRUE) {
             uint32_t delay_ms = lv_timer_handler();
             xSemaphoreGive(lvgl_mux);
-            if (delay_ms > 500) {
-                delay_ms = 500;
+            if (delay_ms > LVGL_TASK_MAX_DELAY_MS) {
+                delay_ms = LVGL_TASK_MAX_DELAY_MS;
             } else if (delay_ms < 1) {
                 delay_ms = 1;
             }
@@ -223,6 +279,222 @@ static void show_mode_message_on_display(const char *mode_msg, uint64_t now_ms)
     lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN);
 }
 
+static void show_temporary_message_on_display(const char *msg, uint64_t now_ms)
+{
+    if (msg == NULL || msg[0] == '\0') {
+        mode_message_active = false;
+        show_status_on_display(NULL, false);
+        return;
+    }
+
+    status_error_active = false;
+    mode_message_active = true;
+    mode_message_until_ms = now_ms + MODE_MESSAGE_DURATION_MS;
+
+    if (label_moco) {
+        lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (label_jib) {
+        lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    if (status_label == NULL) {
+        status_label = lv_label_create(lv_scr_act());
+        lv_obj_set_style_text_color(status_label, lv_color_white(), LV_PART_MAIN);
+        lv_obj_set_style_text_font(status_label, &lv_font_montserrat_48, LV_PART_MAIN);
+        lv_obj_set_style_text_line_space(status_label, 8, LV_PART_MAIN);
+        lv_obj_set_style_text_align(status_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        lv_label_set_long_mode(status_label, LV_LABEL_LONG_WRAP);
+        lv_obj_set_width(status_label, LCD_H_RES - 40);
+    }
+
+    lv_label_set_text(status_label, msg);
+    lv_obj_center(status_label);
+    lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void update_drone_lift_indicator(void)
+{
+    if (drone_left_stick == NULL) {
+        return;
+    }
+
+    lv_coord_t x = DRONE_LEFT_STICK_BASE_X;
+    lv_coord_t y = DRONE_LEFT_STICK_BASE_Y;
+
+    if (drone_swing_display_state == DRONE_HORIZ_LEFT) {
+        x = DRONE_LEFT_STICK_BASE_X - DRONE_HORIZ_INDICATOR_OFFSET;
+    } else if (drone_swing_display_state == DRONE_HORIZ_RIGHT) {
+        x = DRONE_LEFT_STICK_BASE_X + DRONE_HORIZ_INDICATOR_OFFSET;
+    }
+
+    if (drone_lift_display_state == DRONE_LIFT_UP) {
+        y = DRONE_LEFT_STICK_BASE_Y - DRONE_LIFT_INDICATOR_OFFSET;
+    } else if (drone_lift_display_state == DRONE_LIFT_DOWN) {
+        y = DRONE_LEFT_STICK_BASE_Y + DRONE_LIFT_INDICATOR_OFFSET;
+    }
+
+    lv_obj_set_pos(drone_left_stick, x, y);
+}
+
+static void update_drone_tilt_indicator(void)
+{
+    if (drone_right_stick == NULL) {
+        return;
+    }
+
+    lv_coord_t x = DRONE_RIGHT_STICK_BASE_X;
+    lv_coord_t y = DRONE_RIGHT_STICK_BASE_Y;
+
+    if (drone_pan_display_state == DRONE_HORIZ_LEFT) {
+        x = DRONE_RIGHT_STICK_BASE_X - DRONE_HORIZ_INDICATOR_OFFSET;
+    } else if (drone_pan_display_state == DRONE_HORIZ_RIGHT) {
+        x = DRONE_RIGHT_STICK_BASE_X + DRONE_HORIZ_INDICATOR_OFFSET;
+    }
+
+    if (drone_tilt_display_state == DRONE_TILT_UP) {
+        y = DRONE_RIGHT_STICK_BASE_Y - DRONE_LIFT_INDICATOR_OFFSET;
+    } else if (drone_tilt_display_state == DRONE_TILT_DOWN) {
+        y = DRONE_RIGHT_STICK_BASE_Y + DRONE_LIFT_INDICATOR_OFFSET;
+    }
+
+    lv_obj_set_pos(drone_right_stick, x, y);
+}
+
+static bool parse_drone_stick_payload(const char *payload, int *swing_dir, int *lift_dir, int *pan_dir, int *tilt_dir)
+{
+    if (payload == NULL || swing_dir == NULL || lift_dir == NULL || pan_dir == NULL || tilt_dir == NULL) {
+        return false;
+    }
+
+    char *end_ptr = NULL;
+    long values[4];
+    const char *cursor = payload;
+
+    for (int i = 0; i < 4; ++i) {
+        values[i] = strtol(cursor, &end_ptr, 10);
+        if (cursor == end_ptr) {
+            return false;
+        }
+
+        if (i < 3) {
+            if (*end_ptr != ',') {
+                return false;
+            }
+            cursor = end_ptr + 1;
+        } else if (*end_ptr != '\0') {
+            return false;
+        }
+    }
+
+    *swing_dir = (int)values[0];
+    *lift_dir = (int)values[1];
+    *pan_dir = (int)values[2];
+    *tilt_dir = (int)values[3];
+    return true;
+}
+
+static void set_drone_mode_visible(bool visible)
+{
+    if (visible) {
+        if (label_moco) {
+            lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (label_jib) {
+            lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (status_label) {
+            lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+        }
+    }
+
+    if (drone_title_label) {
+        visible ? lv_obj_clear_flag(drone_title_label, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_title_label, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_subtitle_label) {
+        visible ? lv_obj_clear_flag(drone_subtitle_label, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_subtitle_label, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_left_ring) {
+        visible ? lv_obj_clear_flag(drone_left_ring, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_left_ring, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_right_ring) {
+        visible ? lv_obj_clear_flag(drone_right_ring, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_right_ring, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_left_stick) {
+        visible ? lv_obj_clear_flag(drone_left_stick, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_left_stick, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_right_stick) {
+        visible ? lv_obj_clear_flag(drone_right_stick, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_right_stick, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_center_line) {
+        visible ? lv_obj_clear_flag(drone_center_line, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_center_line, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static const char *display_mode_to_text(DisplayMode mode)
+{
+    switch (mode) {
+    case DISPLAY_MODE_MANUAL:
+        return "MANUAL";
+    case DISPLAY_MODE_DRONE:
+        return "DRONE";
+    case DISPLAY_MODE_TIMELAPSE:
+        return "TIMELAPSE";
+    case DISPLAY_MODE_BOUNCE:
+        return "BOUNCE";
+    case DISPLAY_MODE_ERROR:
+    default:
+        return "ERROR";
+    }
+}
+
+static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64_t now_ms)
+{
+    DisplayMode previous_mode = current_display_mode;
+    current_display_mode = mode;
+    set_drone_mode_visible(false);
+
+    if (mode == DISPLAY_MODE_ERROR) {
+        mode_message_active = false;
+        restore_mode_after_message = false;
+        show_status_on_display((detail_msg && detail_msg[0]) ? detail_msg : "NO CONTROLLER\nFOUND", true);
+        return;
+    }
+
+    last_non_error_mode = mode;
+    status_error_active = false;
+
+    if (mode == DISPLAY_MODE_MANUAL) {
+        mode_message_active = false;
+        restore_mode_after_message = false;
+        show_status_on_display(NULL, false);
+        return;
+    }
+
+    if (mode == DISPLAY_MODE_DRONE) {
+        mode_message_active = false;
+        restore_mode_after_message = false;
+        status_error_active = false;
+        if (previous_mode != DISPLAY_MODE_DRONE) {
+            drone_swing_display_state = DRONE_HORIZ_NEUTRAL;
+            drone_lift_display_state = DRONE_LIFT_NEUTRAL;
+            drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
+            drone_tilt_display_state = DRONE_TILT_NEUTRAL;
+            drone_swing_pulse_start_ms = 0;
+            drone_lift_pulse_start_ms = 0;
+            drone_pan_pulse_start_ms = 0;
+            drone_tilt_pulse_start_ms = 0;
+            update_drone_lift_indicator();
+            update_drone_tilt_indicator();
+        }
+        set_drone_mode_visible(true);
+        return;
+    }
+
+    restore_mode_after_message = false;
+    show_mode_message_on_display(display_mode_to_text(mode), now_ms);
+}
+
 static void status_uart_task(void *arg)
 {
     (void)arg;
@@ -245,12 +517,17 @@ static void status_uart_task(void *arg)
         if (mode_message_active && now_ms >= mode_message_until_ms) {
             if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                 mode_message_active = false;
-                show_status_on_display(NULL, false);
+                if (restore_mode_after_message) {
+                    restore_mode_after_message = false;
+                    switch_display_mode(mode_to_restore_after_message, NULL, now_ms);
+                } else {
+                    show_status_on_display(NULL, false);
+                }
                 xSemaphoreGive(lvgl_mux);
             }
         }
 
-        int len = uart_read_bytes(STATUS_UART_PORT, &byte, 1, pdMS_TO_TICKS(100));
+        int len = uart_read_bytes(STATUS_UART_PORT, &byte, 1, pdMS_TO_TICKS(5));
         if (len <= 0) {
             continue;
         }
@@ -265,26 +542,198 @@ static void status_uart_task(void *arg)
             }
 
             line[line_len] = '\0';
-            ESP_LOGI(TAG, "Mega status: %s", line);
+            if (strncmp(line, "DRONE_STICK:", 12) != 0) {
+                ESP_LOGI(TAG, "Mega status: %s", line);
+            }
             last_status_rx_ms = now_ms;
 
-            if (strncmp(line, "CONTROLLER_ERROR:", 17) == 0) {
+            if (strncmp(line, "EMERGENCY_STOP:ACTIVE", 21) == 0
+                || (strncmp(line, "EMERGENCY STOP", 14) == 0 && strstr(line, "RELEASED") == NULL)) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    emergency_stop_active = true;
+                    switch_display_mode(DISPLAY_MODE_ERROR, "EMERGENCY\nSTOP", now_ms);
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "EMERGENCY_STOP:RELEASED", 23) == 0
+                       || strncmp(line, "EMERGENCY STOP RELEASED", 23) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    emergency_stop_active = false;
+                    mode_to_restore_after_message = controller_connected ? last_non_error_mode : DISPLAY_MODE_ERROR;
+                    restore_mode_after_message = true;
+                    show_temporary_message_on_display("EMERGENCY STOP\nRELEASED", now_ms);
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "CONTROLLER_ERROR:", 17) == 0) {
                 const char *msg = line + 17;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    mode_message_active = false;
-                    show_status_on_display(msg, true);
+                    controller_connected = false;
+                    if (!emergency_stop_active) {
+                        switch_display_mode(DISPLAY_MODE_ERROR, msg, now_ms);
+                    }
                     xSemaphoreGive(lvgl_mux);
                 }
             } else if (strncmp(line, "CONTROLLER_OK:", 14) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    mode_message_active = false;
-                    show_status_on_display(NULL, false);
+                    controller_connected = true;
+                    if (!emergency_stop_active) {
+                        switch_display_mode(last_non_error_mode, NULL, now_ms);
+                    }
                     xSemaphoreGive(lvgl_mux);
                 }
             } else if (strncmp(line, "MODE:", 5) == 0) {
                 const char *mode_msg = line + 5;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    show_mode_message_on_display(mode_msg, now_ms);
+                    if (!emergency_stop_active) {
+                        if (strncmp(mode_msg, "MANUAL", 6) == 0) {
+                            switch_display_mode(DISPLAY_MODE_MANUAL, NULL, now_ms);
+                        } else if (strncmp(mode_msg, "DRONE", 5) == 0) {
+                            switch_display_mode(DISPLAY_MODE_DRONE, NULL, now_ms);
+                        } else if (strncmp(mode_msg, "TIMELAPSE", 9) == 0) {
+                            switch_display_mode(DISPLAY_MODE_TIMELAPSE, NULL, now_ms);
+                        } else if (strncmp(mode_msg, "BOUNCE", 6) == 0) {
+                            switch_display_mode(DISPLAY_MODE_BOUNCE, NULL, now_ms);
+                        } else {
+                            switch_display_mode(DISPLAY_MODE_MANUAL, NULL, now_ms);
+                        }
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "DRONE_STICK:", 12) == 0) {
+                int swing_dir = 0;
+                int lift_dir = 0;
+                int pan_dir = 0;
+                int tilt_dir = 0;
+                if (parse_drone_stick_payload(line + 12, &swing_dir, &lift_dir, &pan_dir, &tilt_dir)) {
+                    if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                        if (swing_dir > 0) {
+                            if (drone_swing_display_state == DRONE_HORIZ_NEUTRAL) {
+                                drone_swing_pulse_start_ms = now_ms;
+                            }
+                            drone_swing_display_state = DRONE_HORIZ_RIGHT;
+                        } else if (swing_dir < 0) {
+                            if (drone_swing_display_state == DRONE_HORIZ_NEUTRAL) {
+                                drone_swing_pulse_start_ms = now_ms;
+                            }
+                            drone_swing_display_state = DRONE_HORIZ_LEFT;
+                        } else if (drone_swing_display_state != DRONE_HORIZ_NEUTRAL
+                                   && now_ms - drone_swing_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
+                            drone_swing_display_state = DRONE_HORIZ_NEUTRAL;
+                        }
+
+                        if (lift_dir > 0) {
+                            if (drone_lift_display_state == DRONE_LIFT_NEUTRAL) {
+                                drone_lift_pulse_start_ms = now_ms;
+                            }
+                            drone_lift_display_state = DRONE_LIFT_UP;
+                        } else if (lift_dir < 0) {
+                            if (drone_lift_display_state == DRONE_LIFT_NEUTRAL) {
+                                drone_lift_pulse_start_ms = now_ms;
+                            }
+                            drone_lift_display_state = DRONE_LIFT_DOWN;
+                        } else if (drone_lift_display_state != DRONE_LIFT_NEUTRAL
+                                   && now_ms - drone_lift_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
+                            drone_lift_display_state = DRONE_LIFT_NEUTRAL;
+                        }
+
+                        if (pan_dir > 0) {
+                            if (drone_pan_display_state == DRONE_HORIZ_NEUTRAL) {
+                                drone_pan_pulse_start_ms = now_ms;
+                            }
+                            drone_pan_display_state = DRONE_HORIZ_RIGHT;
+                        } else if (pan_dir < 0) {
+                            if (drone_pan_display_state == DRONE_HORIZ_NEUTRAL) {
+                                drone_pan_pulse_start_ms = now_ms;
+                            }
+                            drone_pan_display_state = DRONE_HORIZ_LEFT;
+                        } else if (drone_pan_display_state != DRONE_HORIZ_NEUTRAL
+                                   && now_ms - drone_pan_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
+                            drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
+                        }
+
+                        if (tilt_dir > 0) {
+                            if (drone_tilt_display_state == DRONE_TILT_NEUTRAL) {
+                                drone_tilt_pulse_start_ms = now_ms;
+                            }
+                            drone_tilt_display_state = DRONE_TILT_UP;
+                        } else if (tilt_dir < 0) {
+                            if (drone_tilt_display_state == DRONE_TILT_NEUTRAL) {
+                                drone_tilt_pulse_start_ms = now_ms;
+                            }
+                            drone_tilt_display_state = DRONE_TILT_DOWN;
+                        } else if (drone_tilt_display_state != DRONE_TILT_NEUTRAL
+                                   && now_ms - drone_tilt_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
+                            drone_tilt_display_state = DRONE_TILT_NEUTRAL;
+                        }
+
+                        if (current_display_mode == DISPLAY_MODE_DRONE) {
+                            update_drone_lift_indicator();
+                            update_drone_tilt_indicator();
+                        }
+                        xSemaphoreGive(lvgl_mux);
+                    }
+                }
+            } else if (strncmp(line, "DRONE_LIFT:", 11) == 0) {
+                const char *lift_state = line + 11;
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (strncmp(lift_state, "UP", 2) == 0) {
+                        drone_lift_display_state = DRONE_LIFT_UP;
+                    } else if (strncmp(lift_state, "DOWN", 4) == 0) {
+                        drone_lift_display_state = DRONE_LIFT_DOWN;
+                    } else {
+                        drone_lift_display_state = DRONE_LIFT_NEUTRAL;
+                    }
+
+                    if (current_display_mode == DISPLAY_MODE_DRONE) {
+                        update_drone_lift_indicator();
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "DRONE_SWING:", 12) == 0) {
+                const char *swing_state = line + 12;
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (strncmp(swing_state, "LEFT", 4) == 0) {
+                        drone_swing_display_state = DRONE_HORIZ_LEFT;
+                    } else if (strncmp(swing_state, "RIGHT", 5) == 0) {
+                        drone_swing_display_state = DRONE_HORIZ_RIGHT;
+                    } else {
+                        drone_swing_display_state = DRONE_HORIZ_NEUTRAL;
+                    }
+
+                    if (current_display_mode == DISPLAY_MODE_DRONE) {
+                        update_drone_lift_indicator();
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "DRONE_TILT:", 11) == 0) {
+                const char *tilt_state = line + 11;
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (strncmp(tilt_state, "UP", 2) == 0) {
+                        drone_tilt_display_state = DRONE_TILT_UP;
+                    } else if (strncmp(tilt_state, "DOWN", 4) == 0) {
+                        drone_tilt_display_state = DRONE_TILT_DOWN;
+                    } else {
+                        drone_tilt_display_state = DRONE_TILT_NEUTRAL;
+                    }
+
+                    if (current_display_mode == DISPLAY_MODE_DRONE) {
+                        update_drone_tilt_indicator();
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "DRONE_PAN:", 10) == 0) {
+                const char *pan_state = line + 10;
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (strncmp(pan_state, "LEFT", 4) == 0) {
+                        drone_pan_display_state = DRONE_HORIZ_LEFT;
+                    } else if (strncmp(pan_state, "RIGHT", 5) == 0) {
+                        drone_pan_display_state = DRONE_HORIZ_RIGHT;
+                    } else {
+                        drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
+                    }
+
+                    if (current_display_mode == DISPLAY_MODE_DRONE) {
+                        update_drone_tilt_indicator();
+                    }
                     xSemaphoreGive(lvgl_mux);
                 }
             }
@@ -305,7 +754,7 @@ static void status_uart_task(void *arg)
 static void show_controller_error_cb(lv_timer_t *timer)
 {
     (void)timer;
-    show_status_on_display("NO CONTROLLER\nFOUND", true);
+    switch_display_mode(DISPLAY_MODE_ERROR, "NO CONTROLLER\nFOUND", esp_timer_get_time() / 1000ULL);
     lv_timer_del(timer);
 }
 #endif
@@ -377,7 +826,7 @@ void app_main(void)
 
     lvgl_mux = xSemaphoreCreateMutex();
     assert(lvgl_mux);
-    xTaskCreate(lvgl_task, "lvgl", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
+    xTaskCreatePinnedToCore(lvgl_task, "lvgl", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL, 0);
 
     const uart_config_t uart_cfg = {
         .baud_rate = STATUS_UART_BAUDRATE,
@@ -390,7 +839,7 @@ void app_main(void)
     ESP_ERROR_CHECK(uart_driver_install(STATUS_UART_PORT, STATUS_UART_BUF_SIZE, 0, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(STATUS_UART_PORT, &uart_cfg));
     ESP_ERROR_CHECK(uart_set_pin(STATUS_UART_PORT, STATUS_UART_TX_PIN, STATUS_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    xTaskCreate(status_uart_task, "status_uart", 4096, NULL, 3, NULL);
+    xTaskCreatePinnedToCore(status_uart_task, "status_uart", 4096, NULL, 3, NULL, 1);
 
     xSemaphoreTake(lvgl_mux, portMAX_DELAY);
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);
@@ -419,6 +868,64 @@ void app_main(void)
     lv_obj_set_pos(label_jib, LCD_H_RES - 16 - jib_width, jib_target_y);
     lv_obj_set_style_text_color(label_jib, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_opa(label_jib, LV_OPA_COVER, LV_PART_MAIN);
+
+    drone_title_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(drone_title_label, "DRONE MODE");
+    lv_obj_set_style_text_font(drone_title_label, &lv_font_montserrat_48, LV_PART_MAIN);
+    lv_obj_set_style_text_color(drone_title_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_text_align(drone_title_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_width(drone_title_label, LCD_H_RES - 40);
+    lv_obj_set_pos(drone_title_label, 20, 42);
+
+    drone_subtitle_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(drone_subtitle_label, "multi-axis live control");
+    lv_obj_set_style_text_color(drone_subtitle_label, lv_color_make(180, 180, 180), LV_PART_MAIN);
+    lv_obj_set_style_text_align(drone_subtitle_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_width(drone_subtitle_label, LCD_H_RES - 40);
+    lv_obj_set_pos(drone_subtitle_label, 20, 100);
+
+    drone_left_ring = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(drone_left_ring);
+    lv_obj_set_size(drone_left_ring, 170, 170);
+    lv_obj_set_pos(drone_left_ring, 70, 190);
+    lv_obj_set_style_radius(drone_left_ring, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_border_width(drone_left_ring, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(drone_left_ring, lv_color_make(120, 120, 120), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(drone_left_ring, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    drone_right_ring = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(drone_right_ring);
+    lv_obj_set_size(drone_right_ring, 170, 170);
+    lv_obj_set_pos(drone_right_ring, 360, 190);
+    lv_obj_set_style_radius(drone_right_ring, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_border_width(drone_right_ring, 3, LV_PART_MAIN);
+    lv_obj_set_style_border_color(drone_right_ring, lv_color_make(120, 120, 120), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(drone_right_ring, LV_OPA_TRANSP, LV_PART_MAIN);
+
+    drone_left_stick = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(drone_left_stick);
+    lv_obj_set_size(drone_left_stick, 20, 20);
+    lv_obj_set_pos(drone_left_stick, DRONE_LEFT_STICK_BASE_X, DRONE_LEFT_STICK_BASE_Y);
+    lv_obj_set_style_radius(drone_left_stick, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(drone_left_stick, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(drone_left_stick, LV_OPA_COVER, LV_PART_MAIN);
+
+    drone_right_stick = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(drone_right_stick);
+    lv_obj_set_size(drone_right_stick, 20, 20);
+    lv_obj_set_pos(drone_right_stick, DRONE_RIGHT_STICK_BASE_X, DRONE_RIGHT_STICK_BASE_Y);
+    lv_obj_set_style_radius(drone_right_stick, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(drone_right_stick, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(drone_right_stick, LV_OPA_COVER, LV_PART_MAIN);
+
+    drone_center_line = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(drone_center_line);
+    lv_obj_set_size(drone_center_line, 120, 2);
+    lv_obj_set_pos(drone_center_line, 240, 274);
+    lv_obj_set_style_bg_color(drone_center_line, lv_color_make(90, 90, 90), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(drone_center_line, LV_OPA_COVER, LV_PART_MAIN);
+
+    set_drone_mode_visible(false);
 
     lv_timer_handler();
 
