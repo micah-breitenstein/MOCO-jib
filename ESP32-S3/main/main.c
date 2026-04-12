@@ -91,6 +91,8 @@ static lv_obj_t *drone_right_ring = NULL;
 static lv_obj_t *drone_left_stick = NULL;
 static lv_obj_t *drone_right_stick = NULL;
 static lv_obj_t *drone_center_line = NULL;
+static lv_obj_t *drone_flowlapse_bar = NULL;
+static lv_obj_t *drone_flowlapse_label = NULL;
 static bool status_error_active = false;
 static bool mode_message_active = false;
 static uint64_t mode_message_until_ms = 0;
@@ -118,6 +120,8 @@ static int last_logged_swing_dir = 0;
 static int last_logged_lift_dir = 0;
 static int last_logged_pan_dir = 0;
 static int last_logged_tilt_dir = 0;
+static bool flowlapse_active = false;
+static char flowlapse_status_text[48] = "FLOWLAPSE READY";
 
 #define DRONE_LEFT_STICK_BASE_X 145
 #define DRONE_LEFT_STICK_BASE_Y 265
@@ -372,6 +376,29 @@ static void update_drone_stick_colors(void)
     }
 }
 
+static void set_flowlapse_status(bool active, const char *text)
+{
+    flowlapse_active = active;
+
+    if (text && text[0] != '\0') {
+        snprintf(flowlapse_status_text, sizeof(flowlapse_status_text), "%s", text);
+    }
+
+    if (drone_flowlapse_label) {
+        lv_label_set_text(drone_flowlapse_label, flowlapse_status_text);
+    }
+
+    bool show = active && current_display_mode == DISPLAY_MODE_DRONE;
+    if (drone_flowlapse_bar) {
+        show ? lv_obj_clear_flag(drone_flowlapse_bar, LV_OBJ_FLAG_HIDDEN)
+             : lv_obj_add_flag(drone_flowlapse_bar, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_flowlapse_label) {
+        show ? lv_obj_clear_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN)
+             : lv_obj_add_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
 static bool parse_drone_stick_payload(const char *payload, int *swing_dir, int *lift_dir, int *pan_dir, int *tilt_dir,
                                       bool *left_stick_click, bool *right_stick_click)
 {
@@ -490,6 +517,14 @@ static void set_drone_mode_visible(bool visible)
     if (drone_center_line) {
         visible ? lv_obj_clear_flag(drone_center_line, LV_OBJ_FLAG_HIDDEN) : lv_obj_add_flag(drone_center_line, LV_OBJ_FLAG_HIDDEN);
     }
+    if (drone_flowlapse_bar) {
+        (visible && flowlapse_active) ? lv_obj_clear_flag(drone_flowlapse_bar, LV_OBJ_FLAG_HIDDEN)
+                                      : lv_obj_add_flag(drone_flowlapse_bar, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (drone_flowlapse_label) {
+        (visible && flowlapse_active) ? lv_obj_clear_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN)
+                                      : lv_obj_add_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 static const char *display_mode_to_text(DisplayMode mode)
@@ -518,6 +553,7 @@ static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64
     if (mode == DISPLAY_MODE_ERROR) {
         mode_message_active = false;
         restore_mode_after_message = false;
+        set_flowlapse_status(false, NULL);
         show_status_on_display((detail_msg && detail_msg[0]) ? detail_msg : "NO CONTROLLER\nFOUND", true);
         return;
     }
@@ -528,6 +564,7 @@ static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64
     if (mode == DISPLAY_MODE_MANUAL) {
         mode_message_active = false;
         restore_mode_after_message = false;
+        set_flowlapse_status(false, NULL);
         show_status_on_display(NULL, false);
         return;
     }
@@ -555,10 +592,12 @@ static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64
             update_drone_tilt_indicator();
             update_drone_stick_colors();
         }
+        set_flowlapse_status(true, "FLOWLAPSE READY");
         set_drone_mode_visible(true);
         return;
     }
 
+    set_flowlapse_status(false, NULL);
     restore_mode_after_message = false;
     show_mode_message_on_display(display_mode_to_text(mode), now_ms);
 }
@@ -663,6 +702,32 @@ static void status_uart_task(void *arg)
                         } else {
                             switch_display_mode(DISPLAY_MODE_MANUAL, NULL, now_ms);
                         }
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "DRONE MODE DEACTIVATED", 21) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    set_flowlapse_status(false, "FLOWLAPSE READY");
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "Flowlapse:", 10) == 0 || strncmp(line, "Flowlapse capture |", 19) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (strstr(line, "recording armed") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE READY");
+                    } else if (strstr(line, "preview started") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE PREVIEW");
+                    } else if (strstr(line, "capture run started") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
+                    } else if (strstr(line, "capture paused") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE PAUSED");
+                    } else if (strstr(line, "capture resumed") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
+                    } else if (strstr(line, "capture complete") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE READY");
+                    } else if (strstr(line, "canceled") != NULL) {
+                        set_flowlapse_status(false, "FLOWLAPSE READY");
+                    } else if (strncmp(line, "Flowlapse capture |", 19) == 0) {
+                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
@@ -956,6 +1021,23 @@ void app_main(void)
     lv_obj_set_style_border_width(drone_center_line, 2, LV_PART_MAIN);
     lv_obj_set_style_border_color(drone_center_line, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_border_opa(drone_center_line, LV_OPA_50, LV_PART_MAIN);
+
+    drone_flowlapse_bar = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(drone_flowlapse_bar);
+    lv_obj_set_size(drone_flowlapse_bar, LCD_H_RES - 120, 36);
+    lv_obj_set_pos(drone_flowlapse_bar, 60, 144);
+    lv_obj_set_style_radius(drone_flowlapse_bar, 6, LV_PART_MAIN);
+    lv_obj_set_style_border_width(drone_flowlapse_bar, 2, LV_PART_MAIN);
+    lv_obj_set_style_border_color(drone_flowlapse_bar, lv_color_make(120, 120, 120), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(drone_flowlapse_bar, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(drone_flowlapse_bar, LV_OPA_40, LV_PART_MAIN);
+
+    drone_flowlapse_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(drone_flowlapse_label, flowlapse_status_text);
+    lv_obj_set_style_text_color(drone_flowlapse_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_text_align(drone_flowlapse_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_width(drone_flowlapse_label, LCD_H_RES - 120);
+    lv_obj_set_pos(drone_flowlapse_label, 60, 150);
 
     set_drone_mode_visible(false);
 

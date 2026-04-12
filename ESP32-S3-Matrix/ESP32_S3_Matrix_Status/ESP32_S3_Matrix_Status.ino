@@ -15,6 +15,14 @@ String lineBuffer;
 bool errorActive = false;
 bool emergencyStopActive = false;
 bool droneModeActive = false;
+enum class LatchedModeState : uint8_t {
+  IDLE,
+  DRONE,
+  TIMELAPSE,
+  BOUNCE
+};
+
+LatchedModeState latchedModeState = LatchedModeState::IDLE;
 unsigned long lastTwinkleMs = 0;
 unsigned long lastStatusRxMs = 0;
 unsigned long lastOkPulseMs = 0;
@@ -245,6 +253,37 @@ void fillMatrix(uint8_t r, uint8_t g, uint8_t b) {
   matrixStrip.show();
 }
 
+void renderLatchedModeColor() {
+  applyPulseBrightnessSetting();
+
+  switch (latchedModeState) {
+    case LatchedModeState::DRONE:
+      droneModeActive = true;
+      fillMatrix(130, 20, 170);
+      break;
+    case LatchedModeState::TIMELAPSE:
+      droneModeActive = false;
+      fillMatrix(170, 120, 0);
+      break;
+    case LatchedModeState::BOUNCE:
+      droneModeActive = false;
+      fillMatrix(0, 130, 170);
+      break;
+    case LatchedModeState::IDLE:
+    default:
+      droneModeActive = false;
+      break;
+  }
+}
+
+void showLatchedMode(LatchedModeState mode) {
+  emergencyStopActive = false;
+  errorActive = false;
+  modeIndicatorActive = false;
+  latchedModeState = mode;
+  renderLatchedModeColor();
+}
+
 void applyPulseBrightnessSetting() {
   PulseBrightnessProfile profile = getPulseBrightnessProfile(OK_PULSE_BRIGHTNESS_SETTING);
   okPulseMinLevel = profile.pulseMinLevel;
@@ -277,7 +316,6 @@ void renderOkPulseFrame(uint8_t pulseBase, uint8_t frac255) {
 
 void showError() {
   emergencyStopActive = false;
-  droneModeActive = false;
   errorActive = true;
   lastStatusRxMs = millis();
   applyErrorBrightnessSetting();
@@ -294,6 +332,7 @@ void showOk() {
   droneModeActive = false;
   errorActive = false;
   modeIndicatorActive = false;
+  latchedModeState = LatchedModeState::IDLE;
   lastStatusRxMs = millis();
   applyPulseBrightnessSetting();
   lastOkPulseMs = lastStatusRxMs;
@@ -353,20 +392,15 @@ void showEmergencyStopActive() {
 
 void showEmergencyStopReleased() {
   emergencyStopActive = false;
-  if (droneModeActive) {
-    showDroneModeHold();
+  if (latchedModeState != LatchedModeState::IDLE) {
+    renderLatchedModeColor();
   } else {
     showOk();
   }
 }
 
 void showDroneModeHold() {
-  emergencyStopActive = false;
-  errorActive = false;
-  modeIndicatorActive = false;
-  droneModeActive = true;
-  applyPulseBrightnessSetting();
-  fillMatrix(130, 20, 170);
+  showLatchedMode(LatchedModeState::DRONE);
 }
 
 void handleStatusLine(const String& line) {
@@ -395,9 +429,12 @@ void handleStatusLine(const String& line) {
   }
 
   if (line.startsWith("CONTROLLER_OK:")) {
-    if (!droneModeActive) {
+    if (latchedModeState == LatchedModeState::IDLE) {
       showOk();
       Serial.println("Matrix status: OK -> OFF");
+    } else {
+      renderLatchedModeColor();
+      Serial.println("Matrix status: OK while mode latched -> keeping mode color");
     }
     return;
   }
@@ -408,19 +445,17 @@ void handleStatusLine(const String& line) {
     if (modeMsg.startsWith("DRONE")) {
       showDroneModeHold();
       Serial.println("Matrix mode indicator: DRONE (latched pink)");
+    } else if (modeMsg.startsWith("TIMELAPSE")) {
+      showLatchedMode(LatchedModeState::TIMELAPSE);
+      Serial.println("Matrix mode indicator: TIMELAPSE (latched yellow)");
+    } else if (modeMsg.startsWith("BOUNCE")) {
+      showLatchedMode(LatchedModeState::BOUNCE);
+      Serial.println("Matrix mode indicator: BOUNCE (latched teal)");
     } else {
-      bool wasDroneMode = droneModeActive;
-      droneModeActive = false;
-      if (wasDroneMode) {
-        showOk();
-        Serial.print("Matrix mode transition: DRONE -> ");
-        Serial.print(modeMsg);
-        Serial.println(" (direct to dim OK)");
-      } else {
-        showModeIndicator(modeMsg);
-        Serial.print("Matrix mode indicator: ");
-        Serial.println(modeMsg);
-      }
+      showOk();
+      Serial.print("Matrix mode transition -> ");
+      Serial.print(modeMsg);
+      Serial.println(" (dim OK)");
     }
     return;
   }
@@ -435,10 +470,11 @@ void setup() {
   randomSeed((uint32_t)(micros() ^ millis()));
 
   matrixStrip.begin();
+  matrixStrip.setBrightness(1);
+  matrixStrip.clear();
+  matrixStrip.show();
   applyPulseBrightnessSetting();
   applyErrorBrightnessSetting();
-  fillMatrix(50, 50, 50);
-  delay(200);
   showOk();
   lastStatusRxMs = millis();
 
@@ -471,8 +507,6 @@ void loop() {
       lastTwinkleMs = now;
       renderErrorTwinkleFrame(now, twinkleCycle);
     }
-  } else if (droneModeActive) {
-    fillMatrix(130, 20, 170);
   } else if (errorActive) {
     updateStructuredStride(now);
     updateRandomTwinkles(now);
@@ -487,6 +521,8 @@ void loop() {
       lastTwinkleMs = now;
       renderErrorTwinkleFrame(now, twinkleCycle);
     }
+  } else if (latchedModeState != LatchedModeState::IDLE) {
+    renderLatchedModeColor();
   } else if (modeIndicatorActive) {
     if (now >= modeIndicatorUntilMs) {
       showOk();

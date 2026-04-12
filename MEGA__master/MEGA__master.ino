@@ -1177,22 +1177,68 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
     }
   }
 
-  if (flowlapseCaptureAlignedToFirstWaypoint
-      && flowlapseCapturePhase == FLOWLAPSE_CAPTURE_MOVE_ACTIVE
-      && static_cast<unsigned long>(stepDist) > 0UL
-      && totalSegments > 0) {
-    unsigned long moveElapsedMs = now - flowlapseCapturePhaseStartMs;
-    float segmentFraction = static_cast<float>(moveElapsedMs) / static_cast<float>(stepDist);
-    if (segmentFraction < 0.0f) {
-      segmentFraction = 0.0f;
+  float segmentFraction = 0.0f;
+  float remainingMs = 0.0f;
+  if (flowlapseCaptureAlignedToFirstWaypoint && totalSegments > 0) {
+    unsigned long triggerLowMs = static_cast<unsigned long>(timelapseIntervalMs / 2);
+    unsigned long triggerHighMs = static_cast<unsigned long>(timelapseIntervalMs / 2);
+    unsigned long moveMs = static_cast<unsigned long>(stepDist);
+
+    unsigned long dwellMsForSegment = flowlapseDwellMs;
+    if (!flowlapseFrameCountModeActive && flowlapseTargetWaypointIndex < flowlapseWaypointCount) {
+      dwellMsForSegment = flowlapseWaypoints[flowlapseTargetWaypointIndex].dwellMs;
     }
-    if (segmentFraction > 1.0f) {
-      segmentFraction = 1.0f;
+
+    unsigned long segmentTotalMs = triggerLowMs + triggerHighMs + moveMs + dwellMsForSegment;
+    unsigned long phaseElapsedMs = now - flowlapseCapturePhaseStartMs;
+    unsigned long segmentElapsedMs = 0;
+
+    switch (flowlapseCapturePhase) {
+      case FLOWLAPSE_CAPTURE_TRIGGER_LOW:
+        segmentElapsedMs = phaseElapsedMs;
+        break;
+      case FLOWLAPSE_CAPTURE_TRIGGER_HIGH:
+        segmentElapsedMs = triggerLowMs + phaseElapsedMs;
+        break;
+      case FLOWLAPSE_CAPTURE_MOVE_ACTIVE:
+        segmentElapsedMs = triggerLowMs + triggerHighMs + phaseElapsedMs;
+        break;
+      case FLOWLAPSE_CAPTURE_DWELL:
+        segmentElapsedMs = triggerLowMs + triggerHighMs + moveMs + phaseElapsedMs;
+        break;
+      default:
+        segmentElapsedMs = 0;
+        break;
+    }
+
+    if (segmentElapsedMs > segmentTotalMs) {
+      segmentElapsedMs = segmentTotalMs;
+    }
+
+    if (segmentTotalMs > 0) {
+      segmentFraction = static_cast<float>(segmentElapsedMs) / static_cast<float>(segmentTotalMs);
     }
 
     completedSegments += segmentFraction;
     if (completedSegments > totalSegments) {
       completedSegments = totalSegments;
+    }
+
+    remainingMs = static_cast<float>(segmentTotalMs > segmentElapsedMs ? (segmentTotalMs - segmentElapsedMs) : 0UL);
+
+    if (!flowlapseFrameCountModeActive && flowlapseCaptureDirection >= 0 && flowlapseTargetWaypointIndex < flowlapseWaypointCount) {
+      for (uint8_t segmentEndIdx = static_cast<uint8_t>(flowlapseTargetWaypointIndex + 1);
+           segmentEndIdx < flowlapseWaypointCount;
+           ++segmentEndIdx) {
+        unsigned long futureDwellMs = flowlapseWaypoints[segmentEndIdx].dwellMs;
+        remainingMs += static_cast<float>(timelapseIntervalMs + static_cast<unsigned long>(stepDist) + futureDwellMs);
+      }
+    } else {
+      float remainingSegmentsEstimate = static_cast<float>(totalSegments) - completedSegments;
+      if (remainingSegmentsEstimate < 0.0f) {
+        remainingSegmentsEstimate = 0.0f;
+      }
+      remainingMs = remainingSegmentsEstimate * static_cast<float>(timelapseIntervalMs + static_cast<unsigned long>(stepDist) + flowlapseDwellMs);
     }
   }
 
@@ -1201,12 +1247,7 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
     progressPercent = static_cast<uint8_t>((completedSegments * 100.0f) / static_cast<float>(totalSegments));
   }
 
-  unsigned long estimatedPerSegmentMs = timelapseIntervalMs + static_cast<unsigned long>(stepDist) + flowlapseDwellMs;
-  float remainingSegments = static_cast<float>(totalSegments) - completedSegments;
-  if (remainingSegments < 0.0f) {
-    remainingSegments = 0.0f;
-  }
-  unsigned long etaSeconds = static_cast<unsigned long>((remainingSegments * static_cast<float>(estimatedPerSegmentMs)) / 1000.0f);
+  unsigned long etaSeconds = static_cast<unsigned long>(remainingMs / 1000.0f);
 
   Serial.print(F("Flowlapse capture | waypoint "));
   Serial.print(flowlapseTargetWaypointIndex + 1);
