@@ -338,7 +338,6 @@ void showModeIndicator(const String& modeText) {
 
 void showEmergencyStopActive() {
   emergencyStopActive = true;
-  droneModeActive = false;
   errorActive = false;
   modeIndicatorActive = false;
   applyErrorBrightnessSetting();
@@ -354,7 +353,11 @@ void showEmergencyStopActive() {
 
 void showEmergencyStopReleased() {
   emergencyStopActive = false;
-  showOk();
+  if (droneModeActive) {
+    showDroneModeHold();
+  } else {
+    showOk();
+  }
 }
 
 void showDroneModeHold() {
