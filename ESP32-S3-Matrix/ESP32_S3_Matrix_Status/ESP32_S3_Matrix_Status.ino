@@ -406,10 +406,18 @@ void handleStatusLine(const String& line) {
       showDroneModeHold();
       Serial.println("Matrix mode indicator: DRONE (latched pink)");
     } else {
+      bool wasDroneMode = droneModeActive;
       droneModeActive = false;
-      showModeIndicator(modeMsg);
-      Serial.print("Matrix mode indicator: ");
-      Serial.println(modeMsg);
+      if (wasDroneMode) {
+        showOk();
+        Serial.print("Matrix mode transition: DRONE -> ");
+        Serial.print(modeMsg);
+        Serial.println(" (direct to dim OK)");
+      } else {
+        showModeIndicator(modeMsg);
+        Serial.print("Matrix mode indicator: ");
+        Serial.println(modeMsg);
+      }
     }
     return;
   }

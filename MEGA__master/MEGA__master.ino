@@ -238,6 +238,7 @@ constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.25f; // L2 micro-motion multi
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mode with R3
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 constexpr unsigned long DRONE_UI_BROADCAST_INTERVAL_MS = 10;
+constexpr unsigned long DRONE_MODE_EXIT_HOLD_MS = 450;
 
 constexpr uint8_t FLOWLAPSE_MAX_WAYPOINTS = 8;
 constexpr bool FLOWLAPSE_LOOP_CAPTURE = false; // if true, capture auto-restarts after completing
@@ -547,6 +548,9 @@ int8_t lastBroadcastSwing = 0;
 int8_t lastBroadcastLift = 0;
 int8_t lastBroadcastPan = 0;
 int8_t lastBroadcastTilt = 0;
+bool lastBroadcastLeftStickClick = false;
+bool lastBroadcastRightStickClick = false;
+unsigned long r3PressStartMs = 0;
 
 unsigned long lastControllerRetryMs = 0;
 unsigned long lastControllerOkBroadcastMs = 0;
@@ -1165,9 +1169,28 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
   }
 
   uint8_t totalSegments = (flowlapseWaypointCount > 1) ? static_cast<uint8_t>(flowlapseWaypointCount - 1) : 0;
-  uint8_t completedSegments = 0;
+  float completedSegments = 0.0f;
   if (flowlapseCaptureAlignedToFirstWaypoint && flowlapseTargetWaypointIndex > 0) {
-    completedSegments = static_cast<uint8_t>(flowlapseTargetWaypointIndex - 1);
+    completedSegments = static_cast<float>(flowlapseTargetWaypointIndex - 1);
+    if (completedSegments > totalSegments) {
+      completedSegments = totalSegments;
+    }
+  }
+
+  if (flowlapseCaptureAlignedToFirstWaypoint
+      && flowlapseCapturePhase == FLOWLAPSE_CAPTURE_MOVE_ACTIVE
+      && static_cast<unsigned long>(stepDist) > 0UL
+      && totalSegments > 0) {
+    unsigned long moveElapsedMs = now - flowlapseCapturePhaseStartMs;
+    float segmentFraction = static_cast<float>(moveElapsedMs) / static_cast<float>(stepDist);
+    if (segmentFraction < 0.0f) {
+      segmentFraction = 0.0f;
+    }
+    if (segmentFraction > 1.0f) {
+      segmentFraction = 1.0f;
+    }
+
+    completedSegments += segmentFraction;
     if (completedSegments > totalSegments) {
       completedSegments = totalSegments;
     }
@@ -1175,15 +1198,15 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
 
   uint8_t progressPercent = 0;
   if (totalSegments > 0) {
-    progressPercent = static_cast<uint8_t>((static_cast<unsigned long>(completedSegments) * 100UL) / totalSegments);
+    progressPercent = static_cast<uint8_t>((completedSegments * 100.0f) / static_cast<float>(totalSegments));
   }
 
   unsigned long estimatedPerSegmentMs = timelapseIntervalMs + static_cast<unsigned long>(stepDist) + flowlapseDwellMs;
-  unsigned long remainingSegments = 0;
-  if (totalSegments >= completedSegments) {
-    remainingSegments = static_cast<unsigned long>(totalSegments - completedSegments);
+  float remainingSegments = static_cast<float>(totalSegments) - completedSegments;
+  if (remainingSegments < 0.0f) {
+    remainingSegments = 0.0f;
   }
-  unsigned long etaSeconds = (remainingSegments * estimatedPerSegmentMs) / 1000UL;
+  unsigned long etaSeconds = static_cast<unsigned long>((remainingSegments * static_cast<float>(estimatedPerSegmentMs)) / 1000.0f);
 
   Serial.print(F("Flowlapse capture | waypoint "));
   Serial.print(flowlapseTargetWaypointIndex + 1);
@@ -1302,7 +1325,7 @@ void applyFlowlapseAxisTowardTarget(float targetPosition, float& estimatedPositi
   float absError = fabs(signedError);
 
   uint8_t desiredTier = DRONE_SPEED_TIER_STOP;
-  if (absError > FLOWLAPSE_AXIS_MED_ERROR) {
+  if (absError > FLOWLAPSE_AXIS_STOP_TOLERANCE) {
     desiredTier = DRONE_SPEED_TIER_MED;
   }
   if (absError > FLOWLAPSE_AXIS_HIGH_ERROR && FLOWLAPSE_MAX_SPEED_TIER >= DRONE_SPEED_TIER_HIGH) {
@@ -1614,12 +1637,15 @@ int8_t getDroneUiPercentFromCenteredDelta(int centeredDelta, int deadband) {
   return centeredDelta < 0 ? static_cast<int8_t>(-percent) : static_cast<int8_t>(percent);
 }
 
-void broadcastDroneUiStateIfDue(int8_t swingDirection, int8_t liftDirection, int8_t panDirection, int8_t tiltDirection) {
+void broadcastDroneUiStateIfDue(int8_t swingDirection, int8_t liftDirection, int8_t panDirection, int8_t tiltDirection,
+                                bool leftStickClick, bool rightStickClick) {
   unsigned long now = millis();
   bool stateChanged = (swingDirection != lastBroadcastSwing ||
                        liftDirection  != lastBroadcastLift  ||
                        panDirection   != lastBroadcastPan   ||
-                       tiltDirection  != lastBroadcastTilt);
+                       tiltDirection  != lastBroadcastTilt ||
+                       leftStickClick != lastBroadcastLeftStickClick ||
+                       rightStickClick != lastBroadcastRightStickClick);
 
   // Send immediately on change; use interval only as keepalive when idle
   if (!stateChanged && (now - lastDroneUiBroadcastMs < DRONE_UI_BROADCAST_INTERVAL_MS)) {
@@ -1627,17 +1653,21 @@ void broadcastDroneUiStateIfDue(int8_t swingDirection, int8_t liftDirection, int
   }
 
   char stateLine[64];
-  snprintf(stateLine, sizeof(stateLine), "DRONE_STICK:%d,%d,%d,%d",
+  snprintf(stateLine, sizeof(stateLine), "DRONE_STICK:%d,%d,%d,%d,%d,%d",
            static_cast<int>(swingDirection),
            static_cast<int>(liftDirection),
            static_cast<int>(panDirection),
-           static_cast<int>(tiltDirection));
+           static_cast<int>(tiltDirection),
+           leftStickClick ? 1 : 0,
+           rightStickClick ? 1 : 0);
   sendToDisplayESP(stateLine);
   lastDroneUiBroadcastMs = now;
   lastBroadcastSwing = swingDirection;
   lastBroadcastLift  = liftDirection;
   lastBroadcastPan   = panDirection;
   lastBroadcastTilt  = tiltDirection;
+  lastBroadcastLeftStickClick = leftStickClick;
+  lastBroadcastRightStickClick = rightStickClick;
 }
 
 void logDroneSpeedModifierStateIfChanged() {
@@ -2051,12 +2081,14 @@ void handleDroneStickControl() {
   int8_t liftUiPercent = getDroneUiPercentFromCenteredDelta(STICK_CENTER - leftStickYvalue, DRONE_UI_DEADBAND);
   int8_t panUiPercent = getDroneUiPercentFromCenteredDelta(rightStickXvalue - STICK_CENTER, DRONE_UI_DEADBAND);
   int8_t tiltUiPercent = getDroneUiPercentFromCenteredDelta(STICK_CENTER - rightStickYvalue, DRONE_UI_DEADBAND);
+  bool leftStickClick = ps2x.Button(PSB_L3);
+  bool rightStickClick = ps2x.Button(PSB_R3);
 
   logDroneSwingStateIfChanged(swingActive, swingDirection);
   logDroneLiftStateIfChanged(liftActive, liftDirection);
   logDronePanStateIfChanged(panActive, panDirection);
   logDroneTiltStateIfChanged(tiltActive, tiltDirection);
-  broadcastDroneUiStateIfDue(swingUiPercent, liftUiPercent, panUiPercent, tiltUiPercent);
+  broadcastDroneUiStateIfDue(swingUiPercent, liftUiPercent, panUiPercent, tiltUiPercent, leftStickClick, rightStickClick);
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
@@ -3559,6 +3591,10 @@ bool handlePersistedSettingsReset(unsigned long now) {
 
 void handleDroneModeToggle() {
   bool currentR3ButtonState = ps2x.Button(PSB_R3);
+  unsigned long now = millis();
+  if (!lastR3ButtonState && currentR3ButtonState) {
+    r3PressStartMs = now;
+  }
   bool r3JustReleased = lastR3ButtonState && !currentR3ButtonState;
   lastR3ButtonState = currentR3ButtonState;
   
@@ -3567,7 +3603,10 @@ void handleDroneModeToggle() {
   }
 
   if (droneMode) {
-    exitDroneMode();
+    unsigned long heldMs = (now >= r3PressStartMs) ? (now - r3PressStartMs) : 0;
+    if (heldMs >= DRONE_MODE_EXIT_HOLD_MS) {
+      exitDroneMode();
+    }
   } else {
     enterDroneMode();
   }
