@@ -701,19 +701,11 @@ void applySpeedPinsForTier(uint8_t speedTier, uint8_t upPin, uint8_t downPin) {
 
 uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) {
   bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
-  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2);
+  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2) && !precisionModeActive;
 
   // L2 alone activates micro-motion: clamp to near-stop tier with fractional speed
   if (precisionModeActive && !boostModeActive) {
     return DRONE_SPEED_TIER_STOP;  // Return STOP; actual motion is gated by proportional magnitude (stick position)
-  }
-
-  // L2 + R2 together: L2 takes priority (micro-motion mode)
-  if (precisionModeActive && boostModeActive) {
-    if (DRONE_L2_R2_NEUTRAL_MODE) {
-      return DRONE_SPEED_TIER_STOP;
-    }
-    return speedTier;
   }
 
   // R2 alone: boost mode
@@ -1731,9 +1723,15 @@ void broadcastDroneUiStateIfDue(int8_t swingDirection, int8_t liftDirection, int
 
 void logDroneSpeedModifierStateIfChanged() {
   bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
-  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2);
+  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2) && !precisionModeActive;
 
   if (precisionModeActive != lastDronePrecisionModeActive || boostModeActive != lastDroneBoostModeActive) {
+    char modifierLine[48];
+    snprintf(modifierLine, sizeof(modifierLine), "DRONE_MODIFIER:precision=%u,boost=%u",
+             precisionModeActive ? 1U : 0U,
+             boostModeActive ? 1U : 0U);
+    broadcastStatus(modifierLine);
+
     if (DRONE_SERIAL_LOG_ENABLED) {
       Serial.print(F("Drone speed modifier | precision="));
       Serial.print(precisionModeActive ? "ON" : "OFF");
