@@ -104,6 +104,10 @@ static DroneLiftDisplayState drone_lift_display_state = DRONE_LIFT_NEUTRAL;
 static DroneHorizontalDisplayState drone_swing_display_state = DRONE_HORIZ_NEUTRAL;
 static DroneHorizontalDisplayState drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
 static DroneTiltDisplayState drone_tilt_display_state = DRONE_TILT_NEUTRAL;
+static int drone_swing_display_percent = 0;
+static int drone_lift_display_percent = 0;
+static int drone_pan_display_percent = 0;
+static int drone_tilt_display_percent = 0;
 static uint64_t drone_swing_pulse_start_ms = 0;
 static uint64_t drone_lift_pulse_start_ms = 0;
 static uint64_t drone_pan_pulse_start_ms = 0;
@@ -323,20 +327,8 @@ static void update_drone_lift_indicator(void)
         return;
     }
 
-    lv_coord_t x = DRONE_LEFT_STICK_BASE_X;
-    lv_coord_t y = DRONE_LEFT_STICK_BASE_Y;
-
-    if (drone_swing_display_state == DRONE_HORIZ_LEFT) {
-        x = DRONE_LEFT_STICK_BASE_X - DRONE_HORIZ_INDICATOR_OFFSET;
-    } else if (drone_swing_display_state == DRONE_HORIZ_RIGHT) {
-        x = DRONE_LEFT_STICK_BASE_X + DRONE_HORIZ_INDICATOR_OFFSET;
-    }
-
-    if (drone_lift_display_state == DRONE_LIFT_UP) {
-        y = DRONE_LEFT_STICK_BASE_Y - DRONE_LIFT_INDICATOR_OFFSET;
-    } else if (drone_lift_display_state == DRONE_LIFT_DOWN) {
-        y = DRONE_LEFT_STICK_BASE_Y + DRONE_LIFT_INDICATOR_OFFSET;
-    }
+    lv_coord_t x = DRONE_LEFT_STICK_BASE_X + (drone_swing_display_percent * DRONE_HORIZ_INDICATOR_OFFSET) / 100;
+    lv_coord_t y = DRONE_LEFT_STICK_BASE_Y - (drone_lift_display_percent * DRONE_LIFT_INDICATOR_OFFSET) / 100;
 
     lv_obj_set_pos(drone_left_stick, x, y);
 }
@@ -347,22 +339,21 @@ static void update_drone_tilt_indicator(void)
         return;
     }
 
-    lv_coord_t x = DRONE_RIGHT_STICK_BASE_X;
-    lv_coord_t y = DRONE_RIGHT_STICK_BASE_Y;
-
-    if (drone_pan_display_state == DRONE_HORIZ_LEFT) {
-        x = DRONE_RIGHT_STICK_BASE_X - DRONE_HORIZ_INDICATOR_OFFSET;
-    } else if (drone_pan_display_state == DRONE_HORIZ_RIGHT) {
-        x = DRONE_RIGHT_STICK_BASE_X + DRONE_HORIZ_INDICATOR_OFFSET;
-    }
-
-    if (drone_tilt_display_state == DRONE_TILT_UP) {
-        y = DRONE_RIGHT_STICK_BASE_Y - DRONE_LIFT_INDICATOR_OFFSET;
-    } else if (drone_tilt_display_state == DRONE_TILT_DOWN) {
-        y = DRONE_RIGHT_STICK_BASE_Y + DRONE_LIFT_INDICATOR_OFFSET;
-    }
+    lv_coord_t x = DRONE_RIGHT_STICK_BASE_X + (drone_pan_display_percent * DRONE_HORIZ_INDICATOR_OFFSET) / 100;
+    lv_coord_t y = DRONE_RIGHT_STICK_BASE_Y - (drone_tilt_display_percent * DRONE_LIFT_INDICATOR_OFFSET) / 100;
 
     lv_obj_set_pos(drone_right_stick, x, y);
+}
+
+static int clamp_display_percent(int value)
+{
+    if (value > 100) {
+        return 100;
+    }
+    if (value < -100) {
+        return -100;
+    }
+    return value;
 }
 
 static bool parse_drone_stick_payload(const char *payload, int *swing_dir, int *lift_dir, int *pan_dir, int *tilt_dir)
@@ -506,6 +497,10 @@ static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64
             drone_lift_display_state = DRONE_LIFT_NEUTRAL;
             drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
             drone_tilt_display_state = DRONE_TILT_NEUTRAL;
+            drone_swing_display_percent = 0;
+            drone_lift_display_percent = 0;
+            drone_pan_display_percent = 0;
+            drone_tilt_display_percent = 0;
             drone_swing_pulse_start_ms = 0;
             drone_lift_pulse_start_ms = 0;
             drone_pan_pulse_start_ms = 0;
@@ -625,11 +620,21 @@ static void status_uart_task(void *arg)
                     xSemaphoreGive(lvgl_mux);
                 }
             } else if (strncmp(line, "DRONE_STICK:", 12) == 0) {
-                int swing_dir = 0;
-                int lift_dir = 0;
-                int pan_dir = 0;
-                int tilt_dir = 0;
-                if (parse_drone_stick_payload(line + 12, &swing_dir, &lift_dir, &pan_dir, &tilt_dir)) {
+                int swing_value = 0;
+                int lift_value = 0;
+                int pan_value = 0;
+                int tilt_value = 0;
+                if (parse_drone_stick_payload(line + 12, &swing_value, &lift_value, &pan_value, &tilt_value)) {
+                    swing_value = clamp_display_percent(swing_value);
+                    lift_value = clamp_display_percent(lift_value);
+                    pan_value = clamp_display_percent(pan_value);
+                    tilt_value = clamp_display_percent(tilt_value);
+
+                    int swing_dir = (swing_value > 0) - (swing_value < 0);
+                    int lift_dir = (lift_value > 0) - (lift_value < 0);
+                    int pan_dir = (pan_value > 0) - (pan_value < 0);
+                    int tilt_dir = (tilt_value > 0) - (tilt_value < 0);
+
                     if (swing_dir != last_logged_swing_dir
                         || lift_dir != last_logged_lift_dir
                         || pan_dir != last_logged_pan_dir
@@ -646,65 +651,58 @@ static void status_uart_task(void *arg)
                     }
 
                     if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                        if (swing_dir > 0) {
-                            if (drone_swing_display_state == DRONE_HORIZ_NEUTRAL) {
+                        if (swing_value != 0) {
+                            if (drone_swing_display_percent == 0) {
                                 drone_swing_pulse_start_ms = now_ms;
                             }
-                            drone_swing_display_state = DRONE_HORIZ_RIGHT;
-                        } else if (swing_dir < 0) {
-                            if (drone_swing_display_state == DRONE_HORIZ_NEUTRAL) {
-                                drone_swing_pulse_start_ms = now_ms;
-                            }
-                            drone_swing_display_state = DRONE_HORIZ_LEFT;
-                        } else if (drone_swing_display_state != DRONE_HORIZ_NEUTRAL
+                            drone_swing_display_percent = swing_value;
+                        } else if (drone_swing_display_percent != 0
                                    && now_ms - drone_swing_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
-                            drone_swing_display_state = DRONE_HORIZ_NEUTRAL;
+                            drone_swing_display_percent = 0;
                         }
 
-                        if (lift_dir > 0) {
-                            if (drone_lift_display_state == DRONE_LIFT_NEUTRAL) {
+                        if (lift_value != 0) {
+                            if (drone_lift_display_percent == 0) {
                                 drone_lift_pulse_start_ms = now_ms;
                             }
-                            drone_lift_display_state = DRONE_LIFT_UP;
-                        } else if (lift_dir < 0) {
-                            if (drone_lift_display_state == DRONE_LIFT_NEUTRAL) {
-                                drone_lift_pulse_start_ms = now_ms;
-                            }
-                            drone_lift_display_state = DRONE_LIFT_DOWN;
-                        } else if (drone_lift_display_state != DRONE_LIFT_NEUTRAL
+                            drone_lift_display_percent = lift_value;
+                        } else if (drone_lift_display_percent != 0
                                    && now_ms - drone_lift_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
-                            drone_lift_display_state = DRONE_LIFT_NEUTRAL;
+                            drone_lift_display_percent = 0;
                         }
 
-                        if (pan_dir > 0) {
-                            if (drone_pan_display_state == DRONE_HORIZ_NEUTRAL) {
+                        if (pan_value != 0) {
+                            if (drone_pan_display_percent == 0) {
                                 drone_pan_pulse_start_ms = now_ms;
                             }
-                            drone_pan_display_state = DRONE_HORIZ_RIGHT;
-                        } else if (pan_dir < 0) {
-                            if (drone_pan_display_state == DRONE_HORIZ_NEUTRAL) {
-                                drone_pan_pulse_start_ms = now_ms;
-                            }
-                            drone_pan_display_state = DRONE_HORIZ_LEFT;
-                        } else if (drone_pan_display_state != DRONE_HORIZ_NEUTRAL
+                            drone_pan_display_percent = pan_value;
+                        } else if (drone_pan_display_percent != 0
                                    && now_ms - drone_pan_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
-                            drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
+                            drone_pan_display_percent = 0;
                         }
 
-                        if (tilt_dir > 0) {
-                            if (drone_tilt_display_state == DRONE_TILT_NEUTRAL) {
+                        if (tilt_value != 0) {
+                            if (drone_tilt_display_percent == 0) {
                                 drone_tilt_pulse_start_ms = now_ms;
                             }
-                            drone_tilt_display_state = DRONE_TILT_UP;
-                        } else if (tilt_dir < 0) {
-                            if (drone_tilt_display_state == DRONE_TILT_NEUTRAL) {
-                                drone_tilt_pulse_start_ms = now_ms;
-                            }
-                            drone_tilt_display_state = DRONE_TILT_DOWN;
-                        } else if (drone_tilt_display_state != DRONE_TILT_NEUTRAL
+                            drone_tilt_display_percent = tilt_value;
+                        } else if (drone_tilt_display_percent != 0
                                    && now_ms - drone_tilt_pulse_start_ms >= DRONE_STICK_MIN_VISIBLE_PULSE_MS) {
-                            drone_tilt_display_state = DRONE_TILT_NEUTRAL;
+                            drone_tilt_display_percent = 0;
                         }
+
+                        drone_swing_display_state = (drone_swing_display_percent > 0) ? DRONE_HORIZ_RIGHT
+                                                  : (drone_swing_display_percent < 0) ? DRONE_HORIZ_LEFT
+                                                  : DRONE_HORIZ_NEUTRAL;
+                        drone_lift_display_state = (drone_lift_display_percent > 0) ? DRONE_LIFT_UP
+                                                 : (drone_lift_display_percent < 0) ? DRONE_LIFT_DOWN
+                                                 : DRONE_LIFT_NEUTRAL;
+                        drone_pan_display_state = (drone_pan_display_percent > 0) ? DRONE_HORIZ_RIGHT
+                                                : (drone_pan_display_percent < 0) ? DRONE_HORIZ_LEFT
+                                                : DRONE_HORIZ_NEUTRAL;
+                        drone_tilt_display_state = (drone_tilt_display_percent > 0) ? DRONE_TILT_UP
+                                                 : (drone_tilt_display_percent < 0) ? DRONE_TILT_DOWN
+                                                 : DRONE_TILT_NEUTRAL;
 
                         if (current_display_mode == DISPLAY_MODE_DRONE) {
                             update_drone_lift_indicator();

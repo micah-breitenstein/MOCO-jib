@@ -226,6 +226,7 @@ constexpr int DRONE_SWING_DEADBAND = 12;
 constexpr int DRONE_LIFT_DEADBAND = 14;
 constexpr int DRONE_PAN_DEADBAND = 10;
 constexpr int DRONE_TILT_DEADBAND = 10;
+constexpr int DRONE_UI_DEADBAND = 4;
 constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
@@ -1594,6 +1595,25 @@ void logDroneTiltStateIfChanged(bool current, int8_t direction) {
   }
 }
 
+int8_t getDroneUiPercentFromCenteredDelta(int centeredDelta, int deadband) {
+  if (abs(centeredDelta) <= deadband) {
+    return 0;
+  }
+
+  int adjustedMagnitude = abs(centeredDelta) - deadband;
+  int fullScale = DRONE_STICK_MAX_DEFLECTION - deadband;
+  if (fullScale <= 0) {
+    return 0;
+  }
+
+  int percent = (adjustedMagnitude * 100) / fullScale;
+  if (percent > 100) {
+    percent = 100;
+  }
+
+  return centeredDelta < 0 ? static_cast<int8_t>(-percent) : static_cast<int8_t>(percent);
+}
+
 void broadcastDroneUiStateIfDue(int8_t swingDirection, int8_t liftDirection, int8_t panDirection, int8_t tiltDirection) {
   unsigned long now = millis();
   bool stateChanged = (swingDirection != lastBroadcastSwing ||
@@ -2027,11 +2047,16 @@ void handleDroneStickControl() {
     tiltDirection = -1;
   }
 
+  int8_t swingUiPercent = getDroneUiPercentFromCenteredDelta(leftStickXvalue - STICK_CENTER, DRONE_UI_DEADBAND);
+  int8_t liftUiPercent = getDroneUiPercentFromCenteredDelta(STICK_CENTER - leftStickYvalue, DRONE_UI_DEADBAND);
+  int8_t panUiPercent = getDroneUiPercentFromCenteredDelta(rightStickXvalue - STICK_CENTER, DRONE_UI_DEADBAND);
+  int8_t tiltUiPercent = getDroneUiPercentFromCenteredDelta(STICK_CENTER - rightStickYvalue, DRONE_UI_DEADBAND);
+
   logDroneSwingStateIfChanged(swingActive, swingDirection);
   logDroneLiftStateIfChanged(liftActive, liftDirection);
   logDronePanStateIfChanged(panActive, panDirection);
   logDroneTiltStateIfChanged(tiltActive, tiltDirection);
-  broadcastDroneUiStateIfDue(swingDirection, liftDirection, panDirection, tiltDirection);
+  broadcastDroneUiStateIfDue(swingUiPercent, liftUiPercent, panUiPercent, tiltUiPercent);
 
   // Disable trim-only speed pins in drone mode
   digitalWrite(panSpeedUpOnly, LOW);
