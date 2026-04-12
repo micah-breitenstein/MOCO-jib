@@ -108,6 +108,10 @@ static uint64_t drone_swing_pulse_start_ms = 0;
 static uint64_t drone_lift_pulse_start_ms = 0;
 static uint64_t drone_pan_pulse_start_ms = 0;
 static uint64_t drone_tilt_pulse_start_ms = 0;
+static int last_logged_swing_dir = 0;
+static int last_logged_lift_dir = 0;
+static int last_logged_pan_dir = 0;
+static int last_logged_tilt_dir = 0;
 
 #define DRONE_LEFT_STICK_BASE_X 145
 #define DRONE_LEFT_STICK_BASE_Y 265
@@ -394,6 +398,28 @@ static bool parse_drone_stick_payload(const char *payload, int *swing_dir, int *
     return true;
 }
 
+static const char *drone_horiz_dir_to_text(int dir)
+{
+    if (dir > 0) {
+        return "RIGHT";
+    }
+    if (dir < 0) {
+        return "LEFT";
+    }
+    return "CENTER";
+}
+
+static const char *drone_vert_dir_to_text(int dir)
+{
+    if (dir > 0) {
+        return "UP";
+    }
+    if (dir < 0) {
+        return "DOWN";
+    }
+    return "CENTER";
+}
+
 static void set_drone_mode_visible(bool visible)
 {
     if (visible) {
@@ -604,6 +630,21 @@ static void status_uart_task(void *arg)
                 int pan_dir = 0;
                 int tilt_dir = 0;
                 if (parse_drone_stick_payload(line + 12, &swing_dir, &lift_dir, &pan_dir, &tilt_dir)) {
+                    if (swing_dir != last_logged_swing_dir
+                        || lift_dir != last_logged_lift_dir
+                        || pan_dir != last_logged_pan_dir
+                        || tilt_dir != last_logged_tilt_dir) {
+                        ESP_LOGI(TAG, "DRONE dir | swing=%s lift=%s pan=%s tilt=%s",
+                                 drone_horiz_dir_to_text(swing_dir),
+                                 drone_vert_dir_to_text(lift_dir),
+                                 drone_horiz_dir_to_text(pan_dir),
+                                 drone_vert_dir_to_text(tilt_dir));
+                        last_logged_swing_dir = swing_dir;
+                        last_logged_lift_dir = lift_dir;
+                        last_logged_pan_dir = pan_dir;
+                        last_logged_tilt_dir = tilt_dir;
+                    }
+
                     if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                         if (swing_dir > 0) {
                             if (drone_swing_display_state == DRONE_HORIZ_NEUTRAL) {
@@ -671,70 +712,6 @@ static void status_uart_task(void *arg)
                         }
                         xSemaphoreGive(lvgl_mux);
                     }
-                }
-            } else if (strncmp(line, "DRONE_LIFT:", 11) == 0) {
-                const char *lift_state = line + 11;
-                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    if (strncmp(lift_state, "UP", 2) == 0) {
-                        drone_lift_display_state = DRONE_LIFT_UP;
-                    } else if (strncmp(lift_state, "DOWN", 4) == 0) {
-                        drone_lift_display_state = DRONE_LIFT_DOWN;
-                    } else {
-                        drone_lift_display_state = DRONE_LIFT_NEUTRAL;
-                    }
-
-                    if (current_display_mode == DISPLAY_MODE_DRONE) {
-                        update_drone_lift_indicator();
-                    }
-                    xSemaphoreGive(lvgl_mux);
-                }
-            } else if (strncmp(line, "DRONE_SWING:", 12) == 0) {
-                const char *swing_state = line + 12;
-                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    if (strncmp(swing_state, "LEFT", 4) == 0) {
-                        drone_swing_display_state = DRONE_HORIZ_LEFT;
-                    } else if (strncmp(swing_state, "RIGHT", 5) == 0) {
-                        drone_swing_display_state = DRONE_HORIZ_RIGHT;
-                    } else {
-                        drone_swing_display_state = DRONE_HORIZ_NEUTRAL;
-                    }
-
-                    if (current_display_mode == DISPLAY_MODE_DRONE) {
-                        update_drone_lift_indicator();
-                    }
-                    xSemaphoreGive(lvgl_mux);
-                }
-            } else if (strncmp(line, "DRONE_TILT:", 11) == 0) {
-                const char *tilt_state = line + 11;
-                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    if (strncmp(tilt_state, "UP", 2) == 0) {
-                        drone_tilt_display_state = DRONE_TILT_UP;
-                    } else if (strncmp(tilt_state, "DOWN", 4) == 0) {
-                        drone_tilt_display_state = DRONE_TILT_DOWN;
-                    } else {
-                        drone_tilt_display_state = DRONE_TILT_NEUTRAL;
-                    }
-
-                    if (current_display_mode == DISPLAY_MODE_DRONE) {
-                        update_drone_tilt_indicator();
-                    }
-                    xSemaphoreGive(lvgl_mux);
-                }
-            } else if (strncmp(line, "DRONE_PAN:", 10) == 0) {
-                const char *pan_state = line + 10;
-                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    if (strncmp(pan_state, "LEFT", 4) == 0) {
-                        drone_pan_display_state = DRONE_HORIZ_LEFT;
-                    } else if (strncmp(pan_state, "RIGHT", 5) == 0) {
-                        drone_pan_display_state = DRONE_HORIZ_RIGHT;
-                    } else {
-                        drone_pan_display_state = DRONE_HORIZ_NEUTRAL;
-                    }
-
-                    if (current_display_mode == DISPLAY_MODE_DRONE) {
-                        update_drone_tilt_indicator();
-                    }
-                    xSemaphoreGive(lvgl_mux);
                 }
             }
 
