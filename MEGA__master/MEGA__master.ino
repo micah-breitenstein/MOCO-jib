@@ -615,6 +615,14 @@ void broadcastStatus(const char* msg) {
   sendToRGBESP(msg);
 }
 
+void broadcastFlowlapseWaypointCount() {
+  char waypointCountLine[48];
+  snprintf(waypointCountLine, sizeof(waypointCountLine), "WAYPOINT_COUNT:%u/%u",
+           static_cast<unsigned int>(flowlapseWaypointCount),
+           static_cast<unsigned int>(FLOWLAPSE_MAX_WAYPOINTS));
+  broadcastStatus(waypointCountLine);
+}
+
 void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin) {
   if (ps2x.Button(buttonCode)) {
     digitalWrite(axis1Pin, HIGH);
@@ -1110,6 +1118,8 @@ void resetFlowlapseSession(bool resetEstimatedPosition) {
     flowlapseCurrentPanPos = 0.0f;
     flowlapseCurrentTiltPos = 0.0f;
   }
+
+  broadcastFlowlapseWaypointCount();
 }
 
 const char* getFlowlapseCapturePhaseLabel(FlowlapseCapturePhase phase) {
@@ -1154,17 +1164,16 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
     unsigned long remainingFrames = (totalFrames >= completedFrames) ? static_cast<unsigned long>(totalFrames - completedFrames) : 0;
     unsigned long etaSeconds = (remainingFrames * estimatedPerFrameMs) / 1000UL;
 
-    Serial.print(F("Flowlapse capture | frame "));
-    Serial.print(completedFrames);
-    Serial.print(F("/"));
-    Serial.print(totalFrames);
-    Serial.print(F(" phase="));
-    Serial.print(getFlowlapseCapturePhaseLabel(flowlapseCapturePhase));
-    Serial.print(F(" progress="));
-    Serial.print(progressPercent);
-    Serial.print(F("% eta="));
-    Serial.print(etaSeconds);
-    Serial.println(F("s"));
+    char captureLine[128];
+    snprintf(captureLine, sizeof(captureLine),
+             "Flowlapse capture | frame %u/%u phase=%s progress=%u%% eta=%lus",
+             static_cast<unsigned int>(completedFrames),
+             static_cast<unsigned int>(totalFrames),
+             getFlowlapseCapturePhaseLabel(flowlapseCapturePhase),
+             static_cast<unsigned int>(progressPercent),
+             etaSeconds);
+    Serial.println(captureLine);
+    broadcastStatus(captureLine);
     return;
   }
 
@@ -1249,17 +1258,16 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
 
   unsigned long etaSeconds = static_cast<unsigned long>(remainingMs / 1000.0f);
 
-  Serial.print(F("Flowlapse capture | waypoint "));
-  Serial.print(flowlapseTargetWaypointIndex + 1);
-  Serial.print(F("/"));
-  Serial.print(flowlapseWaypointCount);
-  Serial.print(F(" phase="));
-  Serial.print(getFlowlapseCapturePhaseLabel(flowlapseCapturePhase));
-  Serial.print(F(" progress="));
-  Serial.print(progressPercent);
-  Serial.print(F("% eta="));
-  Serial.print(etaSeconds);
-  Serial.println(F("s"));
+  char captureLine[128];
+  snprintf(captureLine, sizeof(captureLine),
+           "Flowlapse capture | waypoint %u/%u phase=%s progress=%u%% eta=%lus",
+           static_cast<unsigned int>(flowlapseTargetWaypointIndex + 1),
+           static_cast<unsigned int>(flowlapseWaypointCount),
+           getFlowlapseCapturePhaseLabel(flowlapseCapturePhase),
+           static_cast<unsigned int>(progressPercent),
+           etaSeconds);
+  Serial.println(captureLine);
+  broadcastStatus(captureLine);
 }
 
 float getFlowlapseDeltaSeconds(unsigned long now) {
@@ -1330,10 +1338,15 @@ void captureFlowlapseWaypoint() {
   invalidateFlowlapseArcLengthLut();
 
   startFeedbackRumble(FLOWLAPSE_WAYPOINT_RUMBLE_PULSES, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-  Serial.print(F("Flowlapse: waypoint recorded "));
-  Serial.print(flowlapseWaypointCount);
-  Serial.print(F("/"));
-  Serial.println(FLOWLAPSE_MAX_WAYPOINTS);
+  
+  char waypointLine[64];
+  snprintf(waypointLine, sizeof(waypointLine), "Flowlapse: waypoint recorded %u/%u",
+           static_cast<unsigned int>(flowlapseWaypointCount),
+           static_cast<unsigned int>(FLOWLAPSE_MAX_WAYPOINTS));
+  Serial.println(waypointLine);
+  broadcastStatus(waypointLine);
+  broadcastFlowlapseWaypointCount();
+  
   if (DRONE_SERIAL_LOG_ENABLED) {
     Serial.print(F("  swing="));
     Serial.print(waypoint.swing, 2);
@@ -1470,6 +1483,7 @@ void startFlowlapsePreview() {
     Serial.println(previewSpacing, 1);
   } else {
     Serial.println(F("Flowlapse: preview started."));
+    broadcastStatus("Flowlapse: preview started.");
   }
 
   resetFlowlapseAxisTierState(millis());
@@ -1532,6 +1546,8 @@ void enterDroneMode() {
   droneMode = true;
   droneLastActivityMs = millis();
   Serial.println(F("DRONE MODE ACTIVATED - timelapse/bounce locked out"));
+  broadcastStatus("MODE:DRONE");
+  broadcastStatus("DRONE MODE ACTIVATED - timelapse/bounce locked out");
   Serial.println(F("Flowlapse: recording armed. L3=record waypoint, SELECT=stop record, L1+R1=wipe, L2+R2=undo last."));
   Serial.println(F("Flowlapse: START+SELECT+TRIANGLE toggles frame-count preview/capture mode."));
   Serial.println(F("Flowlapse: START+SELECT+CIRCLE toggles ping-pong loop mode."));
@@ -1552,6 +1568,8 @@ void exitDroneMode() {
   droneLastActivityMs = 0;
   stopAllMotors();
   Serial.println(F("DRONE MODE DEACTIVATED"));
+  broadcastStatus("MODE:MANUAL");
+  broadcastStatus("DRONE MODE DEACTIVATED");
   startDroneModeExitRumbleFeedback();
 }
 
@@ -2147,6 +2165,7 @@ void completeFlowlapsePreview() {
   flowlapsePreviewFrameTarget = 0;
   flowlapsePreviewFrameStopIndex = 0;
   Serial.println(F("Flowlapse: preview complete. Press START to run capture."));
+  broadcastStatus("Flowlapse: preview complete. Press START to run capture.");
 }
 
 void completeFlowlapseCapture(unsigned long now) {
@@ -2193,19 +2212,30 @@ void completeFlowlapseCapture(unsigned long now) {
     bool shouldReturnToFirst = FLOWLAPSE_RETURN_TO_FIRST_WAYPOINT_ON_COMPLETE
                             && flowlapseWaypointCount > 0
                             && flowlapseTargetWaypointIndex != 0;
+    const char* finalProgressMsg = "Flowlapse capture | progress=100% eta=0s";
     if (shouldReturnToFirst) {
       flowlapseState = FLOWLAPSE_STATE_JOG_RUNNING;
       flowlapseJogIndex = 0;
       resetFlowlapseAxisTierState(now);
-      Serial.println(F("Flowlapse: capture complete. Returning to waypoint 1."));
+      Serial.println(finalProgressMsg);
+      broadcastStatus(finalProgressMsg);
+      const char* completionMsg = "Flowlapse: capture complete. Returning to waypoint 1.";
+      Serial.println(completionMsg);
+      broadcastStatus(completionMsg);
+      broadcastStatus("MODE:DRONE");
     } else {
-      flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
+      flowlapseState = FLOWLAPSE_STATE_RECORDING;
       flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
       flowlapseCapturePhaseStartMs = 0;
       flowlapseCaptureAlignedToFirstWaypoint = false;
       flowlapseTargetWaypointIndex = 0;
       flowlapseCaptureDirection = 1;
-      Serial.println(F("Flowlapse: capture complete."));
+      Serial.println(finalProgressMsg);
+      broadcastStatus(finalProgressMsg);
+      const char* completionMsg = "Flowlapse: capture complete.";
+      Serial.println(completionMsg);
+      broadcastStatus(completionMsg);
+      broadcastStatus("MODE:DRONE");
     }
   }
 }
@@ -2283,6 +2313,11 @@ void handleFlowlapsePreviewStep(unsigned long now, float deltaSeconds) {
     flowlapsePreviewHoldUntilMs = now + FLOWLAPSE_PREVIEW_POINT_HOLD_MS;
     Serial.print(F("Flowlapse preview reached waypoint "));
     Serial.println(flowlapseTargetWaypointIndex + 1);
+    char previewWaypointLine[48];
+    snprintf(previewWaypointLine, sizeof(previewWaypointLine), "PREVIEW_WAYPOINT:%u/%u",
+             static_cast<unsigned int>(flowlapseTargetWaypointIndex + 1),
+             static_cast<unsigned int>(flowlapseWaypointCount));
+    broadcastStatus(previewWaypointLine);
   }
 }
 
@@ -2642,6 +2677,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
                           FLOWLAPSE_WIPE_RUMBLE_ON_MS,
                           FLOWLAPSE_WIPE_RUMBLE_TOTAL_MS);
       Serial.println(F("Flowlapse: full course wiped. Recording re-armed."));
+      broadcastStatus("Flowlapse: full course wiped. Recording re-armed.");
     }
 
     droneLastActivityMs = now;
@@ -2663,6 +2699,8 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       flowlapseWaypointCount--;
       invalidateFlowlapseArcLengthLut();
       startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+
+      broadcastFlowlapseWaypointCount();
 
       if (flowlapseWaypointCount < 2) {
         flowlapseState = FLOWLAPSE_STATE_RECORDING;
@@ -2711,6 +2749,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       stopAllMotors();
       startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
       Serial.println(F("Flowlapse: L3 hold reset — course cleared, recording re-armed."));
+      broadcastStatus("Flowlapse: L3 hold reset - course cleared, recording re-armed.");
       flowlapseL3HoldActive = false;
       flowlapseL3HoldStartMs = 0;
       suppressDroneNextL3Release = true;
@@ -2841,6 +2880,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         stopAllMotors();
         startFeedbackRumble(flowlapseWaypointCount, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
         Serial.println(F("Flowlapse: recording stopped. Press SELECT again for preview."));
+        broadcastStatus("Flowlapse: recording stopped. Press SELECT again for preview.");
       }
       droneLastActivityMs = now;
     } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
@@ -2867,13 +2907,17 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         stopAllMotors();
         flowlapseState = FLOWLAPSE_STATE_CAPTURE_PAUSED;
         startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-        Serial.println(F("Flowlapse: capture paused. Press START again to resume."));
+        const char* pauseMsg = "Flowlapse: capture paused. Press START again to resume.";
+        Serial.println(pauseMsg);
+        broadcastStatus(pauseMsg);
         droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED) {
         // Resume capture
         flowlapseState = FLOWLAPSE_STATE_CAPTURE_RUNNING;
         startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
-        Serial.println(F("Flowlapse: capture resumed."));
+        const char* resumeMsg = "Flowlapse: capture resumed.";
+        Serial.println(resumeMsg);
+        broadcastStatus(resumeMsg);
         droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
         startFlowlapseCapture(now);
@@ -2930,16 +2974,18 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
       applyFlowlapseMotionTowardWaypoint(jogTarget, now, deltaSeconds);
       if (isFlowlapseTargetReached(jogTarget)) {
         stopAllMotors();
-        flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
+        flowlapseState = FLOWLAPSE_STATE_RECORDING;
         startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
         Serial.print(F("Flowlapse: jog reached waypoint "));
         Serial.print(flowlapseJogIndex + 1);
         Serial.print(F("/"));
         Serial.println(flowlapseWaypointCount);
+        broadcastStatus("MODE:DRONE");
       }
     } else {
       stopAllMotors();
-      flowlapseState = FLOWLAPSE_STATE_READY_FOR_PREVIEW;
+      flowlapseState = FLOWLAPSE_STATE_RECORDING;
+      broadcastStatus("MODE:DRONE");
     }
     droneLastActivityMs = now;
     return;

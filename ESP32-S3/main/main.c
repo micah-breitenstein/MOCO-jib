@@ -49,7 +49,7 @@ static const char *TAG = "RIG";
 #define STATUS_UART_RX_PIN GPIO_NUM_40
 #define STATUS_UART_TX_PIN GPIO_NUM_41
 #define STATUS_UART_BAUDRATE 115200
-#define STATUS_UART_BUF_SIZE 512
+#define STATUS_UART_BUF_SIZE 2048
 #define STATUS_SIGNAL_TIMEOUT_MS 3500
 #define MODE_MESSAGE_DURATION_MS 1800
 #define DRONE_STICK_MIN_VISIBLE_PULSE_MS 20
@@ -92,7 +92,9 @@ static lv_obj_t *drone_left_stick = NULL;
 static lv_obj_t *drone_right_stick = NULL;
 static lv_obj_t *drone_center_line = NULL;
 static lv_obj_t *drone_flowlapse_bar = NULL;
+static lv_obj_t *drone_flowlapse_fill = NULL;
 static lv_obj_t *drone_flowlapse_label = NULL;
+static lv_obj_t *drone_flowlapse_waypoint_label = NULL;
 static bool status_error_active = false;
 static bool mode_message_active = false;
 static uint64_t mode_message_until_ms = 0;
@@ -121,7 +123,11 @@ static int last_logged_lift_dir = 0;
 static int last_logged_pan_dir = 0;
 static int last_logged_tilt_dir = 0;
 static bool flowlapse_active = false;
+static int flowlapse_progress_percent = 0;
 static char flowlapse_status_text[48] = "FLOWLAPSE READY";
+static int flowlapse_waypoint_current = 0;
+static int flowlapse_waypoint_total = 0;
+static bool flowlapse_waypoint_indicator_active = false;
 
 #define DRONE_LEFT_STICK_BASE_X 145
 #define DRONE_LEFT_STICK_BASE_Y 265
@@ -376,6 +382,26 @@ static void update_drone_stick_colors(void)
     }
 }
 
+static void set_flowlapse_progress(int progress_percent)
+{
+    if (progress_percent < 0) {
+        progress_percent = 0;
+    } else if (progress_percent > 100) {
+        progress_percent = 100;
+    }
+
+    if (progress_percent >= 99) {
+        progress_percent = 100;
+    }
+    
+    flowlapse_progress_percent = progress_percent;
+    
+    if (drone_flowlapse_fill) {
+        int fill_width = ((LCD_H_RES - 120 - 6) * progress_percent) / 100;
+        lv_obj_set_width(drone_flowlapse_fill, fill_width);
+    }
+}
+
 static void set_flowlapse_status(bool active, const char *text)
 {
     flowlapse_active = active;
@@ -397,6 +423,23 @@ static void set_flowlapse_status(bool active, const char *text)
         show ? lv_obj_clear_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN)
              : lv_obj_add_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN);
     }
+    if (drone_flowlapse_waypoint_label) {
+        (show && flowlapse_waypoint_indicator_active)
+            ? lv_obj_clear_flag(drone_flowlapse_waypoint_label, LV_OBJ_FLAG_HIDDEN)
+            : lv_obj_add_flag(drone_flowlapse_waypoint_label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void set_flowlapse_waypoint_count(int current, int total)
+{
+    flowlapse_waypoint_current = current;
+    flowlapse_waypoint_total = total;
+
+    if (drone_flowlapse_waypoint_label) {
+        char waypoint_text[16];
+        snprintf(waypoint_text, sizeof(waypoint_text), "%d/%d", current, total);
+        lv_label_set_text(drone_flowlapse_waypoint_label, waypoint_text);
+    }
 }
 
 static bool parse_drone_stick_payload(const char *payload, int *swing_dir, int *lift_dir, int *pan_dir, int *tilt_dir,
@@ -407,56 +450,25 @@ static bool parse_drone_stick_payload(const char *payload, int *swing_dir, int *
         return false;
     }
 
-    char *end_ptr = NULL;
-    long values[4];
-    const char *cursor = payload;
+    int swing = 0;
+    int lift = 0;
+    int pan = 0;
+    int tilt = 0;
+    int left_click = 0;
+    int right_click = 0;
 
-    for (int i = 0; i < 4; ++i) {
-        values[i] = strtol(cursor, &end_ptr, 10);
-        if (cursor == end_ptr) {
-            return false;
-        }
-
-        if (i < 3) {
-            if (*end_ptr != ',') {
-                return false;
-            }
-            cursor = end_ptr + 1;
-        } else if (*end_ptr != '\0' && *end_ptr != ',') {
-            return false;
-        }
+    int parsed = sscanf(payload, "%d,%d,%d,%d,%d,%d",
+                        &swing, &lift, &pan, &tilt, &left_click, &right_click);
+    if (parsed < 4) {
+        return false;
     }
 
-    *swing_dir = (int)values[0];
-    *lift_dir = (int)values[1];
-    *pan_dir = (int)values[2];
-    *tilt_dir = (int)values[3];
-
-    *left_stick_click = false;
-    *right_stick_click = false;
-
-    if (*end_ptr == ',') {
-        char *left_end_ptr = NULL;
-        long left_click = strtol(end_ptr + 1, &left_end_ptr, 10);
-        if ((end_ptr + 1) == left_end_ptr) {
-            return false;
-        }
-        *left_stick_click = (left_click != 0);
-        end_ptr = left_end_ptr;
-
-        if (*end_ptr != ',') {
-            return false;
-        }
-
-        char *right_end_ptr = NULL;
-        long right_click = strtol(end_ptr + 1, &right_end_ptr, 10);
-        if ((end_ptr + 1) == right_end_ptr || *right_end_ptr != '\0') {
-            return false;
-        }
-        *right_stick_click = (right_click != 0);
-        end_ptr = right_end_ptr;
-    }
-
+    *swing_dir = swing;
+    *lift_dir = lift;
+    *pan_dir = pan;
+    *tilt_dir = tilt;
+    *left_stick_click = (parsed >= 5) ? (left_click != 0) : false;
+    *right_stick_click = (parsed >= 6) ? (right_click != 0) : false;
     return true;
 }
 
@@ -525,6 +537,10 @@ static void set_drone_mode_visible(bool visible)
         (visible && flowlapse_active) ? lv_obj_clear_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN)
                                       : lv_obj_add_flag(drone_flowlapse_label, LV_OBJ_FLAG_HIDDEN);
     }
+    if (drone_flowlapse_waypoint_label) {
+        (visible && flowlapse_waypoint_indicator_active) ? lv_obj_clear_flag(drone_flowlapse_waypoint_label, LV_OBJ_FLAG_HIDDEN)
+                                                         : lv_obj_add_flag(drone_flowlapse_waypoint_label, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 static const char *display_mode_to_text(DisplayMode mode)
@@ -591,8 +607,9 @@ static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64
             update_drone_lift_indicator();
             update_drone_tilt_indicator();
             update_drone_stick_colors();
+            set_flowlapse_status(false, "FLOWLAPSE READY");
+            set_flowlapse_progress(0);
         }
-        set_flowlapse_status(true, "FLOWLAPSE READY");
         set_drone_mode_visible(true);
         return;
     }
@@ -687,8 +704,8 @@ static void status_uart_task(void *arg)
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
-            } else if (strncmp(line, "MODE:", 5) == 0) {
-                const char *mode_msg = line + 5;
+            } else if (strstr(line, "MODE:") != NULL) {
+                const char *mode_msg = strstr(line, "MODE:") + 5;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     if (!emergency_stop_active) {
                         if (strncmp(mode_msg, "MANUAL", 6) == 0) {
@@ -705,40 +722,153 @@ static void status_uart_task(void *arg)
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
-            } else if (strncmp(line, "DRONE MODE DEACTIVATED", 21) == 0) {
+            } else if (strstr(line, "DRONE MODE DEACTIVATED") != NULL) {
+                                    flowlapse_waypoint_indicator_active = false;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     set_flowlapse_status(false, "FLOWLAPSE READY");
+                    set_flowlapse_progress(0);
+                    set_flowlapse_waypoint_count(0, 0);
                     xSemaphoreGive(lvgl_mux);
                 }
-            } else if (strncmp(line, "Flowlapse:", 10) == 0 || strncmp(line, "Flowlapse capture |", 19) == 0) {
+            } else if (strstr(line, "DRONE MODE ACTIVATED") != NULL) {
+                                    flowlapse_waypoint_indicator_active = false;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    if (strstr(line, "recording armed") != NULL) {
-                        set_flowlapse_status(true, "FLOWLAPSE READY");
-                    } else if (strstr(line, "preview started") != NULL) {
-                        set_flowlapse_status(true, "FLOWLAPSE PREVIEW");
-                    } else if (strstr(line, "capture run started") != NULL) {
-                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
-                    } else if (strstr(line, "capture paused") != NULL) {
-                        set_flowlapse_status(true, "FLOWLAPSE PAUSED");
-                    } else if (strstr(line, "capture resumed") != NULL) {
-                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
-                    } else if (strstr(line, "capture complete") != NULL) {
-                        set_flowlapse_status(true, "FLOWLAPSE READY");
-                    } else if (strstr(line, "canceled") != NULL) {
-                        set_flowlapse_status(false, "FLOWLAPSE READY");
-                    } else if (strncmp(line, "Flowlapse capture |", 19) == 0) {
-                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
+                    switch_display_mode(DISPLAY_MODE_DRONE, NULL, now_ms);
+                    set_flowlapse_status(false, "FLOWLAPSE READY");
+                    set_flowlapse_progress(0);
+                    set_flowlapse_waypoint_count(0, 0);
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strstr(line, "progress=") != NULL && strstr(line, "eta=") != NULL) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    int percent = 0;
+                    int eta_sec = 0;
+                    int waypoint_current = 0;
+                    int waypoint_total = 0;
+                    char *progress_ptr = strstr(line, "progress=");
+                    char *eta_ptr = strstr(line, "eta=");
+                    char *waypoint_ptr = strstr(line, "waypoint ");
+                    
+                    if (progress_ptr && eta_ptr && sscanf(progress_ptr, "progress=%d%%", &percent) == 1 && sscanf(eta_ptr, "eta=%ds", &eta_sec) == 1) {
+                        set_flowlapse_progress(percent);
+                        char status_buf[48];
+                        snprintf(status_buf, sizeof(status_buf), "%d%% ETA %ds", percent, eta_sec);
+                        set_flowlapse_status(true, status_buf);
+                        
+                        if (waypoint_ptr && sscanf(waypoint_ptr, "waypoint %d/%d", &waypoint_current, &waypoint_total) == 2) {
+                            ESP_LOGI(TAG, "Parsed waypoint: %d/%d from line", waypoint_current, waypoint_total);
+                            set_flowlapse_waypoint_count(waypoint_current, waypoint_total);
+                        } else {
+                            ESP_LOGI(TAG, "Failed to parse waypoint from: %s", waypoint_ptr ? waypoint_ptr : "NULL");
+                        }
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
-            } else if (strncmp(line, "DRONE_STICK:", 12) == 0) {
+            } else if (strstr(line, "WAYPOINT_COUNT:") != NULL) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    int waypoint_current = 0;
+                    int waypoint_total = 0;
+                    if (sscanf(line, "WAYPOINT_COUNT:%d/%d", &waypoint_current, &waypoint_total) == 2) {
+                        set_flowlapse_waypoint_count(waypoint_current, waypoint_total);
+                        flowlapse_waypoint_indicator_active = (waypoint_current > 0);
+                        if (!flowlapse_waypoint_indicator_active) {
+                            set_flowlapse_status(true, "FLOWLAPSE READY");
+                        }
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strstr(line, "PREVIEW_WAYPOINT:") != NULL) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    int waypoint_current = 0;
+                    int waypoint_total = 0;
+                    if (sscanf(line, "PREVIEW_WAYPOINT:%d/%d", &waypoint_current, &waypoint_total) == 2) {
+                        flowlapse_waypoint_indicator_active = true;
+                        set_flowlapse_waypoint_count(waypoint_current, waypoint_total);
+                        set_flowlapse_status(true, "FLOWLAPSE PREVIEW");
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strstr(line, "waypoint recorded") != NULL) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    int waypoint_current = 0;
+                    int waypoint_total = 0;
+                    if (sscanf(line, "Flowlapse: waypoint recorded %d/%d", &waypoint_current, &waypoint_total) == 2) {
+                        flowlapse_waypoint_indicator_active = true;
+                        set_flowlapse_waypoint_count(waypoint_current, waypoint_total);
+                        if (current_display_mode == DISPLAY_MODE_DRONE) {
+                            lv_obj_clear_flag(drone_flowlapse_waypoint_label, LV_OBJ_FLAG_HIDDEN);
+                        }
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strstr(line, "Flowlapse:") != NULL
+                       || strstr(line, "recording armed") != NULL
+                       || strstr(line, "preview started") != NULL
+                       || strstr(line, "capture run started") != NULL
+                       || strstr(line, "capture paused") != NULL
+                       || strstr(line, "capture resumed") != NULL
+                       || strstr(line, "capture complete") != NULL
+                       || strstr(line, "canceled") != NULL) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    int percent = 0;
+                    int eta_sec = 0;
+                    if (sscanf(line, "Flowlapse: %d%% ETA %ds", &percent, &eta_sec) == 2) {
+                        set_flowlapse_progress(percent);
+                        char status_buf[48];
+                        snprintf(status_buf, sizeof(status_buf), "%d%% ETA %ds", percent, eta_sec);
+                        set_flowlapse_status(true, status_buf);
+                    } else if (strstr(line, "recording stopped. Press SELECT again for preview") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE READY");
+                    } else if (strstr(line, "recording armed") != NULL) {
+                        set_flowlapse_status(true, "FLOWLAPSE READY");
+                    } else if (strstr(line, "full course wiped") != NULL
+                               || strstr(line, "course cleared") != NULL
+                               || strstr(line, "recording re-armed") != NULL) {
+                        flowlapse_waypoint_indicator_active = false;
+                        set_flowlapse_waypoint_count(0, 0);
+                        set_flowlapse_status(true, "FLOWLAPSE READY");
+                    } else if (strstr(line, "preview started") != NULL) {
+                        flowlapse_waypoint_indicator_active = true;
+                        set_flowlapse_status(true, "FLOWLAPSE PREVIEW");
+                    } else if (strstr(line, "preview complete") != NULL) {
+                        set_flowlapse_status(true, "PREVIEW COMPLETE press START to run capture");
+                    } else if (strstr(line, "capture run started") != NULL) {
+                        flowlapse_waypoint_indicator_active = false;
+                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
+                        set_flowlapse_progress(0);
+                    } else if (strstr(line, "capture paused") != NULL) {
+                        flowlapse_waypoint_indicator_active = false;
+                        set_flowlapse_status(true, "FLOWLAPSE PAUSED");
+                    } else if (strstr(line, "capture resumed") != NULL) {
+                        flowlapse_waypoint_indicator_active = false;
+                        set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
+                    } else if (strstr(line, "capture complete") != NULL) {
+                        flowlapse_waypoint_indicator_active = false;
+                        set_flowlapse_progress(100);
+                        switch_display_mode(DISPLAY_MODE_DRONE, NULL, now_ms);
+                        set_flowlapse_status(false, "FLOWLAPSE READY");
+                        set_flowlapse_progress(0);
+                        set_flowlapse_waypoint_count(0, 0);
+                        set_drone_mode_visible(true);
+                    } else if (strstr(line, "canceled") != NULL) {
+                        flowlapse_waypoint_indicator_active = false;
+                        switch_display_mode(DISPLAY_MODE_DRONE, NULL, now_ms);
+                        set_flowlapse_status(false, "FLOWLAPSE READY");
+                        set_flowlapse_progress(0);
+                        set_flowlapse_waypoint_count(0, 0);
+                        set_drone_mode_visible(true);
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strstr(line, "DRONE_STICK:") != NULL) {
+                const char *drone_stick_payload = strstr(line, "DRONE_STICK:") + 12;
                 int swing_value = 0;
                 int lift_value = 0;
                 int pan_value = 0;
                 int tilt_value = 0;
                 bool left_stick_click = false;
                 bool right_stick_click = false;
-                if (parse_drone_stick_payload(line + 12, &swing_value, &lift_value, &pan_value, &tilt_value,
+                if (parse_drone_stick_payload(drone_stick_payload, &swing_value, &lift_value, &pan_value, &tilt_value,
                                               &left_stick_click, &right_stick_click)) {
                     swing_value = clamp_display_percent(swing_value);
                     lift_value = clamp_display_percent(lift_value);
@@ -766,6 +896,14 @@ static void status_uart_task(void *arg)
                     }
 
                     if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                        if (!emergency_stop_active && current_display_mode != DISPLAY_MODE_DRONE) {
+                            switch_display_mode(DISPLAY_MODE_DRONE, NULL, now_ms);
+                        }
+                        if (flowlapse_active) {
+                            set_flowlapse_status(false, "FLOWLAPSE READY");
+                            set_flowlapse_progress(0);
+                        }
+
                         drone_left_stick_pressed = left_stick_click;
                         drone_right_stick_pressed = right_stick_click;
 
@@ -822,11 +960,9 @@ static void status_uart_task(void *arg)
                                                  : (drone_tilt_display_percent < 0) ? DRONE_TILT_DOWN
                                                  : DRONE_TILT_NEUTRAL;
 
-                        if (current_display_mode == DISPLAY_MODE_DRONE) {
-                            update_drone_lift_indicator();
-                            update_drone_tilt_indicator();
-                            update_drone_stick_colors();
-                        }
+                        update_drone_lift_indicator();
+                        update_drone_tilt_indicator();
+                        update_drone_stick_colors();
                         xSemaphoreGive(lvgl_mux);
                     }
                 }
@@ -1032,12 +1168,29 @@ void app_main(void)
     lv_obj_set_style_bg_color(drone_flowlapse_bar, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(drone_flowlapse_bar, LV_OPA_40, LV_PART_MAIN);
 
+    drone_flowlapse_fill = lv_obj_create(drone_flowlapse_bar);
+    lv_obj_remove_style_all(drone_flowlapse_fill);
+    lv_obj_set_size(drone_flowlapse_fill, 0, 30);
+    lv_obj_set_pos(drone_flowlapse_fill, 3, 3);
+    lv_obj_set_style_radius(drone_flowlapse_fill, 4, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(drone_flowlapse_fill, lv_color_make(0, 180, 255), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(drone_flowlapse_fill, LV_OPA_COVER, LV_PART_MAIN);
+
     drone_flowlapse_label = lv_label_create(lv_scr_act());
     lv_label_set_text(drone_flowlapse_label, flowlapse_status_text);
     lv_obj_set_style_text_color(drone_flowlapse_label, lv_color_white(), LV_PART_MAIN);
     lv_obj_set_style_text_align(drone_flowlapse_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
     lv_obj_set_width(drone_flowlapse_label, LCD_H_RES - 120);
     lv_obj_set_pos(drone_flowlapse_label, 60, 150);
+
+    drone_flowlapse_waypoint_label = lv_label_create(lv_scr_act());
+    lv_label_set_text(drone_flowlapse_waypoint_label, "0/0");
+    lv_obj_set_style_text_color(drone_flowlapse_waypoint_label, lv_color_make(255, 50, 50), LV_PART_MAIN);
+    lv_obj_set_style_text_font(drone_flowlapse_waypoint_label, &lv_font_montserrat_48, LV_PART_MAIN);
+    lv_obj_set_style_text_align(drone_flowlapse_waypoint_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+    lv_obj_set_size(drone_flowlapse_waypoint_label, 160, 70);
+    lv_obj_set_pos(drone_flowlapse_waypoint_label, 250, 368);
+    lv_obj_add_flag(drone_flowlapse_waypoint_label, LV_OBJ_FLAG_HIDDEN);
 
     set_drone_mode_visible(false);
 
