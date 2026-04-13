@@ -52,6 +52,7 @@ static const char *TAG = "RIG";
 #define STATUS_UART_BUF_SIZE 2048
 #define STATUS_SIGNAL_TIMEOUT_MS 3500
 #define MODE_MESSAGE_DURATION_MS 1800
+#define TIMELAPSE_MESSAGE_DURATION_MS 6000
 #define DRONE_STICK_MIN_VISIBLE_PULSE_MS 20
 
 typedef enum {
@@ -337,6 +338,26 @@ static void show_temporary_message_on_display(const char *msg, uint64_t now_ms)
     lv_label_set_text(status_label, msg);
     lv_obj_center(status_label);
     lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void show_timelapse_interval_on_display(int interval_seconds, uint64_t now_ms)
+{
+    char msg[64];
+    snprintf(msg, sizeof(msg), "TIMELAPSE\nINTERVAL\n%ds", interval_seconds);
+    mode_to_restore_after_message = current_display_mode;
+    restore_mode_after_message = true;
+    show_temporary_message_on_display(msg, now_ms);
+    mode_message_until_ms = now_ms + TIMELAPSE_MESSAGE_DURATION_MS;
+}
+
+static void show_timelapse_stepdist_on_display(int stepdist_ms, uint64_t now_ms)
+{
+    char msg[64];
+    snprintf(msg, sizeof(msg), "TIMELAPSE\nSTEP DIST\n%dms", stepdist_ms);
+    mode_to_restore_after_message = current_display_mode;
+    restore_mode_after_message = true;
+    show_temporary_message_on_display(msg, now_ms);
+    mode_message_until_ms = now_ms + TIMELAPSE_MESSAGE_DURATION_MS;
 }
 
 static void update_drone_lift_indicator(void)
@@ -754,15 +775,100 @@ static void status_uart_task(void *arg)
             } else if (strncmp(line, "CONTROLLER_OK:", 14) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     controller_connected = true;
-                    if (!emergency_stop_active) {
+                    if (!emergency_stop_active && !mode_message_active) {
                         switch_display_mode(last_non_error_mode, NULL, now_ms);
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "TIMELAPSE_INTERVAL:", 19) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    int interval_seconds = 0;
+                    if (!emergency_stop_active && sscanf(line, "TIMELAPSE_INTERVAL:%d", &interval_seconds) == 1) {
+                        show_timelapse_interval_on_display(interval_seconds, now_ms);
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "TIMELAPSE_STEPDIST:", 19) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    int stepdist_ms = 0;
+                    if (!emergency_stop_active && sscanf(line, "TIMELAPSE_STEPDIST:%d", &stepdist_ms) == 1) {
+                        show_timelapse_stepdist_on_display(stepdist_ms, now_ms);
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "RUMBLE_MUTE:ON", 14) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (!emergency_stop_active) {
+                        mode_to_restore_after_message = current_display_mode;
+                        restore_mode_after_message = true;
+                        show_temporary_message_on_display("RUMBLE\nMUTE ON", now_ms);
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "RUMBLE_MUTE:OFF", 15) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (!emergency_stop_active) {
+                        mode_to_restore_after_message = current_display_mode;
+                        restore_mode_after_message = true;
+                        show_temporary_message_on_display("RUMBLE\nMUTE OFF", now_ms);
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "CONTROL:", 8) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (!emergency_stop_active) {
+                        const char *control = line + 8;
+                        const char *msg = NULL;
+                        if (strcmp(control, "FOCUS_LEFT") == 0) {
+                            msg = "FOCUS LEFT";
+                        } else if (strcmp(control, "FOCUS_RIGHT") == 0) {
+                            msg = "FOCUS RIGHT";
+                        } else if (strcmp(control, "FOCUS_SPEED_DOWN") == 0) {
+                            msg = "FOCUS SPEED\nDOWN";
+                        } else if (strcmp(control, "FOCUS_SPEED_UP") == 0) {
+                            msg = "FOCUS SPEED\nUP";
+                        } else if (strcmp(control, "L1_PAN_SWING_UP") == 0) {
+                            msg = "PAN+SWING SPEED\nUP";
+                        } else if (strcmp(control, "L2_PAN_SWING_DOWN") == 0) {
+                            msg = "PAN+SWING SPEED\nDOWN";
+                        } else if (strcmp(control, "R1_LIFT_TILT_UP") == 0) {
+                            msg = "LIFT+TILT SPEED\nUP";
+                        } else if (strcmp(control, "R2_LIFT_TILT_DOWN") == 0) {
+                            msg = "LIFT+TILT SPEED\nDOWN";
+                        } else if (strcmp(control, "SWING_SOLO_LEFT") == 0) {
+                            msg = "SWING SOLO\nLEFT";
+                        } else if (strcmp(control, "SWING_SOLO_RIGHT") == 0) {
+                            msg = "SWING SOLO\nRIGHT";
+                        } else if (strcmp(control, "PAN_SOLO_LEFT") == 0) {
+                            msg = "PAN SOLO\nLEFT";
+                        } else if (strcmp(control, "PAN_SOLO_RIGHT") == 0) {
+                            msg = "PAN SOLO\nRIGHT";
+                        } else if (strcmp(control, "SWING_PAN_LEFT") == 0) {
+                            msg = "SWING+PAN\nLEFT";
+                        } else if (strcmp(control, "SWING_PAN_RIGHT") == 0) {
+                            msg = "SWING+PAN\nRIGHT";
+                        } else if (strcmp(control, "LIFT_SOLO_UP") == 0) {
+                            msg = "LIFT SOLO\nUP";
+                        } else if (strcmp(control, "LIFT_SOLO_DOWN") == 0) {
+                            msg = "LIFT SOLO\nDOWN";
+                        } else if (strcmp(control, "LIFT_TILT_UP") == 0) {
+                            msg = "LIFT+TILT\nUP";
+                        } else if (strcmp(control, "LIFT_TILT_DOWN") == 0) {
+                            msg = "LIFT+TILT\nDOWN";
+                        }
+
+                        if (msg != NULL) {
+                            mode_to_restore_after_message = current_display_mode;
+                            restore_mode_after_message = true;
+                            show_temporary_message_on_display(msg, now_ms);
+                        }
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
             } else if (strstr(line, "MODE:") != NULL) {
                 const char *mode_msg = strstr(line, "MODE:") + 5;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    if (!emergency_stop_active) {
+                    if (!emergency_stop_active && !mode_message_active) {
                         if (strncmp(mode_msg, "MANUAL", 6) == 0) {
                             switch_display_mode(DISPLAY_MODE_MANUAL, NULL, now_ms);
                         } else if (strncmp(mode_msg, "DRONE", 5) == 0) {

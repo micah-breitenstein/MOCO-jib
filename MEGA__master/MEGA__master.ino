@@ -55,6 +55,11 @@ const uint8_t focusSpeedDown = 53;
 
 uint8_t motionFlags = 0;
 uint8_t droneAxisLastActiveFlags = 0;
+bool lastSwingSoloLeftActive = false;
+bool lastSwingSoloRightActive = false;
+bool lastLiftSoloUpActive = false;
+bool lastLiftSoloDownActive = false;
+int8_t lastPanSoloDirection = 0;
 
 int leftStickXvalue;
 int leftStickYvalue;
@@ -650,6 +655,7 @@ void emitSpeedTestEvent(const char* eventTag, const char* actionTag = "PRESS") {
 void emitControlIndicator(const char* controlTag) {
   char controlLine[64];
   snprintf(controlLine, sizeof(controlLine), "CONTROL:%s", controlTag);
+  Serial.println(controlLine);
   broadcastStatus(controlLine);
 }
 
@@ -1973,12 +1979,25 @@ void stopPanOnlyMotionAtCenter() {
 }
 
 void handlePanAxis() {
+  int8_t panSoloDirection = 0;
+
   if (!swingInMotion) {
     if (rightStickXvalue <= STICK_DEADBAND) {
+      panSoloDirection = -1;
       activatePanOnlyMotion(panLeft, panRight, "pan left only with top speed");
     } else if (rightStickXvalue >= STICK_MAX - STICK_DEADBAND) {
+      panSoloDirection = 1;
       activatePanOnlyMotion(panRight, panLeft, "pan right only with top speed");
     }
+  }
+
+  if (panSoloDirection != lastPanSoloDirection) {
+    if (panSoloDirection < 0) {
+      emitControlIndicator("PAN_SOLO_LEFT");
+    } else if (panSoloDirection > 0) {
+      emitControlIndicator("PAN_SOLO_RIGHT");
+    }
+    lastPanSoloDirection = panSoloDirection;
   }
 
   stopPanOnlyMotionAtCenter();
@@ -2017,6 +2036,11 @@ void handleSwingMotionGroup() {
   bool soloRightActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
 
   if (soloLeftActive) {
+    if (!lastSwingSoloLeftActive) {
+      emitControlIndicator("SWING_SOLO_LEFT");
+    }
+    lastSwingSoloLeftActive = true;
+    lastSwingSoloRightActive = false;
     setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
     swingSoloMode = 1;
     setPackedState(motionFlags, MOTION_FLAG_SWING, false);
@@ -2026,6 +2050,11 @@ void handleSwingMotionGroup() {
   }
 
   if (soloRightActive) {
+    if (!lastSwingSoloRightActive) {
+      emitControlIndicator("SWING_SOLO_RIGHT");
+    }
+    lastSwingSoloRightActive = true;
+    lastSwingSoloLeftActive = false;
     setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
     swingSoloMode = 1;
     setPackedState(motionFlags, MOTION_FLAG_SWING, false);
@@ -2034,6 +2063,9 @@ void handleSwingMotionGroup() {
     return;
   }
 
+  lastSwingSoloLeftActive = false;
+  lastSwingSoloRightActive = false;
+
   if (swingSoloMode != 0) {
     digitalWrite(swingLeft, LOW);
     digitalWrite(swingRight, LOW);
@@ -2041,10 +2073,16 @@ void handleSwingMotionGroup() {
   }
 
   if (ps2x.Button(PSB_PAD_LEFT)) {
+    if (ps2x.ButtonPressed(PSB_PAD_LEFT) && !ps2x.Button(PSB_SELECT)) {
+      emitControlIndicator("SWING_PAN_LEFT");
+    }
     setPackedState(motionFlags, MOTION_FLAG_SWING, true);
     setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
     setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
   } else if (ps2x.Button(PSB_PAD_RIGHT)) {
+    if (ps2x.ButtonPressed(PSB_PAD_RIGHT) && !ps2x.Button(PSB_SELECT)) {
+      emitControlIndicator("SWING_PAN_RIGHT");
+    }
     setPackedState(motionFlags, MOTION_FLAG_SWING, true);
     setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
     setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
@@ -2064,6 +2102,11 @@ void handleLiftMotionGroup() {
   bool soloDownActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_DOWN);
 
   if (soloUpActive) {
+    if (!lastLiftSoloUpActive) {
+      emitControlIndicator("LIFT_SOLO_UP");
+    }
+    lastLiftSoloUpActive = true;
+    lastLiftSoloDownActive = false;
     setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
     liftSoloMode = 1;
     setPackedState(motionFlags, MOTION_FLAG_LIFT, false);
@@ -2073,6 +2116,11 @@ void handleLiftMotionGroup() {
   }
 
   if (soloDownActive) {
+    if (!lastLiftSoloDownActive) {
+      emitControlIndicator("LIFT_SOLO_DOWN");
+    }
+    lastLiftSoloDownActive = true;
+    lastLiftSoloUpActive = false;
     setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
     liftSoloMode = 1;
     setPackedState(motionFlags, MOTION_FLAG_LIFT, false);
@@ -2081,6 +2129,9 @@ void handleLiftMotionGroup() {
     return;
   }
 
+  lastLiftSoloUpActive = false;
+  lastLiftSoloDownActive = false;
+
   if (liftSoloMode != 0) {
     digitalWrite(liftUp, LOW);
     digitalWrite(liftDown, LOW);
@@ -2088,10 +2139,16 @@ void handleLiftMotionGroup() {
   }
 
   if (ps2x.Button(PSB_PAD_UP)) {
+    if (ps2x.ButtonPressed(PSB_PAD_UP) && !ps2x.Button(PSB_SELECT)) {
+      emitControlIndicator("LIFT_TILT_UP");
+    }
     setPackedState(motionFlags, MOTION_FLAG_LIFT, true);
     setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
     setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
   } else if (ps2x.Button(PSB_PAD_DOWN)) {
+    if (ps2x.ButtonPressed(PSB_PAD_DOWN) && !ps2x.Button(PSB_SELECT)) {
+      emitControlIndicator("LIFT_TILT_DOWN");
+    }
     setPackedState(motionFlags, MOTION_FLAG_LIFT, true);
     setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
     setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);

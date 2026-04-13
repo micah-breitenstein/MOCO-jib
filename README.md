@@ -382,13 +382,13 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 
 | Button | Function | Display | Matrix |
 |---|---|---|---|
-| D-pad left/right | Swing axis (solo, no pan) |  |  |
-| D-pad left/right + SELECT held | Pan axis only (solo mode) |  |  |
-| D-pad left/right (no SELECT) | Swing + pan combined |  |  |
+| D-pad left/right | Swing axis (solo, no pan) | X |  |
+| D-pad left/right + SELECT held | Pan axis only (solo mode) | X |  |
+| D-pad left/right (no SELECT) | Swing + pan combined | X |  |
 | D-pad up/down | Lift axis (solo, no tilt) |  |  |
-| D-pad up/down + SELECT held | (reserved for solo lift — see solo mode logic) |  |  |
-| D-pad up/down (no SELECT) | Lift + tilt combined |  |  |
-| Right stick X | Pan trim (during swing) or pan-only at extremes (left stick = pan left, right stick = pan right) |  |  |
+| D-pad up/down + SELECT held | (reserved for solo lift — see solo mode logic) | X |  |
+| D-pad up/down (no SELECT) | Lift + tilt combined | X |  |
+| Right stick X | Pan trim (during swing) or pan-only at extremes (left stick = pan left, right stick = pan right) | X |  |
 | Right stick Y | Tilt trim (during lift) or tilt-only at extremes (stick up = tilt up, stick down = tilt down) |  |  |
 | Triangle / Cross | Focus left / right | X |  |
 | Square / Circle | Focus speed down / up | X |  |
@@ -398,10 +398,10 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** | X |  |
 | **START + D-pad UP / DOWN** | **Adjust timelapse interval by ±1 second per press (only when auto modes are idle).** | X |  |
 | **START + D-pad RIGHT / LEFT** | **Adjust timelapse move time (`stepDist`) by ±10 ms per press (only when auto modes are idle).** | X |  |
-| SELECT release | Start timelapse mode (stick position selects mode 1–8) | X |  |
-| START release | Start bounce/moco mode (stick position selects mode 1–8) | X |  |
+| SELECT release | Start timelapse mode (stick position selects mode 1–8) | X | X |
+| START release | Start bounce/moco mode (stick position selects mode 1–8) | X | X |
 | L3 (left stick click) | **Normal mode:** set bounce distance endpoint (ends stage 0, starts stage 1); double medium pulse confirms lock. **Drone Mode:** record current axis positions as a Flowlapse waypoint; short rumble confirms. |  |  |
-| **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out, and both joysticks control motion at multiple speed levels based on stick deflection.** | X |  |
+| **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out, and both joysticks control motion at multiple speed levels based on stick deflection.** | X | X |
 
 ### Timelapse Modes (SELECT release)
 
