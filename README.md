@@ -129,11 +129,32 @@ flowchart TD
 - Arduino Mega/Nano onboard LEDs are single-color only (no native RGB mode indicator support).
 - For color mode indicators (blue/green/red/yellow), use the optional ESP32-S3 matrix status firmware (`ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino`).
 
-### Latest Mega speed-control fixes
+### Will speed test build: how to flip behavior
 
-- `MEGA__master/MEGA__master.ino` restores original-style press/release handling for shoulder speed controls (`L1/L2/R1/R2`) so speed command lines are driven HIGH on press and LOW on release.
-- Focus direction/speed controls were aligned to the same original press/release pattern (`TRIANGLE/CROSS` and `SQUARE/CIRCLE`).
-- Startup default speed stage is now preset to stage `3` for swing/lift only (per test request), while pan/tilt startup behavior remains unchanged.
+In `MEGA__master/MEGA__master.ino`, use these constants to switch speed-command behavior for testing:
+
+- `WILL_TEST_SPEED_BUILD`
+	- `true`: emits `SPEED_EVENT:*` diagnostics and blinks `LED_BUILTIN` on each speed-change press.
+	- `false`: no extra speed-test diagnostics.
+- `WILL_TEST_LEGACY_HELD_SPEED_SIGNALS`
+	- `true`: original/legacy style (hold line HIGH while button is held, LOW on release).
+	- `false`: pulse style (short HIGH/LOW pulse per press).
+
+Recommended presets:
+
+- **Will A (legacy-held test):**
+	- `WILL_TEST_SPEED_BUILD = true`
+	- `WILL_TEST_LEGACY_HELD_SPEED_SIGNALS = true`
+- **Will B (pulse test):**
+	- `WILL_TEST_SPEED_BUILD = true`
+	- `WILL_TEST_LEGACY_HELD_SPEED_SIGNALS = false`
+
+After changing either flag, rebuild and upload the Mega sketch.
+
+Notes:
+
+- Startup default speed stage is preset to `3` for swing/lift only (per test request); pan/tilt startup behavior remains unchanged.
+- Regular-mode shoulder speed controls are `L1/L2/R1/R2`; focus speed controls are `SQUARE/CIRCLE`.
 
 ## Setup and Flashing
 
@@ -196,7 +217,7 @@ Notes:
 4. Confirm boot over serial (optional):
    ```sh
    arduino-cli monitor -p /dev/cu.usbmodem101 -c baudrate=9600
-   # Should print "Startup speed stage set to 3" and controller type
+	# Should print the startup speed-stage message and controller type
    ```
 
 ### Flashing a Nano slave
@@ -220,7 +241,7 @@ Notes:
 
 After flashing the Mega and at least one Nano slave, power up and verify:
 
-1. Serial monitor shows `Startup speed stage set to 3` (swing + lift)
+1. Serial monitor shows the startup speed-stage message; test builds may preset swing/lift to stage `3` while leaving pan/tilt unchanged
 2. Controller connects — Serial shows `DualShock Controller found`
 3. D-pad moves the expected axis
 4. L1/L2 step swing/lift speed up and down (press once per stage)
@@ -359,26 +380,28 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 
 ## Controller Buttons (DualShock)
 
-| Button | Function |
-|---|---|
-| D-pad left/right | Swing axis (solo, no pan) |
-| D-pad left/right + SELECT held | Pan axis only (solo mode) |
-| D-pad left/right (no SELECT) | Swing + pan combined |
-| D-pad up/down | Lift axis (solo, no tilt) |
-| D-pad up/down + SELECT held | (reserved for solo lift — see solo mode logic) |
-| D-pad up/down (no SELECT) | Lift + tilt combined |
-| Right stick X | Pan trim (during swing) or pan-only at extremes (left stick = pan left, right stick = pan right) |
-| Right stick Y | Tilt trim (during lift) or tilt-only at extremes (stick up = tilt up, stick down = tilt down) |
-| Triangle / Cross | Focus left / right |
-| Square / Circle | Focus speed down / up |
-| L1 / L2 | Pan + swing speed up / down |
-| R1 / R2 | Lift + tilt speed up / down |
-| **L1 + L2 + R1 + R2** | **Emergency stop: immediately stops all motors, cancels timelapse/bounce, and clears interval rumble. Normal controls resume after release.** |
-| **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** |
-| SELECT release | Start timelapse mode (stick position selects mode 1–8) |
-| START release | Start bounce/moco mode (stick position selects mode 1–8) |
-| L3 (left stick click) | **Normal mode:** set bounce distance endpoint (ends stage 0, starts stage 1); double medium pulse confirms lock. **Drone Mode:** record current axis positions as a Flowlapse waypoint; short rumble confirms. |
-| **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out, and both joysticks control motion at multiple speed levels based on stick deflection.** |
+| Button | Function | Display | Matrix |
+|---|---|---|---|
+| D-pad left/right | Swing axis (solo, no pan) |  |  |
+| D-pad left/right + SELECT held | Pan axis only (solo mode) |  |  |
+| D-pad left/right (no SELECT) | Swing + pan combined |  |  |
+| D-pad up/down | Lift axis (solo, no tilt) |  |  |
+| D-pad up/down + SELECT held | (reserved for solo lift — see solo mode logic) |  |  |
+| D-pad up/down (no SELECT) | Lift + tilt combined |  |  |
+| Right stick X | Pan trim (during swing) or pan-only at extremes (left stick = pan left, right stick = pan right) |  |  |
+| Right stick Y | Tilt trim (during lift) or tilt-only at extremes (stick up = tilt up, stick down = tilt down) |  |  |
+| Triangle / Cross | Focus left / right | X |  |
+| Square / Circle | Focus speed down / up | X |  |
+| L1 / L2 | Pan + swing speed up / down | X |  |
+| R1 / R2 | Lift + tilt speed up / down | X |  |
+| **L1 + L2 + R1 + R2** | **Emergency stop: immediately stops all motors, cancels timelapse/bounce, and clears interval rumble. Normal controls resume after release.** | X | X |
+| **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** | X |  |
+| **START + D-pad UP / DOWN** | **Adjust timelapse interval by ±1 second per press (only when auto modes are idle).** | X |  |
+| **START + D-pad RIGHT / LEFT** | **Adjust timelapse move time (`stepDist`) by ±10 ms per press (only when auto modes are idle).** | X |  |
+| SELECT release | Start timelapse mode (stick position selects mode 1–8) | X |  |
+| START release | Start bounce/moco mode (stick position selects mode 1–8) | X |  |
+| L3 (left stick click) | **Normal mode:** set bounce distance endpoint (ends stage 0, starts stage 1); double medium pulse confirms lock. **Drone Mode:** record current axis positions as a Flowlapse waypoint; short rumble confirms. |  |  |
+| **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out, and both joysticks control motion at multiple speed levels based on stick deflection.** | X |  |
 
 ### Timelapse Modes (SELECT release)
 
@@ -769,12 +792,13 @@ Replay the current interval and `stepDist` rumble patterns on demand (read-only,
 
 You can also change the timelapse move-active duration (`stepDist`) directly from the controller.
 
-- **Increase `stepDist`:** hold **SELECT** and tap **D-pad RIGHT**
-- **Decrease `stepDist`:** hold **SELECT** and tap **D-pad LEFT**
+- **Increase `stepDist`:** hold **START** and tap **D-pad RIGHT**
+- **Decrease `stepDist`:** hold **START** and tap **D-pad LEFT**
 - **Step size:** **10 ms** per press
 - **Allowed range:** 20 ms to 150 ms
 - **Safety rule:** this adjustment is only active when both timelapse and bounce are idle
 - **Persistence:** saved on change and restored at boot
+- **On-screen feedback:** ESP32 display shows `TIMELAPSE / STEP DIST / Xms` for ~6 seconds after each change
 - **Limit feedback:** trying to go below/above range gives a distinct double-short rumble
 - **Lockout feedback:** trying this combo while timelapse or bounce is active gives a distinct triple-short deny rumble
 - **Rumble feedback:** long-pulse count encodes `stepDist` in 10 ms units (`stepDist / 10`)
@@ -785,6 +809,20 @@ You can also change the timelapse move-active duration (`stepDist`) directly fro
 When changed, the Mega prints the value over Serial as:
 
 - `Timelapse stepDist (ms) = X`
+
+### ESP on-screen control indicators (live button feedback)
+
+The ESP32-S3 display now shows short live indicators (~1.2s) for these controller actions:
+
+- **TRIANGLE / CROSS** → `FOCUS LEFT` / `FOCUS RIGHT`
+- **SQUARE / CIRCLE** → `FOCUS SPEED DOWN` / `FOCUS SPEED UP`
+- **L1 / L2** → `PAN+SWING SPEED UP` / `PAN+SWING SPEED DOWN`
+- **R1 / R2** → `LIFT+TILT SPEED UP` / `LIFT+TILT SPEED DOWN`
+
+Notes:
+
+- These are transient confirmation overlays and automatically clear.
+- They appear in normal control operation (non-Drone mode path).
 
 ### Rumble mute persistence
 

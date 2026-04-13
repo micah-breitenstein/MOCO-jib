@@ -83,6 +83,7 @@ unsigned long timelapsePhaseStartMs = 0;
 enum IntervalRumblePhase : uint8_t {
   INTERVAL_RUMBLE_IDLE,
   INTERVAL_RUMBLE_LONG_ACTIVE,
+  INTERVAL_RUMBLE_LONG_PAUSE,
   INTERVAL_RUMBLE_SHORT_ACTIVE,
   INTERVAL_RUMBLE_SHORT_PAUSE
 };
@@ -187,6 +188,8 @@ constexpr int TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS = 10;
 constexpr unsigned long PERSISTED_SETTINGS_RESET_HOLD_MS = 1500;
 constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 600;
+constexpr unsigned long INTERVAL_RUMBLE_LONG_PAUSE_MS = 350;
+constexpr unsigned long INTERVAL_RUMBLE_GROUP_SEPARATOR_MS = 700;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 200;
 constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 1000;
 constexpr unsigned long STEP_DIST_RUMBLE_LONG_ON_MS = 600;
@@ -644,6 +647,12 @@ void emitSpeedTestEvent(const char* eventTag, const char* actionTag = "PRESS") {
   digitalWrite(LED_BUILTIN, LOW);
 }
 
+void emitControlIndicator(const char* controlTag) {
+  char controlLine[64];
+  snprintf(controlLine, sizeof(controlLine), "CONTROL:%s", controlTag);
+  broadcastStatus(controlLine);
+}
+
 void emitSpeedInputEdge(const char* buttonTag, const char* actionTag) {
   if (!WILL_TEST_SPEED_BUILD) {
     return;
@@ -734,6 +743,7 @@ void handleAxisSpeedControl(uint16_t buttonCode, uint8_t axis1Pin, uint8_t axis2
   if (pressed) {
     pulseSpeedStageUpPin(axis1Pin);
     pulseSpeedStageUpPin(axis2Pin);
+    emitControlIndicator(eventTag);
     emitSpeedTestEvent(eventTag, "PRESS");
   } else if (released) {
     digitalWrite(axis1Pin, LOW);
@@ -2138,8 +2148,16 @@ void handleButtonDirection(uint8_t buttonCode, bool isReversed,
 }
 
 void handleFocusAxis() {
+  bool trianglePressed = ps2x.ButtonPressed(PSB_TRIANGLE);
+  bool crossPressed = ps2x.ButtonPressed(PSB_CROSS);
+  bool squarePressed = ps2x.ButtonPressed(PSB_SQUARE);
+  bool circlePressed = ps2x.ButtonPressed(PSB_CIRCLE);
+
   if (ps2x.Button(PSB_TRIANGLE)) {
     setDirectionalOutput(isFocusReversed, focusLeft, focusRight, HIGH);
+  }
+  if (trianglePressed) {
+    emitControlIndicator("FOCUS_LEFT");
   }
   if (ps2x.ButtonReleased(PSB_TRIANGLE)) {
     digitalWrite(focusLeft, LOW);
@@ -2149,6 +2167,9 @@ void handleFocusAxis() {
   if (ps2x.Button(PSB_CROSS)) {
     setDirectionalOutput(isFocusReversed, focusRight, focusLeft, HIGH);
   }
+  if (crossPressed) {
+    emitControlIndicator("FOCUS_RIGHT");
+  }
   if (ps2x.ButtonReleased(PSB_CROSS)) {
     digitalWrite(focusLeft, LOW);
     digitalWrite(focusRight, LOW);
@@ -2156,12 +2177,14 @@ void handleFocusAxis() {
 
   if (WILL_TEST_LEGACY_HELD_SPEED_SIGNALS) {
     digitalWrite(focusSpeedDown, ps2x.Button(PSB_SQUARE) ? HIGH : LOW);
-    if (ps2x.ButtonPressed(PSB_SQUARE)) {
+    if (squarePressed) {
+      emitControlIndicator("FOCUS_SPEED_DOWN");
       emitSpeedTestEvent("FOCUS_SPEED_DOWN");
     }
   } else {
-    if (ps2x.ButtonPressed(PSB_SQUARE)) {
+    if (squarePressed) {
       pulseSpeedStageUpPin(focusSpeedDown);
+      emitControlIndicator("FOCUS_SPEED_DOWN");
       emitSpeedTestEvent("FOCUS_SPEED_DOWN");
     } else if (ps2x.ButtonReleased(PSB_SQUARE)) {
       digitalWrite(focusSpeedDown, LOW);
@@ -2170,12 +2193,14 @@ void handleFocusAxis() {
 
   if (WILL_TEST_LEGACY_HELD_SPEED_SIGNALS) {
     digitalWrite(focusSpeedUp, ps2x.Button(PSB_CIRCLE) ? HIGH : LOW);
-    if (ps2x.ButtonPressed(PSB_CIRCLE)) {
+    if (circlePressed) {
+      emitControlIndicator("FOCUS_SPEED_UP");
       emitSpeedTestEvent("FOCUS_SPEED_UP");
     }
   } else {
-    if (ps2x.ButtonPressed(PSB_CIRCLE)) {
+    if (circlePressed) {
       pulseSpeedStageUpPin(focusSpeedUp);
+      emitControlIndicator("FOCUS_SPEED_UP");
       emitSpeedTestEvent("FOCUS_SPEED_UP");
     } else if (ps2x.ButtonReleased(PSB_CIRCLE)) {
       digitalWrite(focusSpeedUp, LOW);
@@ -3434,10 +3459,13 @@ void handleIntervalRumbleFeedback(unsigned long now) {
       if (now - intervalRumblePhaseStartMs >= INTERVAL_RUMBLE_LONG_MS) {
         intervalRumbleLongsRemaining--;
         if (intervalRumbleLongsRemaining > 0) {
+          intervalRumblePhase = INTERVAL_RUMBLE_LONG_PAUSE;
           intervalRumblePhaseStartMs = now;
+          vibrate = 0;
         } else if (intervalRumbleShortsRemaining > 0) {
-          intervalRumblePhase = INTERVAL_RUMBLE_SHORT_ACTIVE;
+          intervalRumblePhase = INTERVAL_RUMBLE_LONG_PAUSE;
           intervalRumblePhaseStartMs = now;
+          vibrate = 0;
         } else {
           if (chainStepDistAfterInterval) {
             chainStepDistAfterInterval = false;
@@ -3445,6 +3473,27 @@ void handleIntervalRumbleFeedback(unsigned long now) {
           } else {
             stopIntervalRumbleFeedback();
           }
+        }
+      }
+      break;
+    case INTERVAL_RUMBLE_LONG_PAUSE:
+      vibrate = 0;
+      if (intervalRumbleLongsRemaining > 0) {
+        if (now - intervalRumblePhaseStartMs >= INTERVAL_RUMBLE_LONG_PAUSE_MS) {
+          intervalRumblePhase = INTERVAL_RUMBLE_LONG_ACTIVE;
+          intervalRumblePhaseStartMs = now;
+        }
+      } else if (intervalRumbleShortsRemaining > 0) {
+        if (now - intervalRumblePhaseStartMs >= INTERVAL_RUMBLE_GROUP_SEPARATOR_MS) {
+          intervalRumblePhase = INTERVAL_RUMBLE_SHORT_ACTIVE;
+          intervalRumblePhaseStartMs = now;
+        }
+      } else {
+        if (chainStepDistAfterInterval) {
+          chainStepDistAfterInterval = false;
+          startRumbleSeparator(PENDING_RUMBLE_STEP_DIST);
+        } else {
+          stopIntervalRumbleFeedback();
         }
       }
       break;
@@ -3495,6 +3544,10 @@ void adjustIntervalSeconds(int delta) {
   savePersistedSettings();
   Serial.print(F("Timelapse interval (seconds) = "));
   Serial.println(timelapseIntervalSeconds);
+  char intervalLine[40];
+  snprintf(intervalLine, sizeof(intervalLine), "TIMELAPSE_INTERVAL:%u",
+           static_cast<unsigned int>(timelapseIntervalSeconds));
+  broadcastStatus(intervalLine);
   startIntervalRumbleFeedback();
 }
 
@@ -3516,6 +3569,9 @@ void adjustStepDist(int delta) {
   savePersistedSettings();
   Serial.print(F("Timelapse stepDist (ms) = "));
   Serial.println(stepDist);
+  char stepDistLine[40];
+  snprintf(stepDistLine, sizeof(stepDistLine), "TIMELAPSE_STEPDIST:%d", stepDist);
+  broadcastStatus(stepDistLine);
   startStepDistRumbleFeedback();
 }
 
@@ -3671,15 +3727,15 @@ bool handleTimelapseIntervalAdjustment() {
   return false;
 }
 
-// SELECT + PAD_RIGHT increases stepDist.
-// SELECT + PAD_LEFT decreases stepDist.
+// START + PAD_RIGHT increases stepDist.
+// START + PAD_LEFT decreases stepDist.
 // stepDist changes by 10 ms per press.
 // This is only active while no auto mode is running so it does not conflict
 // with active timelapse or bounce motion.
 bool handleTimelapseStepDistAdjustment() {
   bool adjustmentAllowed = !isAutoModeActive();
-  bool stepDistAdjustUpComboRawActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
-  bool stepDistAdjustDownComboRawActive = ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT);
+  bool stepDistAdjustUpComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_RIGHT);
+  bool stepDistAdjustDownComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_PAD_LEFT);
 
   if (stepDistAdjustUpComboRawActive && !lastStepDistAdjustUpComboActive) {
     if (adjustmentAllowed) {
@@ -3704,6 +3760,10 @@ bool handleTimelapseStepDistAdjustment() {
 
   bool stepDistAdjustComboHandled = adjustmentAllowed && (stepDistAdjustUpComboRawActive || stepDistAdjustDownComboRawActive);
 
+  if (stepDistAdjustUpComboRawActive || stepDistAdjustDownComboRawActive) {
+    suppressNextStartRelease = true;
+  }
+
   if (stepDistAdjustComboHandled) {
     stopAllMotors();
     return true;
@@ -3726,6 +3786,8 @@ bool handleRumbleMuteToggle() {
 
     Serial.print(F("Controller rumble "));
     Serial.println(rumbleMuted ? "muted." : "unmuted.");
+
+    broadcastStatus(rumbleMuted ? "RUMBLE_MUTE:ON" : "RUMBLE_MUTE:OFF");
 
     if (!rumbleMuted) {
       startRumbleUnmuteFeedback();
@@ -4554,7 +4616,7 @@ void setup() {
     }
   }
   Serial.println(F("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds."));
-  Serial.println(F("SELECT + PAD_RIGHT/LEFT adjusts stepDist by 10 ms."));
+  Serial.println(F("START + PAD_RIGHT/LEFT adjusts stepDist by 10 ms."));
   Serial.println(F("START + SELECT + SQUARE toggles controller rumble mute."));
   Serial.println(F("Drone Mode: START + SELECT + TRIANGLE toggles Flowlapse frame-count mode."));
   Serial.println(F("L1 + L2 + CIRCLE replays current settings as rumble patterns."));

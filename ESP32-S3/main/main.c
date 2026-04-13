@@ -1183,30 +1183,40 @@ void app_main(void)
     drone_precision_label = lv_label_create(lv_scr_act());
     lv_label_set_text(drone_precision_label, "PRECISION");
     lv_obj_set_style_text_color(drone_precision_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(drone_precision_label, &lv_font_montserrat_48, LV_PART_MAIN);
+    lv_obj_set_style_text_letter_space(drone_precision_label, -4, LV_PART_MAIN);
     lv_obj_set_style_text_align(drone_precision_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    lv_obj_set_pos(drone_precision_label, 160, 128);
+    lv_obj_set_pos(drone_precision_label, 72, 118);
+    lv_obj_update_layout(drone_precision_label);
 
     drone_precision_state_box = lv_obj_create(lv_scr_act());
     lv_obj_remove_style_all(drone_precision_state_box);
-    lv_obj_set_size(drone_precision_state_box, 16, 16);
-    lv_obj_set_pos(drone_precision_state_box, 280, 132);
-    lv_obj_set_style_radius(drone_precision_state_box, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_width(drone_precision_state_box, 1, LV_PART_MAIN);
+    lv_obj_set_size(drone_precision_state_box, 30, 30);
+    lv_obj_set_pos(drone_precision_state_box,
+                   lv_obj_get_x(drone_precision_label) + lv_obj_get_width(drone_precision_label) + 14,
+                   126);
+    lv_obj_set_style_radius(drone_precision_state_box, 4, LV_PART_MAIN);
+    lv_obj_set_style_border_width(drone_precision_state_box, 2, LV_PART_MAIN);
     lv_obj_set_style_border_color(drone_precision_state_box, lv_color_make(200, 200, 200), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(drone_precision_state_box, LV_OPA_COVER, LV_PART_MAIN);
 
     drone_boost_label = lv_label_create(lv_scr_act());
     lv_label_set_text(drone_boost_label, "BOOST");
     lv_obj_set_style_text_color(drone_boost_label, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_text_font(drone_boost_label, &lv_font_montserrat_48, LV_PART_MAIN);
+    lv_obj_set_style_text_letter_space(drone_boost_label, -4, LV_PART_MAIN);
     lv_obj_set_style_text_align(drone_boost_label, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    lv_obj_set_pos(drone_boost_label, 340, 128);
+    lv_obj_set_pos(drone_boost_label, 390, 118);
+    lv_obj_update_layout(drone_boost_label);
 
     drone_boost_state_box = lv_obj_create(lv_scr_act());
     lv_obj_remove_style_all(drone_boost_state_box);
-    lv_obj_set_size(drone_boost_state_box, 16, 16);
-    lv_obj_set_pos(drone_boost_state_box, 430, 132);
-    lv_obj_set_style_radius(drone_boost_state_box, 2, LV_PART_MAIN);
-    lv_obj_set_style_border_width(drone_boost_state_box, 1, LV_PART_MAIN);
+    lv_obj_set_size(drone_boost_state_box, 30, 30);
+    lv_obj_set_pos(drone_boost_state_box,
+                   lv_obj_get_x(drone_boost_label) + lv_obj_get_width(drone_boost_label) + 14,
+                   126);
+    lv_obj_set_style_radius(drone_boost_state_box, 4, LV_PART_MAIN);
+    lv_obj_set_style_border_width(drone_boost_state_box, 2, LV_PART_MAIN);
     lv_obj_set_style_border_color(drone_boost_state_box, lv_color_make(200, 200, 200), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(drone_boost_state_box, LV_OPA_COVER, LV_PART_MAIN);
 
