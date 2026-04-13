@@ -385,11 +385,11 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | D-pad left/right | Swing axis (solo, no pan) | X |  |
 | D-pad left/right + SELECT held | Pan axis only (solo mode) | X |  |
 | D-pad left/right (no SELECT) | Swing + pan combined | X |  |
-| D-pad up/down | Lift axis (solo, no tilt) |  |  |
+| D-pad up/down | Lift axis (solo, no tilt) | X |  |
 | D-pad up/down + SELECT held | (reserved for solo lift — see solo mode logic) | X |  |
 | D-pad up/down (no SELECT) | Lift + tilt combined | X |  |
 | Right stick X | Pan trim (during swing) or pan-only at extremes (left stick = pan left, right stick = pan right) | X |  |
-| Right stick Y | Tilt trim (during lift) or tilt-only at extremes (stick up = tilt up, stick down = tilt down) |  |  |
+| Right stick Y | Tilt trim (during lift) or tilt-only at extremes (stick up = tilt up, stick down = tilt down) | X |  |
 | Triangle / Cross | Focus left / right | X |  |
 | Square / Circle | Focus speed down / up | X |  |
 | L1 / L2 | Pan + swing speed up / down | X |  |
