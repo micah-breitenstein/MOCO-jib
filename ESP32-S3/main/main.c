@@ -136,7 +136,6 @@ static int flowlapse_waypoint_current = 0;
 static int flowlapse_waypoint_total = 0;
 static bool flowlapse_waypoint_indicator_active = false;
 static bool flowlapse_playback_active = false;
-static bool flowlapse_l2_boost_active = false;
 
 #define DRONE_LEFT_STICK_BASE_X 145
 #define DRONE_LEFT_STICK_BASE_Y 265
@@ -485,7 +484,8 @@ static void refresh_flowlapse_status_label(void)
         return;
     }
 
-    if (flowlapse_active && flowlapse_l2_boost_active) {
+    bool show_l2_boost = flowlapse_active && drone_precision_modifier_active;
+    if (show_l2_boost) {
         char boosted_status[80];
         snprintf(boosted_status, sizeof(boosted_status), "%s | L2 BOOST", flowlapse_status_text);
         lv_label_set_text(drone_flowlapse_label, boosted_status);
@@ -500,7 +500,6 @@ static void set_flowlapse_status(bool active, const char *text)
 
     if (!active) {
         flowlapse_playback_active = false;
-        flowlapse_l2_boost_active = false;
     }
 
     if (text && text[0] != '\0') {
@@ -1097,12 +1096,7 @@ static void status_uart_task(void *arg)
                         bool precision_active = (precision != 0);
                         bool boost_active = (boost != 0);
                         set_drone_modifier_indicator(precision_active, boost_active);
-
-                        bool l2_preview_boost = flowlapse_active && precision_active;
-                        if (l2_preview_boost != flowlapse_l2_boost_active) {
-                            flowlapse_l2_boost_active = l2_preview_boost;
-                            refresh_flowlapse_status_label();
-                        }
+                        refresh_flowlapse_status_label();
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
@@ -1158,16 +1152,13 @@ static void status_uart_task(void *arg)
                         set_flowlapse_status(true, "PREVIEW COMPLETE press START to run capture");
                     } else if (strstr(line, "capture run started") != NULL) {
                         flowlapse_playback_active = true;
-                        flowlapse_waypoint_indicator_active = false;
                         set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
                         set_flowlapse_progress(0);
                     } else if (strstr(line, "capture paused") != NULL) {
                         flowlapse_playback_active = true;
-                        flowlapse_waypoint_indicator_active = false;
                         set_flowlapse_status(true, "FLOWLAPSE PAUSED");
                     } else if (strstr(line, "capture resumed") != NULL) {
                         flowlapse_playback_active = true;
-                        flowlapse_waypoint_indicator_active = false;
                         set_flowlapse_status(true, "FLOWLAPSE CAPTURE");
                     } else if (strstr(line, "capture complete") != NULL) {
                         flowlapse_playback_active = false;
