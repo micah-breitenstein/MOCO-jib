@@ -60,6 +60,7 @@ bool lastSwingSoloRightActive = false;
 bool lastLiftSoloUpActive = false;
 bool lastLiftSoloDownActive = false;
 int8_t lastPanSoloDirection = 0;
+int8_t lastTiltSoloDirection = 0;
 
 int leftStickXvalue;
 int leftStickYvalue;
@@ -1461,6 +1462,7 @@ void captureFlowlapseWaypoint() {
            static_cast<unsigned int>(flowlapseWaypointCount),
            static_cast<unsigned int>(FLOWLAPSE_MAX_WAYPOINTS));
   Serial.println(waypointLine);
+  emitControlIndicator("L3_WAYPOINT_RECORD");
   broadcastStatus(waypointLine);
   broadcastFlowlapseWaypointCount();
   
@@ -2182,12 +2184,25 @@ void stopTiltOnlyMotionAtCenter() {
 }
 
 void handleTiltAxis() {
+  int8_t tiltSoloDirection = 0;
+
   if (!liftInMotion) {
     if (rightStickYvalue >= STICK_MAX - STICK_DEADBAND) {
+      tiltSoloDirection = -1;
       activateTiltOnlyMotion(tiltDown, tiltUp, "tiltDownOnly");
     } else if (rightStickYvalue <= STICK_DEADBAND) {
+      tiltSoloDirection = 1;
       activateTiltOnlyMotion(tiltUp, tiltDown, "tiltUpOnly");
     }
+  }
+
+  if (tiltSoloDirection != lastTiltSoloDirection) {
+    if (tiltSoloDirection < 0) {
+      emitControlIndicator("TILT_SOLO_DOWN");
+    } else if (tiltSoloDirection > 0) {
+      emitControlIndicator("TILT_SOLO_UP");
+    }
+    lastTiltSoloDirection = tiltSoloDirection;
   }
 
   stopTiltOnlyMotionAtCenter();
@@ -4371,6 +4386,7 @@ void advanceBounceToStage1() {
   bouncePhaseStartMs = now;
   stage = 1;
   startL3EndpointRumbleFeedback();
+  emitControlIndicator("L3_BOUNCE_ENDPOINT");
   Serial.print(F("Bounce endpoint set: "));
   Serial.print(bounceMoveDurationMs);
   Serial.println(F("ms travel time"));
