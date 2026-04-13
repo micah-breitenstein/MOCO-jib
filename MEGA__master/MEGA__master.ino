@@ -160,9 +160,13 @@ constexpr uint8_t PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED = 0x01;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
 constexpr unsigned long CONTROLLER_OK_BROADCAST_INTERVAL_MS = 1500;
-constexpr uint8_t DEFAULT_AXIS_SPEED_STAGE = 3; // 0=slowest, 4=fastest
-constexpr unsigned long SPEED_STAGE_PULSE_HIGH_MS = 25;
-constexpr unsigned long SPEED_STAGE_PULSE_LOW_MS = 25;
+constexpr uint8_t DEFAULT_AXIS_SPEED_STAGE = 1; // 0=slowest, 4=fastest — set low so L1/R1 have room to go up
+constexpr unsigned long SPEED_STAGE_PULSE_HIGH_MS = 75;
+constexpr unsigned long SPEED_STAGE_PULSE_LOW_MS = 75;
+constexpr bool WILL_TEST_SPEED_BUILD = true;
+constexpr bool WILL_TEST_BYPASS_LOGS = false;
+constexpr bool WILL_TEST_LEGACY_HELD_SPEED_SIGNALS = false;
+constexpr unsigned long WILL_TEST_LED_PULSE_MS = 18;
 constexpr int STICK_MIN = 0;
 constexpr int STICK_CENTER = 128;
 constexpr int STICK_MAX = 255;
@@ -554,6 +558,8 @@ unsigned long r3PressStartMs = 0;
 
 unsigned long lastControllerRetryMs = 0;
 unsigned long lastControllerOkBroadcastMs = 0;
+unsigned long lastLoopBypassLogMs = 0;
+char lastLoopBypassReason[32] = "";
 #define unsupportedControllerWarningShown packedFlags.unsupportedControllerWarningShown
 #define rumbleSeparatorActive packedFlags.rumbleSeparatorActive
 #define chainStepDistAfterInterval packedFlags.chainStepDistAfterInterval
@@ -623,15 +629,116 @@ void broadcastFlowlapseWaypointCount() {
   broadcastStatus(waypointCountLine);
 }
 
-void handleAxisSpeedControl(uint8_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin) {
-  if (ps2x.Button(buttonCode)) {
-    digitalWrite(axis1Pin, HIGH);
-    digitalWrite(axis2Pin, HIGH);
+void emitSpeedTestEvent(const char* eventTag, const char* actionTag = "PRESS") {
+  if (!WILL_TEST_SPEED_BUILD) {
+    return;
   }
 
-  if (ps2x.ButtonReleased(buttonCode)) {
+  char speedEventLine[64];
+  snprintf(speedEventLine, sizeof(speedEventLine), "SPEED_EVENT:%s:%s", eventTag, actionTag);
+  Serial.println(speedEventLine);
+  broadcastStatus(speedEventLine);
+
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(WILL_TEST_LED_PULSE_MS);
+  digitalWrite(LED_BUILTIN, LOW);
+}
+
+void emitSpeedInputEdge(const char* buttonTag, const char* actionTag) {
+  if (!WILL_TEST_SPEED_BUILD) {
+    return;
+  }
+
+  char speedInputLine[72];
+  snprintf(speedInputLine, sizeof(speedInputLine), "SPEED_INPUT:%s:%s:%s",
+           buttonTag,
+           actionTag,
+           droneMode ? "DRONE" : "REGULAR");
+  Serial.println(speedInputLine);
+  broadcastStatus(speedInputLine);
+}
+
+void logShoulderSpeedButtonEdges() {
+  if (ps2x.ButtonPressed(PSB_L1)) {
+    emitSpeedInputEdge("L1", "PRESS");
+  }
+  if (ps2x.ButtonReleased(PSB_L1)) {
+    emitSpeedInputEdge("L1", "RELEASE");
+  }
+
+  if (ps2x.ButtonPressed(PSB_L2)) {
+    emitSpeedInputEdge("L2", "PRESS");
+  }
+  if (ps2x.ButtonReleased(PSB_L2)) {
+    emitSpeedInputEdge("L2", "RELEASE");
+  }
+
+  if (ps2x.ButtonPressed(PSB_R1)) {
+    emitSpeedInputEdge("R1", "PRESS");
+  }
+  if (ps2x.ButtonReleased(PSB_R1)) {
+    emitSpeedInputEdge("R1", "RELEASE");
+  }
+
+  if (ps2x.ButtonPressed(PSB_R2)) {
+    emitSpeedInputEdge("R2", "PRESS");
+  }
+  if (ps2x.ButtonReleased(PSB_R2)) {
+    emitSpeedInputEdge("R2", "RELEASE");
+  }
+}
+
+void emitLoopBypassReason(const char* reasonTag) {
+  if (!WILL_TEST_SPEED_BUILD || !WILL_TEST_BYPASS_LOGS) {
+    return;
+  }
+
+  const unsigned long now = millis();
+  const bool sameReason = (strncmp(lastLoopBypassReason, reasonTag, sizeof(lastLoopBypassReason)) == 0);
+  if (sameReason && (now - lastLoopBypassLogMs) < 750) {
+    return;
+  }
+
+  strncpy(lastLoopBypassReason, reasonTag, sizeof(lastLoopBypassReason) - 1);
+  lastLoopBypassReason[sizeof(lastLoopBypassReason) - 1] = '\0';
+  lastLoopBypassLogMs = now;
+
+  char bypassLine[72];
+  snprintf(bypassLine, sizeof(bypassLine), "SPEED_PATH_BYPASS:%s", reasonTag);
+  Serial.println(bypassLine);
+  broadcastStatus(bypassLine);
+}
+
+void handleAxisSpeedControl(uint16_t buttonCode, uint8_t axis1Pin, uint8_t axis2Pin, const char* eventTag) {
+  const bool held    = ps2x.Button(buttonCode);
+  const bool pressed = ps2x.ButtonPressed(buttonCode);
+  const bool released = ps2x.ButtonReleased(buttonCode);
+
+  if (WILL_TEST_LEGACY_HELD_SPEED_SIGNALS) {
+    if (held) {
+      digitalWrite(axis1Pin, HIGH);
+      digitalWrite(axis2Pin, HIGH);
+    } else {
+      digitalWrite(axis1Pin, LOW);
+      digitalWrite(axis2Pin, LOW);
+    }
+    if (pressed) {
+      emitSpeedTestEvent(eventTag, "PRESS");
+    }
+    if (released) {
+      emitSpeedTestEvent(eventTag, "RELEASE");
+    }
+    return;
+  }
+
+  if (pressed) {
+    pulseSpeedStageUpPin(axis1Pin);
+    pulseSpeedStageUpPin(axis2Pin);
+    emitSpeedTestEvent(eventTag, "PRESS");
+  } else if (released) {
     digitalWrite(axis1Pin, LOW);
     digitalWrite(axis2Pin, LOW);
+    emitSpeedTestEvent(eventTag, "RELEASE");
   }
 }
 
@@ -652,6 +759,8 @@ void applyDefaultAxisSpeedStage(uint8_t speedUpPin, uint8_t targetStage) {
 void applyStartupDefaultSpeedStages() {
   applyDefaultAxisSpeedStage(swingSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
   applyDefaultAxisSpeedStage(liftSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
+  applyDefaultAxisSpeedStage(panSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
+  applyDefaultAxisSpeedStage(tiltSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
 }
 
 void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t state) {
@@ -2045,18 +2154,32 @@ void handleFocusAxis() {
     digitalWrite(focusRight, LOW);
   }
 
-  if (ps2x.Button(PSB_SQUARE)) {
-    digitalWrite(focusSpeedDown, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_SQUARE)) {
-    digitalWrite(focusSpeedDown, LOW);
+  if (WILL_TEST_LEGACY_HELD_SPEED_SIGNALS) {
+    digitalWrite(focusSpeedDown, ps2x.Button(PSB_SQUARE) ? HIGH : LOW);
+    if (ps2x.ButtonPressed(PSB_SQUARE)) {
+      emitSpeedTestEvent("FOCUS_SPEED_DOWN");
+    }
+  } else {
+    if (ps2x.ButtonPressed(PSB_SQUARE)) {
+      pulseSpeedStageUpPin(focusSpeedDown);
+      emitSpeedTestEvent("FOCUS_SPEED_DOWN");
+    } else if (ps2x.ButtonReleased(PSB_SQUARE)) {
+      digitalWrite(focusSpeedDown, LOW);
+    }
   }
 
-  if (ps2x.Button(PSB_CIRCLE)) {
-    digitalWrite(focusSpeedUp, HIGH);
-  }
-  if (ps2x.ButtonReleased(PSB_CIRCLE)) {
-    digitalWrite(focusSpeedUp, LOW);
+  if (WILL_TEST_LEGACY_HELD_SPEED_SIGNALS) {
+    digitalWrite(focusSpeedUp, ps2x.Button(PSB_CIRCLE) ? HIGH : LOW);
+    if (ps2x.ButtonPressed(PSB_CIRCLE)) {
+      emitSpeedTestEvent("FOCUS_SPEED_UP");
+    }
+  } else {
+    if (ps2x.ButtonPressed(PSB_CIRCLE)) {
+      pulseSpeedStageUpPin(focusSpeedUp);
+      emitSpeedTestEvent("FOCUS_SPEED_UP");
+    } else if (ps2x.ButtonReleased(PSB_CIRCLE)) {
+      digitalWrite(focusSpeedUp, LOW);
+    }
   }
 }
 
@@ -4365,10 +4488,12 @@ void setup() {
   Serial.begin(115200);
   Serial1.begin(115200);
   Serial2.begin(115200);
+  Serial.println(F("BUILD: SPEED_LOG_V2 (WILL_TEST_SPEED_BUILD)"));
   bool persistedSettingsLoaded = loadPersistedSettings();
   updateIntervalMs();
 
   const uint8_t outputPins[] = {
+    LED_BUILTIN,
     swingLeft,
     swingRight,
     swingSpeedUp,
@@ -4512,6 +4637,7 @@ void loop() {
   leftStickXvalue = ps2x.Analog(PSS_LX);
 
   if (handleEmergencyStop()) {
+    emitLoopBypassReason("EMERGENCY_STOP");
     return;
   }
 
@@ -4519,22 +4645,27 @@ void loop() {
 
   if (!droneMode) {
     if (handlePersistedSettingsReset(now)) {
+      emitLoopBypassReason("PERSISTED_SETTINGS_RESET");
       return;
     }
 
     if (handleTimelapseIntervalAdjustment()) {
+      emitLoopBypassReason("TIMELAPSE_INTERVAL_ADJUST");
       return;
     }
 
     if (handleTimelapseStepDistAdjustment()) {
+      emitLoopBypassReason("TIMELAPSE_STEPDIST_ADJUST");
       return;
     }
 
     if (handleRumbleMuteToggle()) {
+      emitLoopBypassReason("RUMBLE_MUTE_TOGGLE");
       return;
     }
 
     if (handleSettingsReplay()) {
+      emitLoopBypassReason("SETTINGS_REPLAY");
       return;
     }
   }
@@ -4546,10 +4677,11 @@ void loop() {
     return;
   }
 
-  handleAxisSpeedControl(PSB_R1, liftSpeedUp, tiltSpeedUp);
-  handleAxisSpeedControl(PSB_R2, liftSpeedDown, tiltSpeedDown);
-  handleAxisSpeedControl(PSB_L1, panSpeedUp, swingSpeedUp);
-  handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown);
+  handleAxisSpeedControl(PSB_R1, liftSpeedUp, tiltSpeedUp, "R1_LIFT_TILT_UP");
+  handleAxisSpeedControl(PSB_R2, liftSpeedDown, tiltSpeedDown, "R2_LIFT_TILT_DOWN");
+  handleAxisSpeedControl(PSB_L1, panSpeedUp, swingSpeedUp, "L1_PAN_SWING_UP");
+  handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown, "L2_PAN_SWING_DOWN");
+  logShoulderSpeedButtonEdges();
 
   handleSwingMotionGroup();
 
