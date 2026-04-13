@@ -26,8 +26,6 @@ Designed for smooth, repeatable cinematic motion — from manual operation to fu
 
 *Precision-controlled multi-axis motion with real-time feedback and cinematic intent*
 
-<sub>No post-processing — direct output from the rig</sub>
-
 </div>
 
 ## 🧩 System Architecture
@@ -129,33 +127,6 @@ flowchart TD
 - Arduino Mega/Nano onboard LEDs are single-color only (no native RGB mode indicator support).
 - For color mode indicators (blue/green/red/yellow), use the optional ESP32-S3 matrix status firmware (`ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino`).
 
-### Will speed test build: how to flip behavior
-
-In `MEGA__master/MEGA__master.ino`, use these constants to switch speed-command behavior for testing:
-
-- `WILL_TEST_SPEED_BUILD`
-	- `true`: emits `SPEED_EVENT:*` diagnostics and blinks `LED_BUILTIN` on each speed-change press.
-	- `false`: no extra speed-test diagnostics.
-- `WILL_TEST_LEGACY_HELD_SPEED_SIGNALS`
-	- `true`: original/legacy style (hold line HIGH while button is held, LOW on release).
-	- `false`: pulse style (short HIGH/LOW pulse per press).
-
-Recommended presets:
-
-- **Will A (legacy-held test):**
-	- `WILL_TEST_SPEED_BUILD = true`
-	- `WILL_TEST_LEGACY_HELD_SPEED_SIGNALS = true`
-- **Will B (pulse test):**
-	- `WILL_TEST_SPEED_BUILD = true`
-	- `WILL_TEST_LEGACY_HELD_SPEED_SIGNALS = false`
-
-After changing either flag, rebuild and upload the Mega sketch.
-
-Notes:
-
-- Startup default speed stage is preset to `3` for swing/lift only (per test request); pan/tilt startup behavior remains unchanged.
-- Regular-mode shoulder speed controls are `L1/L2/R1/R2`; focus speed controls are `SQUARE/CIRCLE`.
-
 ## Setup and Flashing
 
 ### Hardware required
@@ -185,6 +156,11 @@ cp -r third_party/PS2X_lib ~/Documents/Arduino/libraries/PS2X_lib
 ```
 
 ### PS2 receiver wiring (Mega 2560)
+
+Reference photos:
+
+- PS2 controller wiring photo: `assets/ps2.HEIC`
+- Mega-side PS2 wiring photo: `assets/mega.HEIC`
 
 Current Mega pin map from `MEGA__master/MEGA__master.ino`:
 
@@ -241,7 +217,7 @@ Notes:
 
 After flashing the Mega and at least one Nano slave, power up and verify:
 
-1. Serial monitor shows the startup speed-stage message; test builds may preset swing/lift to stage `3` while leaving pan/tilt unchanged
+1. Serial monitor shows the startup speed-stage message; default startup speed stage is `1` for all motion axes
 2. Controller connects — Serial shows `DualShock Controller found`
 3. D-pad moves the expected axis
 4. L1/L2 step swing/lift speed up and down (press once per stage)
@@ -400,7 +376,7 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | **START + D-pad RIGHT / LEFT** | **Adjust timelapse move time (`stepDist`) by ±10 ms per press (only when auto modes are idle).** | X |  |
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) | X | X |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) | X | X |
-| L3 (left stick click) | **Normal mode:** set bounce distance endpoint (ends stage 0, starts stage 1); double medium pulse confirms lock. **Drone Mode:** record current axis positions as a Flowlapse waypoint; short rumble confirms. |  |  |
+| L3 (left stick click) | **Normal mode:** set bounce distance endpoint (ends stage 0, starts stage 1); double medium pulse confirms lock. **Drone Mode:** record current axis positions as a Flowlapse waypoint; short rumble confirms. | X |  |
 | **R3 (press right joystick inward / right stick click)** | **Toggle Drone Mode ON/OFF. Enter = single medium pulse; Exit = double medium pulse. While Drone Mode is active, timelapse and bounce are locked out, and both joysticks control motion at multiple speed levels based on stick deflection.** | X | X |
 
 ### Timelapse Modes (SELECT release)
