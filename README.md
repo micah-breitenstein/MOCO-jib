@@ -159,8 +159,13 @@ cp -r third_party/PS2X_lib ~/Documents/Arduino/libraries/PS2X_lib
 
 Reference photos:
 
-- PS2 controller wiring photo: `assets/ps2.HEIC`
-- Mega-side PS2 wiring photo: `assets/mega.HEIC`
+PS2 controller wiring:
+
+![PS2 controller wiring](assets/ps2.jpg)
+
+Mega-side PS2 wiring:
+
+![Mega PS2 wiring](assets/mega.jpg)
 
 Current Mega pin map from `MEGA__master/MEGA__master.ino`:
 
