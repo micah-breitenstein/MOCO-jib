@@ -638,11 +638,11 @@ Flowlapse is a waypoint timelapse system for recording a multi-axis camera path 
 	- Speed tiers ramp gradually, including direction reversals (e.g., opposite endpoints)
 	- Emergency stop (**L1 + L2 + R1 + R2**) immediately cancels Flowlapse motion
 
-#### Drone mode direction reference
+#### Drone mode reference
 
 Use this quick map while flying manually (assuming DIP reverse switches are OFF):
 
-| Stick movement | Axis result |
+| Control | Result |
 |---|---|
 | Left stick LEFT | Swing left |
 | Left stick RIGHT | Swing right |
@@ -652,6 +652,10 @@ Use this quick map while flying manually (assuming DIP reverse switches are OFF)
 | Right stick RIGHT | Pan right |
 | Right stick UP | Tilt up |
 | Right stick DOWN | Tilt down |
+| Triangle | Focus one direction |
+| Cross | Focus opposite direction |
+| Square | Focus speed down |
+| Circle | Focus speed up |
 | Hold L2 | Precision modifier (slower/finer control) |
 | Hold R2 | Boost modifier (faster response) |
 
