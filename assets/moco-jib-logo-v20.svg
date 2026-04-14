@@ -1,0 +1,32 @@
+<svg width="1800" height="560" viewBox="0 0 1800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="560" rx="24" fill="#141218"/>
+
+  <g stroke="#F4F4F5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- MOCO tightened slightly for a more connected hardware rhythm -->
+
+    <!-- M : flatter, more modular inner geometry -->
+    <path d="M120 350V188H154L210 286H244L300 188H334V350"/>
+
+    <!-- O -->
+    <rect x="374" y="188" width="214" height="162" rx="32"/>
+
+    <!-- C : opening closed slightly so it reads more like a cut O -->
+    <path d="M628 220C628 202.327 642.327 188 660 188H818C834 188 846 200 846 214"/>
+    <path d="M628 318C628 335.673 642.327 350 660 350H818C834 350 846 338 846 324"/>
+    <path d="M628 220V318"/>
+
+    <!-- O -->
+    <rect x="882" y="188" width="214" height="162" rx="32"/>
+
+    <!-- jib -->
+    <!-- j : slightly longer tail with a softer bend -->
+    <path d="M1280 214V326C1280 354 1260 374 1234 374H1204"/>
+
+    <!-- i -->
+    <path d="M1360 214V362"/>
+
+    <!-- b -->
+    <path d="M1440 178V362"/>
+    <path d="M1440 262H1550C1572.09 262 1590 279.909 1590 302C1590 324.091 1572.09 342 1550 342H1440"/>
+  </g>
+</svg>
