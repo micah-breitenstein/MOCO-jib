@@ -1,0 +1,36 @@
+<svg width="1800" height="560" viewBox="0 0 1800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="560" rx="24" fill="#141218"/>
+
+  <g stroke="#F4F4F5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- MOCO tightened slightly for a more connected hardware rhythm -->
+
+    <!-- M : flatter, more modular inner geometry -->
+    <path d="M120 350V188H154L210 286H244L300 188H334V350"/>
+
+    <!-- O -->
+    <rect x="358" y="188" width="214" height="162" rx="32"/>
+
+    <!-- C -->
+    <path d="M612 220C612 202.327 626.327 188 644 188H826"/>
+    <path d="M612 318C612 335.673 626.327 350 644 350H826"/>
+    <path d="M612 220V318"/>
+
+    <!-- O -->
+    <rect x="866" y="188" width="214" height="162" rx="32"/>
+
+    <!-- jib -->
+    <!-- j : slightly longer, smoother tail -->
+    <path d="M1280 214V322C1280 350 1262 370 1238 370H1214"/>
+
+    <!-- i -->
+    <path d="M1360 214V362"/>
+
+    <!-- b -->
+    <path d="M1440 178V362"/>
+    <path d="M1440 262H1550C1572.09 262 1590 279.909 1590 302C1590 324.091 1572.09 342 1550 342H1440"/>
+  </g>
+
+  <!-- dots : smaller and slightly closer to stems -->
+  <circle cx="1280" cy="190" r="8" fill="#F4F4F5"/>
+  <circle cx="1360" cy="190" r="8" fill="#F4F4F5"/>
+</svg>
