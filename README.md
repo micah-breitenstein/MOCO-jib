@@ -1004,15 +1004,17 @@ This approach is **loop-interruption-safe** because:
 
 #### Coverage in This Codebase
 
-All button input handlers now use live-state polling:
+The following handlers use live-state polling with manual edge detection:
 
-- **Speed control** (axis outputs): 5 handlers tracking `SQUARE, CIRCLE, L1, L2, R1, R2`
-- **Mode selection** (timelapse/bounce):  `SELECT`, `START` releases
-- **Drone/Flowlapse navigation**: `L3` (waypoint capture), `PAD_LEFT/RIGHT` (jog), `TRIANGLE` (accel profile), `SELECT/START` (flowlapse state machine)
+- **Mode selection** (timelapse/bounce): `SELECT`, `START`
+- **Drone/Flowlapse navigation**: `L3` (waypoint capture), `PAD_LEFT/RIGHT` (jog), `TRIANGLE` (accel profile cycle), `SELECT/START` (Flowlapse state machine)
 - **Major mode toggle**: `R3` (Drone Mode enter/exit)
 - **Bounce stage advance**: `L3` (stage 0 → stage 1)
 
-All of these were refactored from `ButtonReleased()` to live-state tracking for total architectural consistency.
+The following handlers still use `ps2x.ButtonReleased()` directly:
+
+- **Shoulder speed buttons** (`L1`, `L2`, `R1`, `R2`) — `handleAxisSpeedControl()` uses `ButtonReleased()` to reset the output pin LOW on release. This is lower-risk than mode/navigation buttons because speed steps self-terminate on press and don't latch motor state, but a missed release event could briefly leave the pin HIGH.
+- **Focus axis** (`TRIANGLE`, `CROSS`, `SQUARE`, `CIRCLE`) — `handleFocusAxis()` uses `ps2x.Button()` for direction hold and `ButtonReleased()` for speed-step pin reset, same pattern as shoulder buttons.
 
 ## Project Details Sheet
 
