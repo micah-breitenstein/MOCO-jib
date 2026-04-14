@@ -1,0 +1,36 @@
+<svg width="1800" height="560" viewBox="0 0 1800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="560" rx="24" fill="#141218"/>
+
+  <g stroke="#F4F4F5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- MOCO on a fixed-width grid (monospace rhythm) -->
+
+    <!-- M : rounded to better match O/C geometry -->
+    <path d="M120 350V220C120 202 134 188 152 188H172L227 300L282 188H302C320 188 334 202 334 220V350"/>
+
+    <!-- O : box width 214 -->
+    <rect x="374" y="188" width="214" height="162" rx="32"/>
+
+    <!-- C : box width 214 -->
+    <path d="M628 220C628 202.327 642.327 188 660 188H842"/>
+    <path d="M628 318C628 335.673 642.327 350 660 350H842"/>
+    <path d="M628 220V318"/>
+
+    <!-- O : box width 214 -->
+    <rect x="882" y="188" width="214" height="162" rx="32"/>
+
+    <!-- jib: tighter internal tracking, clearer word gap from MOCO -->
+    <!-- j -->
+    <path d="M1280 214V320C1280 343.196 1261.2 362 1238 362H1210"/>
+
+    <!-- i -->
+    <path d="M1360 214V362"/>
+
+    <!-- b -->
+    <path d="M1440 178V362"/>
+    <path d="M1440 262H1550C1572.09 262 1590 279.909 1590 302C1590 324.091 1572.09 342 1550 342H1440"/>
+  </g>
+
+  <!-- dots -->
+  <circle cx="1280" cy="184" r="10" fill="#F4F4F5"/>
+  <circle cx="1360" cy="184" r="10" fill="#F4F4F5"/>
+</svg>
