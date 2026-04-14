@@ -1,7 +1,7 @@
 # MOCO jib
 
 <div align="center">
-	<img src="assets/moco-jib-logo-two-line-black.png" alt="MOCO jib logo" width="600" />
+	<img src="assets/moco-jib-logo-two-line-caps-black.png" alt="MOCO jib logo" width="600" />
 </div>
 
 ### Open-source multi-axis motion control system for cinematic capture
