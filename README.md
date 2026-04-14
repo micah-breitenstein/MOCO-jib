@@ -1,7 +1,7 @@
 # MOCO Jib
 
 <div align="center">
-	<img src="assets/moco-jib-logo-oqo.svg" alt="MOCO JIB logo" width="860" />
+	<img src="assets/moco-jib-logo-oqo-v2.svg" alt="MOCO JIB logo" width="860" />
 </div>
 
 ### Multi-Axis Motion Control Camera Rig
