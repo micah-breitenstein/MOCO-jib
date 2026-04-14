@@ -5,7 +5,7 @@
     <!-- MOCO on a fixed-width grid (monospace rhythm) -->
 
     <!-- M (single valley) : box width 214 -->
-    <path d="M120 350V220H154L227 332L300 220H334V350"/>
+    <path d="M120 350V188H154L227 316L300 188H334V350"/>
 
     <!-- O : box width 214 -->
     <rect x="374" y="188" width="214" height="162" rx="32"/>
