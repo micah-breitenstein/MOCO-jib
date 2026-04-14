@@ -1,0 +1,34 @@
+<svg width="1800" height="560" viewBox="0 0 1800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="560" rx="24" fill="#141218"/>
+
+  <g stroke="#F4F4F5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- M (rounded, extended center valley) -->
+    <path d="M120 360V210C120 192 134 178 152 178H196C214 178 228 192 228 210V315C228 333 242 347 260 347H294C312 347 326 333 326 315V210C326 192 340 178 358 178H402C420 178 434 192 434 210V360"/>
+
+    <!-- O -->
+    <rect x="490" y="178" width="182" height="182" rx="38"/>
+
+    <!-- C = open O (right side open) -->
+    <path d="M744 220C744 196.804 762.804 178 786 178H912"/>
+    <path d="M744 318C744 341.196 762.804 360 786 360H912"/>
+    <path d="M744 220V318"/>
+
+    <!-- O -->
+    <rect x="972" y="178" width="182" height="182" rx="38"/>
+
+    <!-- lowercase jib with clear word space after MOCO -->
+    <!-- j -->
+    <path d="M1340 214V320C1340 343.196 1321.2 362 1298 362H1270"/>
+
+    <!-- i -->
+    <path d="M1436 214V362"/>
+
+    <!-- b -->
+    <path d="M1532 178V362"/>
+    <path d="M1532 262H1642C1664.09 262 1682 279.909 1682 302C1682 324.091 1664.09 342 1642 342H1532"/>
+  </g>
+
+  <!-- dots -->
+  <circle cx="1340" cy="184" r="10" fill="#F4F4F5"/>
+  <circle cx="1436" cy="184" r="10" fill="#F4F4F5"/>
+</svg>
