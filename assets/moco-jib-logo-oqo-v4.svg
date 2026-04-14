@@ -17,7 +17,7 @@
     <rect x="972" y="178" width="182" height="182" rx="38"/>
 
     <!-- j (lowercase) -->
-    <path d="M1318 214V320C1318 343.196 1299.2 362 1276 362H1248"/>
+    <path d="M1348 214V320C1348 343.196 1329.2 362 1306 362H1278"/>
 
     <!-- i (lowercase) -->
     <path d="M1388 262V362"/>
@@ -28,6 +28,6 @@
   </g>
 
   <!-- lowercase i + j dots -->
-  <circle cx="1318" cy="184" r="10" fill="#F4F4F5"/>
+  <circle cx="1348" cy="184" r="10" fill="#F4F4F5"/>
   <circle cx="1388" cy="226" r="10" fill="#F4F4F5"/>
 </svg>
