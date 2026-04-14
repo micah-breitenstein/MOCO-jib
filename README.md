@@ -1,4 +1,8 @@
-# 🎥 MOCO Jib
+# MOCO Jib
+
+<div align="center">
+	<img src="assets/moco-jib-logo-oqo.svg" alt="MOCO JIB logo" width="860" />
+</div>
 
 ### Multi-Axis Motion Control Camera Rig
 
