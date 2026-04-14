@@ -29,8 +29,4 @@
     <path d="M1440 178V362"/>
     <path d="M1440 262H1550C1572.09 262 1590 279.909 1590 302C1590 324.091 1572.09 342 1550 342H1440"/>
   </g>
-
-  <!-- dots : smaller and slightly closer to stems -->
-  <circle cx="1280" cy="190" r="8" fill="#F4F4F5"/>
-  <circle cx="1360" cy="190" r="8" fill="#F4F4F5"/>
 </svg>
