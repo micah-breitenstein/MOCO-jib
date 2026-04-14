@@ -109,8 +109,73 @@ The rig is composed of three coordinated subsystems:
 
 #### 📺 Display (LVGL UI)
 
-- Shows system status, errors, and mode transitions
-- Provides immediate feedback without needing a serial monitor
+Listens on UART1 — **RX = GPIO 40, TX = GPIO 41, 115 200 baud**.
+
+**System state**
+
+| UART message | Display shown | UI element |
+|---|---|---|
+| `CONTROLLER_ERROR:<msg>` | Full-screen error mode; `<msg>` text shown; auto-clears after 3.5 s | Error screen |
+| `CONTROLLER_OK:*` | Returns to current mode view | Mode screen |
+| `EMERGENCY_STOP:ACTIVE` | "EMERGENCY\nSTOP" full-screen (latched until released) | Error screen |
+| `EMERGENCY_STOP:RELEASED` | "EMERGENCY STOP\nRELEASED" overlay, then restores previous mode | Temporary overlay |
+
+**Mode switches**
+
+| UART message | Display shown | UI element |
+|---|---|---|
+| `MODE:MANUAL` | Manual mode view | Mode screen |
+| `MODE:DRONE` | Drone mode view — dual stick rings, Flowlapse bar, precision/boost indicators | Mode screen |
+| `MODE:TIMELAPSE` | Timelapse mode view | Mode screen |
+| `MODE:BOUNCE` | Bounce mode view | Mode screen |
+
+**Settings overlays** *(brief, then restore mode)*
+
+| UART message | Display shown |
+|---|---|
+| `TIMELAPSE_INTERVAL:<sec>` | Timelapse interval value |
+| `TIMELAPSE_STEPDIST:<ms>` | Timelapse step-distance value |
+| `RUMBLE_MUTE:ON` | "RUMBLE\nMUTE ON" |
+| `RUMBLE_MUTE:OFF` | "RUMBLE\nMUTE OFF" |
+
+**Control feedback overlays** *(brief, then restore mode)*
+
+| UART message | Display shown |
+|---|---|
+| `CONTROL:FOCUS_LEFT` / `FOCUS_RIGHT` | "FOCUS LEFT" / "FOCUS RIGHT" |
+| `CONTROL:FOCUS_SPEED_DOWN` / `FOCUS_SPEED_UP` | "FOCUS SPEED DOWN" / "FOCUS SPEED UP" |
+| `CONTROL:L1_PAN_SWING_UP` / `L2_PAN_SWING_DOWN` | "PAN+SWING SPEED UP" / "PAN+SWING SPEED DOWN" |
+| `CONTROL:R1_LIFT_TILT_UP` / `R2_LIFT_TILT_DOWN` | "LIFT+TILT SPEED UP" / "LIFT+TILT SPEED DOWN" |
+| `CONTROL:SWING_SOLO_LEFT` / `SWING_SOLO_RIGHT` | "SWING SOLO LEFT" / "SWING SOLO RIGHT" |
+| `CONTROL:PAN_SOLO_LEFT` / `PAN_SOLO_RIGHT` | "PAN SOLO LEFT" / "PAN SOLO RIGHT" |
+| `CONTROL:SWING_PAN_LEFT` / `SWING_PAN_RIGHT` | "SWING+PAN LEFT" / "SWING+PAN RIGHT" |
+| `CONTROL:LIFT_SOLO_UP` / `LIFT_SOLO_DOWN` | "LIFT SOLO UP" / "LIFT SOLO DOWN" |
+| `CONTROL:TILT_SOLO_UP` / `TILT_SOLO_DOWN` | "TILT SOLO UP" / "TILT SOLO DOWN" |
+| `CONTROL:LIFT_TILT_UP` / `LIFT_TILT_DOWN` | "LIFT+TILT UP" / "LIFT+TILT DOWN" |
+| `CONTROL:L3_WAYPOINT_RECORD` | Increments Flowlapse waypoint counter on drone UI |
+| `CONTROL:L3_BOUNCE_ENDPOINT` | "L3\nBOUNCE\nENDPOINT SET" |
+
+**Drone live data**
+
+| UART message | Display shown | UI element |
+|---|---|---|
+| `DRONE_STICK:swing=<±100>,lift=<±100>,pan=<±100>,tilt=<±100>,lstick=<0/1>,rstick=<0/1>` | Animates stick dot positions inside the two joystick rings | Drone stick UI |
+| `DRONE_MODIFIER:precision=<0/1>,boost=<0/1>` | Highlights precision and/or boost state box | Drone modifier indicators |
+
+**Flowlapse status**
+
+| UART message | Display shown | UI element |
+|---|---|---|
+| `WAYPOINT_COUNT:<n>/<total>` | Updates waypoint counter | Drone Flowlapse bar |
+| `PREVIEW_WAYPOINT:<n>/<total>` | "FLOWLAPSE PREVIEW" + waypoint count | Drone Flowlapse bar |
+| `progress=<n>% eta=<n>s waypoint <n>/<n>` | Progress bar fill + ETA + waypoint count | Drone Flowlapse bar |
+| `recording armed` | "FLOWLAPSE READY" | Drone Flowlapse bar |
+| `preview started` | "FLOWLAPSE PREVIEW" | Drone Flowlapse bar |
+| `capture run started` | "FLOWLAPSE CAPTURE", progress reset to 0 | Drone Flowlapse bar |
+| `capture paused` | "FLOWLAPSE PAUSED" | Drone Flowlapse bar |
+| `capture resumed` | "FLOWLAPSE CAPTURE" | Drone Flowlapse bar |
+| `capture complete` | Progress 100%, returns to drone mode, resets bar | Drone Flowlapse bar |
+| `canceled` | Returns to drone mode, resets bar | Drone Flowlapse bar |
 
 #### 🌈 RGB Matrix
 
@@ -185,7 +250,7 @@ flowchart TD
 - `NANO_slave_3_LIFT/NANO_slave_3_LIFT.ino` — lift axis slave
 - `NANO_slave_4_TILT/NANO_slave_4_TILT.ino` — tilt axis slave
 - `NANO_slave_5_FOCUS/NANO_slave_5_FOCUS.ino` — focus axis slave
-- `ESP32-S3/RIG_Display.ino` — ESP32-S3 display firmware (real-time status + UI)
+- `ESP32-S3/RIG_Display.ino` — ESP32-S3 display firmware (UART1 RX=40 TX=41 115200; `CONTROLLER_ERROR` → error screen, `MODE:*` → mode UI, `CONTROL:*` → brief overlay, `DRONE_STICK:*` → live stick animation)
 - `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (UART1 RX=44 TX=43 115200; `CONTROLLER_ERROR` → red twinkle, `CONTROLLER_OK` → white breathing pulse, `MODE:*` → latched color)
 
 ## Notes
@@ -332,7 +397,7 @@ Recommended Mega serial assignments:
 
 ESP-side UART pins used by current sketches:
 
-- Display ESP32-S3 (2.41" AMOLED): `RX=GPIO40`, `TX=GPIO41` (status UART at `9600`)
+- Display ESP32-S3 (2.41" AMOLED): `RX=GPIO40`, `TX=GPIO41` (status UART at `115200`)
 - Matrix ESP32-S3: dedicated UART header pins `RX`/`TX` are used, mapped in sketch as `RX=GPIO44`, `TX=GPIO43`
 
 Wire the channels like this:
