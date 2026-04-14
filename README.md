@@ -6,20 +6,18 @@ A fully programmable, multi-axis motion control system for cinematic camera move
 
 ## ❤️ Why This Exists
 
-This project started with my cousin Will, who set out to solve a very real problem:
-
-Motion control systems are powerful — but they’re often locked behind expensive, proprietary ecosystems that limit creativity and lose value over time.
-
+This project started with my cousin Will solving a real problem:
+powerful motion-control tools are often locked behind expensive, proprietary ecosystems.
 Instead of buying into that model, he built his own.
 
 - No locked software
 - No forced upgrades
 - No artificial limitations
-- Just full control over the system — hardware and software
+- Full control over hardware and software
 
 ## 🔧 What This Project Became
 
-The original system proved what was possible.
+The original rig proved what was possible.
 From there, I stepped in to:
 
 - Refactor the codebase for reliability and scalability
@@ -27,26 +25,24 @@ From there, I stepped in to:
 - Extend the system with real-time visual feedback and lighting systems
 - Build a more cohesive, synchronized multi-device architecture
 
-The result is what you see here:
+The result:
 
 - 👉 A fully open, production-capable motion control rig
-- 👉 Designed for cinematic precision and repeatability
-- 👉 Built to evolve — not depreciate
+- 👉 Cinematic precision and repeatability
+- 👉 Built to evolve, not depreciate
 
 ## 🎁 Our Gift to the Community
 
-This project is our way of giving back.
-
-An open-source rig that is:
+This project is our way of giving back: an open-source rig that is
 
 - Powerful enough for real-world shooting
-- Flexible enough to customize endlessly
+- Flexible enough to customize
 - Accessible to anyone willing to build and learn
 
-If you’ve ever wanted to:
+If you’ve wanted to:
 
 - Build your own motion control system
-- Understand how these rigs actually work
+- Understand how these rigs work
 - Create cinematic timelapses without spending thousands
 
 This is for you.
@@ -66,15 +62,15 @@ This system combines:
 	- ESP32-S3 RGB matrix (state + motion feedback)
 - 🔁 UART-based architecture keeping all subsystems synchronized
 
-Designed for smooth, repeatable cinematic motion — from manual operation to fully automated multi-axis timelapse sequences.
+Designed for smooth, repeatable cinematic motion — from manual control to fully automated multi-axis timelapse sequences.
 
 ## ✨ What Makes This Different
 
-- 🔓 Fully Open System — no proprietary lock-in; modify anything
-- ⚡ No Post-Processing Required — motion is smooth straight out of the rig
-- 📡 Real-Time Feedback System (Extended) — visual UI + lighting gives immediate system awareness
+- 🔓 Fully Open System — no proprietary lock-in
+- ⚡ No Post-Processing Required — smooth motion straight out of the rig
+- 📡 Real-Time Feedback — visual UI + lighting for immediate awareness
 - 🧠 Advanced Motion Intelligence — Drone Mode, Flowlapse, waypoint capture, and more
-- 🛠️ Built to Last — not tied to any ecosystem that will disappear or degrade
+- 🛠️ Built to Last — not tied to an ecosystem that can disappear or degrade
 
 ## 🎥 Demo
 
