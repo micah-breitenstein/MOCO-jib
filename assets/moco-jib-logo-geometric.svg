@@ -1,0 +1,25 @@
+<svg width="1800" height="560" viewBox="0 0 1800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1800" height="560" rx="24" fill="#000000"/>
+
+  <g stroke="#F4F4F5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- MOCO (original geometry) -->
+    <path d="M120 350V188H154L210 286H244L300 188H334V350"/>
+    <rect x="374" y="188" width="214" height="162" rx="32"/>
+    <path d="M628 220C628 202.327 642.327 188 660 188H818C834 188 846 200 846 214"/>
+    <path d="M628 318C628 335.673 642.327 350 660 350H818C834 350 846 338 846 324"/>
+    <path d="M628 220V318"/>
+    <rect x="882" y="188" width="214" height="162" rx="32"/>
+
+    <!-- JIB (redesigned geometric monoline) -->
+    <!-- J: vertical stem + wide-radius hook -->
+    <path d="M1240 188V316C1240 334.778 1224.78 350 1206 350H1168"/>
+
+    <!-- I: capsule to keep clear readability with rounded terminals -->
+    <rect x="1310" y="188" width="64" height="162" rx="32"/>
+
+    <!-- B: vertical stem + two rounded rectangular bowls in MOCO/O style -->
+    <path d="M1438 188V350"/>
+    <rect x="1438" y="188" width="206" height="72" rx="32"/>
+    <rect x="1438" y="278" width="206" height="72" rx="32"/>
+  </g>
+</svg>
