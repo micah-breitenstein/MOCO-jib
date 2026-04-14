@@ -1,9 +1,0 @@
-Thats rad that you will be able to replicate the main hardware on your end with the ps2 controller!  Unless you want to solder the wires to the ps2 receiver, you should not have to actually open the unit (you should be able to just connect with simple jumper wires).
-Looking forward to learning more about the esp32 screen too!
-
-V10- still no speed changes.
-I tried v10 and while it does seem to be starting in speed mode 3 for lift and swing, it seems that pan and tilt are still in mode 0?  Maybe I'm wrong but they seem to be moving very slow.  Regardless, I can tell that they are moving simultaneously with lift and swing which is good.  I can also confirm that they are receiving the signal to move as I have all the nanos set to turn on their LED while in movement.  Maybe we can add an LED blink to whenever the speed is changed?  That way I can determine if the nanos are even getting the signal?
-
-While I have not done any actual field timelapses with it, I imagine that I would only be shooting 1 from a specific location before moving the rig to another.  All shooting with this would be during the day.  Perhaps getting a dark to light early morning timelapse (or late evening), but no real night shooting.
-
-I'm totally comfortable sharing imagery and will try to shoot a simple backyard timelapse today and also get you some images of the components and control box.
