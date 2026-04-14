@@ -4,17 +4,77 @@
 
 A fully programmable, multi-axis motion control system for cinematic camera movement, timelapse, and automated capture workflows.
 
+## ❤️ Why This Exists
+
+This project started with my cousin Will, who set out to solve a very real problem:
+
+Motion control systems are powerful — but they’re often locked behind expensive, proprietary ecosystems that limit creativity and lose value over time.
+
+Instead of buying into that model, he built his own.
+
+- No locked software
+- No forced upgrades
+- No artificial limitations
+- Just full control over the system — hardware and software
+
+## 🔧 What This Project Became
+
+The original system proved what was possible.
+From there, I stepped in to:
+
+- Refactor the codebase for reliability and scalability
+- Eliminate fragile input handling and edge-case failures
+- Extend the system with real-time visual feedback and lighting systems
+- Build a more cohesive, synchronized multi-device architecture
+
+The result is what you see here:
+
+- 👉 A fully open, production-capable motion control rig
+- 👉 Designed for cinematic precision and repeatability
+- 👉 Built to evolve — not depreciate
+
+## 🎁 Our Gift to the Community
+
+This project is our way of giving back.
+
+An open-source rig that is:
+
+- Powerful enough for real-world shooting
+- Flexible enough to customize endlessly
+- Accessible to anyone willing to build and learn
+
+If you’ve ever wanted to:
+
+- Build your own motion control system
+- Understand how these rigs actually work
+- Create cinematic timelapses without spending thousands
+
+This is for you.
+
+## 🚀 What This System Does
+
 This system combines:
 
 - 🎮 DualShock controller input for real-time manual and drone-style control
-- 🤖 Distributed motor control using an Arduino Mega + 5 Nano axis controllers
-- 🧠 Advanced motion modes including timelapse, bounce (MoCo), and Flowlapse waypoint capture
-- 📡 Real-time system feedback via:
+- 🤖 Distributed motor control (Arduino Mega + 5 Nano axis controllers)
+- 🧠 Advanced motion modes:
+	- Timelapse
+	- Bounce (MoCo)
+	- Flowlapse (waypoint-based motion)
+- 📡 Real-time system feedback:
 	- ESP32-S3 AMOLED display (status + UI)
 	- ESP32-S3 RGB matrix (state + motion feedback)
-- 🔁 UART-based status architecture keeping all subsystems synchronized without a tethered laptop
+- 🔁 UART-based architecture keeping all subsystems synchronized
 
 Designed for smooth, repeatable cinematic motion — from manual operation to fully automated multi-axis timelapse sequences.
+
+## ✨ What Makes This Different
+
+- 🔓 Fully Open System — no proprietary lock-in; modify anything
+- ⚡ No Post-Processing Required — motion is smooth straight out of the rig
+- 📡 Real-Time Feedback System (Extended) — visual UI + lighting gives immediate system awareness
+- 🧠 Advanced Motion Intelligence — Drone Mode, Flowlapse, waypoint capture, and more
+- 🛠️ Built to Last — not tied to any ecosystem that will disappear or degrade
 
 ## 🎥 Demo
 
