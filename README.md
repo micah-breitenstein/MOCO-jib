@@ -1016,6 +1016,8 @@ The following handlers still use `ps2x.ButtonReleased()` directly:
 - **Focus direction** (`TRIANGLE` = focus left, `CROSS` = focus right in `handleFocusAxis()`) — `ps2x.Button()` holds the direction pin `HIGH` continuously while pressed; `ButtonReleased()` is the **only** thing that clears it. If an early-return fires during the exact loop cycle of the release event, the focus motor keeps running indefinitely. This is the last unrefactored miss-risk in the codebase.
 - **Shoulder speed buttons** (`L1/L2/R1/R2`) and **focus speed buttons** (`SQUARE/CIRCLE`) — these also call `ButtonReleased()` to set the pin `LOW` on release, but it is **unreachable dead code**: `pulseSpeedStageUpPin()` is a blocking synchronous call that pulses HIGH → delay → LOW before returning. The pin is already LOW before the `ButtonReleased()` branch is ever evaluated. No practical risk.
 
+  > **History:** The original `handleAxisSpeedControl()` held pins `HIGH` continuously while the button was held — which *was* a real missed-event risk. During the debugging session in commit `bcea0b5` ("Fix speed button handling and tune diagnostic logging", Apr 12 2026), the function was rewritten to use `pulseSpeedStageUpPin()` — a blocking press-triggered pulse — which resolved the detection issue and made the `ButtonReleased()` LOW branch harmless residual code. The same session added `WILL_TEST_SPEED_BUILD` / `WILL_TEST_BYPASS_LOGS` diagnostic flags, `logShoulderSpeedButtonEdges()`, and `emitLoopBypassReason()` to observe what was happening on the hardware.
+
 ## Project Details Sheet
 
 - Full project details are documented here: https://docs.google.com/spreadsheets/d/1BU9yWQd8groFjTa8OWagQ6Nst10-R33pP6oTYL_nhLQ/edit?usp=sharing
