@@ -114,9 +114,18 @@ The rig is composed of three coordinated subsystems:
 
 #### 🌈 RGB Matrix
 
-- Idle breathing animation (system OK)
-- Error state (red with animated twinkle)
-- Mode indicators (color-coded states)
+Listens on UART1 — **RX = GPIO 44, TX = GPIO 43, 115 200 baud**.
+
+| UART message | Matrix behavior |
+|---|---|
+| `CONTROLLER_OK:*` | White pulsing breathing animation |
+| `CONTROLLER_ERROR:*` | Red background with animating pink twinkles (auto-clears after 3.5 s timeout) |
+| `EMERGENCY_STOP:ACTIVE` | Red background with animating pink twinkles (latched until released) |
+| `EMERGENCY_STOP:RELEASED` | Returns to previous state |
+| `MODE:DRONE` | Solid purple (latched) |
+| `MODE:TIMELAPSE` | Solid amber / yellow (latched) |
+| `MODE:BOUNCE` | Solid teal (latched) |
+| `MODE:MANUAL` | Brief gray flash, then returns to OK breathing |
 
 All feedback devices are driven by the Mega via a lightweight UART protocol and remain synchronized with system state in real time.
 
@@ -177,7 +186,7 @@ flowchart TD
 - `NANO_slave_4_TILT/NANO_slave_4_TILT.ino` — tilt axis slave
 - `NANO_slave_5_FOCUS/NANO_slave_5_FOCUS.ino` — focus axis slave
 - `ESP32-S3/RIG_Display.ino` — ESP32-S3 display firmware (real-time status + UI)
-- `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (`CONTROLLER_ERROR` → red)
+- `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (UART1 RX=44 TX=43 115200; `CONTROLLER_ERROR` → red twinkle, `CONTROLLER_OK` → white breathing pulse, `MODE:*` → latched color)
 
 ## Notes
 
