@@ -59,7 +59,7 @@ This system combines:
 	- Flowlapse (waypoint-based motion)
 - 📡 Real-time system feedback:
 	- ESP32-S3 AMOLED display (status + UI)
-	- ESP32-S3 RGB matrix (state + motion feedback)
+	- ESP32-S3 RGB matrix (controller/system state feedback)
 - 🔁 UART-based architecture keeping all subsystems synchronized
 
 Designed for smooth, repeatable cinematic motion — from manual control to fully automated multi-axis timelapse sequences.
