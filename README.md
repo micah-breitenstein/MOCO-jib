@@ -43,7 +43,7 @@ If you’ve wanted to:
 
 - Build your own motion control system
 - Understand how these rigs work
-- Create cinematic timelapses without spending thousands
+- Create cinematic timelapses without spending tens of thousands
 
 This is for you.
 
