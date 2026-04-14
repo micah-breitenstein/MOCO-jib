@@ -1,4 +1,4 @@
-# MOCO Jib
+# MOCO jib
 
 <div align="center">
 	<img src="assets/moco-jib-logo-v16.svg" alt="MOCO jib logo" width="860" />
