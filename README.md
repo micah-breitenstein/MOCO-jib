@@ -1013,8 +1013,8 @@ The following handlers use live-state polling with manual edge detection:
 
 The following handlers still use `ps2x.ButtonReleased()` directly:
 
-- **Shoulder speed buttons** (`L1`, `L2`, `R1`, `R2`) — `handleAxisSpeedControl()` uses `ButtonReleased()` to reset the output pin LOW on release. This is lower-risk than mode/navigation buttons because speed steps self-terminate on press and don't latch motor state, but a missed release event could briefly leave the pin HIGH.
-- **Focus axis** (`TRIANGLE`, `CROSS`, `SQUARE`, `CIRCLE`) — `handleFocusAxis()` uses `ps2x.Button()` for direction hold and `ButtonReleased()` for speed-step pin reset, same pattern as shoulder buttons.
+- **Focus direction** (`TRIANGLE` = focus left, `CROSS` = focus right in `handleFocusAxis()`) — `ps2x.Button()` holds the direction pin `HIGH` continuously while pressed; `ButtonReleased()` is the **only** thing that clears it. If an early-return fires during the exact loop cycle of the release event, the focus motor keeps running indefinitely. This is the last unrefactored miss-risk in the codebase.
+- **Shoulder speed buttons** (`L1/L2/R1/R2`) and **focus speed buttons** (`SQUARE/CIRCLE`) — these also call `ButtonReleased()` to set the pin `LOW` on release, but it is **unreachable dead code**: `pulseSpeedStageUpPin()` is a blocking synchronous call that pulses HIGH → delay → LOW before returning. The pin is already LOW before the `ButtonReleased()` branch is ever evaluated. No practical risk.
 
 ## Project Details Sheet
 
