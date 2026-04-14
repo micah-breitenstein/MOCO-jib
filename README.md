@@ -116,16 +116,16 @@ The rig is composed of three coordinated subsystems:
 
 Listens on UART1 — **RX = GPIO 44, TX = GPIO 43, 115 200 baud**.
 
-| UART message | Matrix behavior |
-|---|---|
-| `CONTROLLER_OK:*` | White pulsing breathing animation |
-| `CONTROLLER_ERROR:*` | Red background with animating pink twinkles (auto-clears after 3.5 s timeout) |
-| `EMERGENCY_STOP:ACTIVE` | Red background with animating pink twinkles (latched until released) |
-| `EMERGENCY_STOP:RELEASED` | Returns to previous state |
-| `MODE:DRONE` | Solid purple (latched) |
-| `MODE:TIMELAPSE` | Solid amber / yellow (latched) |
-| `MODE:BOUNCE` | Solid teal (latched) |
-| `MODE:MANUAL` | Brief gray flash, then returns to OK breathing |
+| UART message | Matrix behavior | Color |
+|---|---|---|
+| `CONTROLLER_OK:*` | White pulsing breathing animation | `RGB(68–82, 68–82, 68–82)` — cool white |
+| `CONTROLLER_ERROR:*` | Red base with animating pink twinkles (auto-clears after 3.5 s) | base `RGB(80, 0, 0)` · twinkle peaks `RGB(80+w, w/10, w)` — pink |
+| `EMERGENCY_STOP:ACTIVE` | Red base with animating pink twinkles (latched until released) | same as error |
+| `EMERGENCY_STOP:RELEASED` | Returns to previous state | — |
+| `MODE:DRONE` | Solid purple (latched) | `RGB(130, 20, 170)` — `#8214AA` |
+| `MODE:TIMELAPSE` | Solid amber (latched) | `RGB(170, 120, 0)` — `#AA7800` |
+| `MODE:BOUNCE` | Solid teal (latched) | `RGB(0, 130, 170)` — `#0082AA` |
+| `MODE:MANUAL` | Brief gray flash, then returns to OK breathing | `RGB(120, 120, 120)` — `#787878` |
 
 All feedback devices are driven by the Mega via a lightweight UART protocol and remain synchronized with system state in real time.
 
