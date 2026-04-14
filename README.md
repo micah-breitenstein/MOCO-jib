@@ -6,7 +6,7 @@ A fully programmable, multi-axis motion control system for cinematic camera move
 
 ## ❤️ Why This Exists
 
-This project started with my cousin Will solving a real problem:
+This project started with my cousin Will Goldenberg solving a real problem:
 powerful motion-control tools are often locked behind expensive, proprietary ecosystems.
 Instead of buying into that model, he built his own.
 
