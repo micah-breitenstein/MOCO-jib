@@ -201,7 +201,7 @@ flowchart TD
 
 ### Prerequisites
 
-Install [Arduino CLI](https://arduino.github.io/arduino-cli/) and the AVR core:
+VS Code is used as the editor; builds are performed with [Arduino CLI](https://arduino.github.io/arduino-cli/), so install Arduino CLI and the AVR core first.
 
 ```sh
 brew install arduino-cli          # macOS (Homebrew)
