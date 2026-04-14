@@ -648,6 +648,8 @@ Use this quick map while flying manually (assuming DIP reverse switches are OFF)
 | Right stick RIGHT | Pan right |
 | Right stick UP | Tilt up |
 | Right stick DOWN | Tilt down |
+| Hold L2 | Precision modifier (slower/finer control) |
+| Hold R2 | Boost modifier (faster response) |
 
 Speed level is based on how far you push either stick from center (small deflection = slower, large deflection = faster).
 
