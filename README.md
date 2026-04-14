@@ -4,7 +4,7 @@
 	<img src="assets/moco-jib-logo-master.svg" alt="MOCO jib logo" width="860" />
 </div>
 
-### Multi-Axis Motion Control Camera Rig
+### Open-source multi-axis motion control system for cinematic capture
 
 A fully programmable, multi-axis motion control system for cinematic camera movement, timelapse, and automated capture workflows.
 
