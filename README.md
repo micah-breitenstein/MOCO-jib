@@ -6,6 +6,8 @@
 
 ### Open-source multi-axis motion control system for cinematic capture
 
+*Dedicated to our Grandma Babi, whose memory we hope to honor through the spirit of openness and shared learning.*
+
 A fully programmable, multi-axis motion control system for cinematic camera movement, timelapse, and automated capture workflows.
 
 ## ❤️ Why This Exists

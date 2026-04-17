@@ -525,6 +525,8 @@ unsigned long flowlapseCaptureDwellMs = 0;
 unsigned long flowlapsePreviewHoldUntilMs = 0;
 unsigned long flowlapseLastUpdateMs = 0;
 unsigned long flowlapseLastProgressLogMs = 0;
+unsigned long flowlapseCaptureRunStartMs = 0;
+uint16_t flowlapsePingPongEdgeCount = 0;
 uint8_t flowlapseTargetWaypointIndex = 0;
 uint8_t flowlapseJogIndex = 0;
 #define flowlapseCaptureAlignedToFirstWaypoint packedFlags.flowlapseCaptureAlignedToFirstWaypoint
@@ -1227,6 +1229,8 @@ void resetFlowlapseSession(bool resetEstimatedPosition) {
   flowlapsePathTotalLengthStored = 0;
   flowlapseLastUpdateMs = millis();
   flowlapseLastProgressLogMs = 0;
+  flowlapseCaptureRunStartMs = 0;
+  flowlapsePingPongEdgeCount = 0;
   resetFlowlapseAxisTierState(flowlapseLastUpdateMs);
   digitalWrite(trigger, HIGH);
 
@@ -1266,6 +1270,11 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
 
   flowlapseLastProgressLogMs = now;
 
+  unsigned long elapsedSeconds = (flowlapseCaptureRunStartMs > 0 && now >= flowlapseCaptureRunStartMs)
+      ? ((now - flowlapseCaptureRunStartMs) / 1000UL)
+      : 0UL;
+  unsigned int pingPongCycles = static_cast<unsigned int>(flowlapsePingPongEdgeCount / 2U);
+
   if (flowlapseFrameCountModeActive) {
     uint16_t totalFrames = flowlapseFrameCountTarget;
     uint16_t completedFrames = static_cast<uint16_t>(flowlapseFrameCountCurrentStopIndex + 1);
@@ -1282,29 +1291,41 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
     unsigned long remainingFrames = (totalFrames >= completedFrames) ? static_cast<unsigned long>(totalFrames - completedFrames) : 0;
     unsigned long etaSeconds = (remainingFrames * estimatedPerFrameMs) / 1000UL;
 
-    char captureLine[128];
+    char captureLine[160];
     snprintf(captureLine, sizeof(captureLine),
-             "Flowlapse capture | frame %u/%u phase=%s progress=%u%% eta=%lus",
+             "Flowlapse capture | frame %u/%u phase=%s progress=%u%% eta=%lus cycles=%u elapsed=%lus",
              static_cast<unsigned int>(completedFrames),
              static_cast<unsigned int>(totalFrames),
              getFlowlapseCapturePhaseLabel(flowlapseCapturePhase),
              static_cast<unsigned int>(progressPercent),
-             etaSeconds);
+             etaSeconds,
+             pingPongCycles,
+             elapsedSeconds);
     Serial.println(captureLine);
     broadcastStatus(captureLine);
     return;
   }
 
   uint8_t totalSegments = (flowlapseWaypointCount > 1) ? static_cast<uint8_t>(flowlapseWaypointCount - 1) : 0;
-  float completedSegments = 0.0f;
-  if (flowlapseCaptureAlignedToFirstWaypoint && flowlapseTargetWaypointIndex > 0) {
-    completedSegments = static_cast<float>(flowlapseTargetWaypointIndex - 1);
-    if (completedSegments > totalSegments) {
-      completedSegments = totalSegments;
+  float pathPositionSegments = 0.0f;
+  if (flowlapseCaptureAlignedToFirstWaypoint && totalSegments > 0) {
+    if (flowlapseCaptureDirection >= 0) {
+      if (flowlapseTargetWaypointIndex > 0) {
+        pathPositionSegments = static_cast<float>(flowlapseTargetWaypointIndex - 1);
+      }
+    } else {
+      if (flowlapseTargetWaypointIndex < flowlapseWaypointCount - 1) {
+        pathPositionSegments = static_cast<float>(flowlapseTargetWaypointIndex + 1);
+      } else {
+        pathPositionSegments = static_cast<float>(totalSegments);
+      }
+    }
+
+    if (pathPositionSegments > static_cast<float>(totalSegments)) {
+      pathPositionSegments = static_cast<float>(totalSegments);
     }
   }
 
-  float segmentFraction = 0.0f;
   float remainingMs = 0.0f;
   if (flowlapseCaptureAlignedToFirstWaypoint && totalSegments > 0) {
     unsigned long triggerLowMs = static_cast<unsigned long>(timelapseIntervalMs / 2);
@@ -1342,13 +1363,22 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
       segmentElapsedMs = segmentTotalMs;
     }
 
+    float segmentFraction = 0.0f;
     if (segmentTotalMs > 0) {
       segmentFraction = static_cast<float>(segmentElapsedMs) / static_cast<float>(segmentTotalMs);
     }
 
-    completedSegments += segmentFraction;
-    if (completedSegments > totalSegments) {
-      completedSegments = totalSegments;
+    if (flowlapseCaptureDirection >= 0) {
+      pathPositionSegments += segmentFraction;
+    } else {
+      pathPositionSegments -= segmentFraction;
+    }
+
+    if (pathPositionSegments < 0.0f) {
+      pathPositionSegments = 0.0f;
+    }
+    if (pathPositionSegments > static_cast<float>(totalSegments)) {
+      pathPositionSegments = static_cast<float>(totalSegments);
     }
 
     remainingMs = static_cast<float>(segmentTotalMs > segmentElapsedMs ? (segmentTotalMs - segmentElapsedMs) : 0UL);
@@ -1360,8 +1390,14 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
         unsigned long futureDwellMs = flowlapseWaypoints[segmentEndIdx].dwellMs;
         remainingMs += static_cast<float>(timelapseIntervalMs + static_cast<unsigned long>(stepDist) + futureDwellMs);
       }
+    } else if (!flowlapseFrameCountModeActive && flowlapseCaptureDirection < 0) {
+      float reverseRemainingSegments = pathPositionSegments;
+      if (reverseRemainingSegments < 0.0f) {
+        reverseRemainingSegments = 0.0f;
+      }
+      remainingMs = reverseRemainingSegments * static_cast<float>(timelapseIntervalMs + static_cast<unsigned long>(stepDist) + flowlapseDwellMs);
     } else {
-      float remainingSegmentsEstimate = static_cast<float>(totalSegments) - completedSegments;
+      float remainingSegmentsEstimate = static_cast<float>(totalSegments) - pathPositionSegments;
       if (remainingSegmentsEstimate < 0.0f) {
         remainingSegmentsEstimate = 0.0f;
       }
@@ -1371,19 +1407,21 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
 
   uint8_t progressPercent = 0;
   if (totalSegments > 0) {
-    progressPercent = static_cast<uint8_t>((completedSegments * 100.0f) / static_cast<float>(totalSegments));
+    progressPercent = static_cast<uint8_t>((pathPositionSegments * 100.0f) / static_cast<float>(totalSegments));
   }
 
   unsigned long etaSeconds = static_cast<unsigned long>(remainingMs / 1000.0f);
 
-  char captureLine[128];
+  char captureLine[160];
   snprintf(captureLine, sizeof(captureLine),
-           "Flowlapse capture | waypoint %u/%u phase=%s progress=%u%% eta=%lus",
+           "Flowlapse capture | waypoint %u/%u phase=%s progress=%u%% eta=%lus cycles=%u elapsed=%lus",
            static_cast<unsigned int>(flowlapseTargetWaypointIndex + 1),
            static_cast<unsigned int>(flowlapseWaypointCount),
            getFlowlapseCapturePhaseLabel(flowlapseCapturePhase),
            static_cast<unsigned int>(progressPercent),
-           etaSeconds);
+           etaSeconds,
+           pingPongCycles,
+           elapsedSeconds);
   Serial.println(captureLine);
   broadcastStatus(captureLine);
 }
@@ -1623,6 +1661,8 @@ void startFlowlapseCapture(unsigned long now) {
   flowlapseCapturePhaseStartMs = now;
   flowlapseCaptureDwellMs = 0;
   flowlapseLastProgressLogMs = 0;
+  flowlapseCaptureRunStartMs = now;
+  flowlapsePingPongEdgeCount = 0;
   resetFlowlapseAxisTierState(now);
 
   bool useCurvedPath = FLOWLAPSE_CURVED_PATH_ENABLED && flowlapseWaypointCount >= 3;
@@ -2403,6 +2443,7 @@ void completeFlowlapseCapture(unsigned long now) {
   }
 
   if (!flowlapseFrameCountModeActive && flowlapsePingPongLoopEnabled && flowlapseWaypointCount >= 2) {
+    flowlapsePingPongEdgeCount++;
     flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
     flowlapseCapturePhaseStartMs = now;
     flowlapseLastProgressLogMs = 0;
@@ -2416,7 +2457,13 @@ void completeFlowlapseCapture(unsigned long now) {
       flowlapseTargetWaypointIndex = 1;
     }
 
-    Serial.println(F("Flowlapse: ping-pong edge reached — reversing direction."));
+    Serial.print(F("Flowlapse: ping-pong edge reached — reversing direction. cycles="));
+    Serial.print(static_cast<unsigned int>(flowlapsePingPongEdgeCount / 2U));
+    Serial.print(F(" elapsed="));
+    Serial.print((flowlapseCaptureRunStartMs > 0 && now >= flowlapseCaptureRunStartMs)
+        ? ((now - flowlapseCaptureRunStartMs) / 1000UL)
+        : 0UL);
+    Serial.println(F("s"));
   } else if (!flowlapseFrameCountModeActive && FLOWLAPSE_LOOP_CAPTURE) {
     flowlapseCaptureAlignedToFirstWaypoint = false;
     flowlapseCapturePhase = FLOWLAPSE_CAPTURE_TRIGGER_LOW;
@@ -3104,6 +3151,17 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
     } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
       startFlowlapsePreview();
       droneLastActivityMs = now;
+    } else if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED) {
+      // Abort: pause with START first, then SELECT to confirm cancel
+      stopAllMotors();
+      flowlapseState = FLOWLAPSE_STATE_READY_FOR_CAPTURE;
+      flowlapseCaptureDirection = 1;
+      flowlapseTargetWaypointIndex = 0;
+      startFeedbackRumble(3, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      Serial.println(F("Flowlapse: capture aborted. Waypoints preserved — press SELECT to re-run preview."));
+      broadcastStatus("Flowlapse: capture aborted. Waypoints preserved.");
+      broadcastStatus("CAPTURE_STATE:READY");
+      droneLastActivityMs = now;
     }
   }
   }
@@ -3128,6 +3186,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         const char* pauseMsg = "Flowlapse: capture paused. Press START again to resume.";
         Serial.println(pauseMsg);
         broadcastStatus(pauseMsg);
+        broadcastStatus("CAPTURE_STATE:PAUSED");
         droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED) {
         // Resume capture
@@ -3136,6 +3195,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         const char* resumeMsg = "Flowlapse: capture resumed.";
         Serial.println(resumeMsg);
         broadcastStatus(resumeMsg);
+        broadcastStatus("CAPTURE_STATE:RUNNING");
         droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
         startFlowlapseCapture(now);
@@ -4715,6 +4775,64 @@ void setup() {
   Serial.println(digitalRead(DIP_SWITCH_5) == HIGH ? "Y" : "N");
 }
 
+/* ---------- Display touchscreen SET command processing ---------- */
+
+static char displayCmdBuf[48];
+static uint8_t displayCmdLen = 0;
+
+void processDisplayCommands() {
+  while (Serial1.available()) {
+    char c = (char)Serial1.read();
+    if (c == '\r') continue;
+    if (c == '\n') {
+      if (displayCmdLen == 0) continue;
+      displayCmdBuf[displayCmdLen] = '\0';
+      displayCmdLen = 0;
+
+      if (strncmp(displayCmdBuf, "SET:TL_INT:", 11) == 0) {
+        int val = atoi(displayCmdBuf + 11);
+        if (val >= TIMELAPSE_INTERVAL_MIN_SECONDS && val <= TIMELAPSE_INTERVAL_MAX_SECONDS) {
+          int delta = val - timelapseIntervalSeconds;
+          if (delta != 0) {
+            adjustIntervalSeconds(delta);
+            Serial.print(F("Display SET timelapse interval = "));
+            Serial.println(val);
+          }
+        }
+      } else if (strncmp(displayCmdBuf, "SET:TL_STEP:", 12) == 0) {
+        int val = atoi(displayCmdBuf + 12);
+        if (val >= TIMELAPSE_STEP_DIST_MIN_MS && val <= TIMELAPSE_STEP_DIST_MAX_MS) {
+          int delta = val - stepDist;
+          if (delta != 0) {
+            adjustStepDist(delta);
+            Serial.print(F("Display SET timelapse stepDist = "));
+            Serial.println(val);
+          }
+        }
+      } else if (strncmp(displayCmdBuf, "SET:RUMBLE_MUTE:", 16) == 0) {
+        bool newMuted = (displayCmdBuf[16] == '1');
+        if (newMuted != rumbleMuted) {
+          rumbleMuted = newMuted;
+          stopIntervalRumbleFeedback();
+          savePersistedSettings();
+          Serial.print(F("Display SET rumble "));
+          Serial.println(rumbleMuted ? "muted." : "unmuted.");
+          broadcastStatus(rumbleMuted ? "RUMBLE_MUTE:ON" : "RUMBLE_MUTE:OFF");
+          if (!rumbleMuted) {
+            startRumbleUnmuteFeedback();
+          }
+        }
+      }
+      continue;
+    }
+    if (displayCmdLen < sizeof(displayCmdBuf) - 1) {
+      displayCmdBuf[displayCmdLen++] = c;
+    } else {
+      displayCmdLen = 0;
+    }
+  }
+}
+
 void loop() {
 
   unsigned long now = millis();
@@ -4751,6 +4869,8 @@ void loop() {
   }
 
   unsupportedControllerWarningShown = false;
+
+  processDisplayCommands();
 
   if (now - lastControllerOkBroadcastMs >= CONTROLLER_OK_BROADCAST_INTERVAL_MS) {
     broadcastStatus("CONTROLLER_OK:DualShock connected.");

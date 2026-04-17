@@ -1,0 +1,88 @@
+MOCO JIB STABILITY PASS
+Version: 1
+Goal: Verify speed-control stability before/after feature changes.
+
+PREP
+- Hardware warmed up for 5 minutes.
+- Controller connected and responsive.
+- Emergency stop tested once (active + released).
+- Same payload, same balance, same power source for all runs.
+- Start from DRONE mode with motors idle.
+
+TEST 1: REPEATABILITY (IDENTICAL RUNS)
+Purpose: Confirm runtime and motion consistency.
+1. Record a fixed 3-waypoint course.
+2. Run full capture 3 times with identical settings.
+3. Log total run time each pass.
+Pass criteria:
+- Runtime spread is small and does not drift each run.
+- Start/stop positions are visually repeatable.
+- No added jitter between runs.
+
+TEST 2: SPEED TIER VALIDATION (PER AXIS)
+Purpose: Validate low/high tier behavior under load.
+1. For Swing, Lift, Pan, Tilt test low tier and high tier.
+2. Run each axis both directions at least 5 seconds.
+3. Observe smoothness near start, steady mid-run, and stop.
+Pass criteria:
+- No stalling at low tier.
+- No harsh step changes at high tier.
+- Similar feel left/right and up/down.
+
+TEST 3: REVERSAL STABILITY (PING-PONG)
+Purpose: Validate repeated direction changes.
+1. Enable ping-pong loop mode.
+2. Run at least 20 reversal edges.
+3. Watch for overshoot, rebound, or audible stress changes.
+Pass criteria:
+- Reversal behavior remains consistent edge-to-edge.
+- No growth in overshoot after repeated cycles.
+- No progressive vibration increase.
+
+TEST 4: FLOWLAPSE CONTROL PATHS
+Purpose: Confirm operator control remains deterministic.
+1. Start capture.
+2. Press START once (pause).
+3. Press START again (resume).
+4. Press START (pause), then SELECT (abort).
+Pass criteria:
+- Pause always freezes motion cleanly.
+- Resume continues from expected state.
+- Abort exits to ready state with waypoints preserved.
+
+TEST 5: TELEMETRY VALIDATION
+Purpose: Ensure on-screen and serial data are trustworthy.
+1. During capture confirm display shows:
+   - Progress percent
+   - ETA
+   - Cycles
+   - Elapsed time
+2. Compare with serial output for consistency.
+Pass criteria:
+- Display updates continuously and remains legible.
+- Cycles increment only at expected ping-pong edges.
+- Elapsed time is monotonic and realistic.
+
+TEST 6: LONG-RUN DRIFT CHECK
+Purpose: Detect thermal or timing drift.
+1. Run a capture workload for 10+ minutes.
+2. Record any change in speed feel, noise, or timing.
+Pass criteria:
+- No clear degradation as system warms.
+- ETA and motion remain coherent over time.
+
+FAILURE LOG TEMPLATE
+- Date:
+- Firmware revisions (Mega/ESP):
+- Test ID:
+- Axis/mode:
+- Expected:
+- Observed:
+- Repro steps:
+- Severity: low / medium / high
+- Next action:
+
+RECOMMENDED USE
+- Run full pass before major shoots.
+- Run Tests 1, 3, 4, 5 after any motion-control code change.
+- If a test fails, freeze feature work and fix stability first.

@@ -1,0 +1,25 @@
+<svg width="600" height="310" viewBox="0 0 600 310" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="600" height="310" fill="#000000"/>
+
+  <!-- MOCO: original coords x[120,1096] y[188,350], scaled 580/976 to fit 600px wide with 10px margins, positioned at top y=30 -->
+  <g transform="translate(10,30) scale(0.59426) translate(-120,-188)"
+     stroke="#F4F4F5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M120 350V188H154L210 286H244L300 188H334V350"/>
+    <rect x="374" y="188" width="214" height="162" rx="32"/>
+    <path d="M628 220C628 202.327 642.327 188 660 188H818C834 188 846 200 846 214"/>
+    <path d="M628 318C628 335.673 642.327 350 660 350H818C834 350 846 338 846 324"/>
+    <path d="M628 220V318"/>
+    <rect x="882" y="188" width="214" height="162" rx="32"/>
+  </g>
+
+  <!-- jib: original coords x[1190,1572] y[178,386], same scale, centered horizontally, 30px below MOCO -->
+  <g transform="translate(186.5,157) scale(0.59426) translate(-1190,-178)"
+     stroke="#F4F4F5" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M1280 214V336C1280 365 1257 386 1227 386H1190"/>
+    <path d="M1360 214V362"/>
+    <path d="M1440 178V362"/>
+    <path d="M1440 262H1468"/>
+    <path d="M1468 262H1548C1561.25 262 1572 272.75 1572 286V318C1572 331.25 1561.25 342 1548 342H1468"/>
+    <path d="M1440 342H1468"/>
+  </g>
+</svg>

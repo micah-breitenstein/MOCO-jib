@@ -16,8 +16,12 @@
 
 #include "esp_lcd_sh8601.h"
 #include "lvgl.h"
+#include "driver/i2c.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 
 extern const lv_font_t lv_font_montserrat_150;
+extern const lv_font_t lv_font_montserrat_120;
 extern const lv_font_t lv_font_montserrat_48;
 
 static const char *TAG = "RIG";
@@ -54,6 +58,80 @@ static const char *TAG = "RIG";
 #define MODE_MESSAGE_DURATION_MS 1800
 #define TIMELAPSE_MESSAGE_DURATION_MS 6000
 #define DRONE_STICK_MIN_VISIBLE_PULSE_MS 20
+
+/* ---------- Touch / I2C ---------- */
+#define TOUCH_I2C_PORT    I2C_NUM_0
+#define TOUCH_I2C_SDA     GPIO_NUM_47
+#define TOUCH_I2C_SCL     GPIO_NUM_48
+#define TOUCH_I2C_FREQ_HZ 400000
+#define TOUCH_FT6336_ADDR 0x38
+#define LONG_PRESS_MS     500
+
+/* ---------- NVS ---------- */
+#define NVS_NAMESPACE "rig_cfg"
+
+/* ---------- Settings data model ---------- */
+
+typedef enum {
+    SGRP_TIMELAPSE = 0,
+    SGRP_SYSTEM,
+    SGRP_COUNT,
+} SettingGroup;
+
+static const char *setting_group_names[SGRP_COUNT] = {
+    "TIMELAPSE",
+    "SYSTEM",
+};
+
+typedef enum {
+    SETTING_TL_INTERVAL = 0,
+    SETTING_TL_STEPDIST,
+    SETTING_RUMBLE_MUTE,
+    SETTING_BRIGHTNESS,
+    SETTING_LOGO_THEME,
+    SETTING_COUNT,
+} SettingId;
+
+typedef enum {
+    STYPE_INT_RANGE = 0,
+    STYPE_BOOL,
+} SettingType;
+
+typedef struct {
+    const char *name;
+    const char *unit;
+    SettingGroup group;
+    SettingType  type;
+    int value;
+    int default_val;
+    int min_val;
+    int max_val;
+    int step;
+    bool mega_backed;
+    bool triggers_rumble;
+} SettingDef;
+
+static SettingDef settings[SETTING_COUNT] = {
+    [SETTING_TL_INTERVAL] = { "Interval",     "s",  SGRP_TIMELAPSE, STYPE_INT_RANGE, 15,  15,  1,   99,  1,  true,  true  },
+    [SETTING_TL_STEPDIST] = { "Step Dist",    "ms", SGRP_TIMELAPSE, STYPE_INT_RANGE, 100, 100, 20,  150, 10, true,  true  },
+    [SETTING_RUMBLE_MUTE] = { "Rumble Mute",  "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
+    [SETTING_BRIGHTNESS]  = { "Brightness",   "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 80,  80,  10,  100, 5,  false, false },
+    [SETTING_LOGO_THEME]  = { "Logo Theme",   "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
+};
+
+/* NVS keys for the 5 settings (short for 15-char NVS limit) */
+static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "bright", "theme" };
+
+/* ---------- Settings menu state ---------- */
+static bool                settings_visible = false;
+static bool                editor_visible = false;
+static SettingId           editor_setting_id = SETTING_TL_INTERVAL;
+static esp_lcd_panel_io_handle_t panel_io_global = NULL;
+
+/* Touch state */
+static bool    touch_pressed = false;
+static int64_t touch_press_start_us = 0;
+static bool    long_press_fired = false;
 
 typedef enum {
     DISPLAY_MODE_MANUAL = 0,
@@ -100,6 +178,10 @@ static lv_obj_t *drone_flowlapse_bar = NULL;
 static lv_obj_t *drone_flowlapse_fill = NULL;
 static lv_obj_t *drone_flowlapse_label = NULL;
 static lv_obj_t *drone_flowlapse_waypoint_label = NULL;
+static lv_obj_t *settings_list_panel = NULL;
+static lv_obj_t *settings_editor_panel = NULL;
+static lv_obj_t *editor_title_label = NULL;
+static lv_obj_t *editor_value_label = NULL;
 static bool status_error_active = false;
 static bool mode_message_active = false;
 static uint64_t mode_message_until_ms = 0;
@@ -245,6 +327,495 @@ static void lvgl_task(void *arg)
     }
 }
 
+/* ================================================================
+ *  NVS helpers
+ * ================================================================ */
+
+static void load_settings_from_nvs(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) != ESP_OK) return;
+    for (int i = 0; i < SETTING_COUNT; i++) {
+        int32_t v;
+        if (nvs_get_i32(h, nvs_keys[i], &v) == ESP_OK) {
+            settings[i].value = (int)v;
+        }
+    }
+    nvs_close(h);
+}
+
+static void save_setting_to_nvs(SettingId id)
+{
+    nvs_handle_t h;
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) != ESP_OK) return;
+    nvs_set_i32(h, nvs_keys[id], (int32_t)settings[id].value);
+    nvs_commit(h);
+    nvs_close(h);
+}
+
+static void reset_all_settings_to_defaults(void)
+{
+    for (int i = 0; i < SETTING_COUNT; i++) {
+        settings[i].value = settings[i].default_val;
+        save_setting_to_nvs((SettingId)i);
+    }
+}
+
+/* ================================================================
+ *  Brightness helper
+ * ================================================================ */
+
+static void apply_brightness(void)
+{
+    if (!panel_io_global) return;
+    int pct = settings[SETTING_BRIGHTNESS].value;
+    if (pct < 10) pct = 10;
+    if (pct > 100) pct = 100;
+    uint8_t level = (uint8_t)((pct * 255) / 100);
+    uint32_t lcd_cmd = ((uint32_t)LCD_QSPI_WRITE_CMD << 24) | ((uint32_t)0x51 << 8);
+    esp_lcd_panel_io_tx_param(panel_io_global, lcd_cmd, &level, 1);
+}
+
+/* ================================================================
+ *  Theme application
+ * ================================================================ */
+
+static void apply_theme(void)
+{
+    bool light = (settings[SETTING_LOGO_THEME].value != 0);
+    lv_color_t bg  = light ? lv_color_white() : lv_color_black();
+    lv_color_t fg  = light ? lv_color_black() : lv_color_white();
+
+    lv_obj_set_style_bg_color(lv_scr_act(), bg, LV_PART_MAIN);
+    if (label_moco) lv_obj_set_style_text_color(label_moco, fg, LV_PART_MAIN);
+    if (label_jib)  lv_obj_set_style_text_color(label_jib,  fg, LV_PART_MAIN);
+}
+
+/* ================================================================
+ *  Touch driver (FT6336 over I2C)
+ * ================================================================ */
+
+static bool read_ft6336_touch(uint16_t *x, uint16_t *y)
+{
+    uint8_t data[5] = {0};
+    uint8_t reg = 0x02;
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (TOUCH_FT6336_ADDR << 1) | I2C_MASTER_WRITE, true);
+    i2c_master_write_byte(cmd, reg, true);
+    i2c_master_start(cmd);
+    i2c_master_write_byte(cmd, (TOUCH_FT6336_ADDR << 1) | I2C_MASTER_READ, true);
+    i2c_master_read(cmd, data, sizeof(data), I2C_MASTER_LAST_NACK);
+    i2c_master_stop(cmd);
+    esp_err_t err = i2c_master_cmd_begin(TOUCH_I2C_PORT, cmd, pdMS_TO_TICKS(50));
+    i2c_cmd_link_delete(cmd);
+    if (err != ESP_OK) return false;
+
+    uint8_t tp = data[0] & 0x0F;
+    if (tp == 0) return false;
+
+    uint16_t raw_x = ((data[1] & 0x0F) << 8) | data[2];
+    uint16_t raw_y = ((data[3] & 0x0F) << 8) | data[4];
+    *x = raw_y;
+    *y = 450 - raw_x;
+    return true;
+}
+
+static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
+{
+    (void)drv;
+    uint16_t tx, ty;
+    if (read_ft6336_touch(&tx, &ty)) {
+        data->state = LV_INDEV_STATE_PRESSED;
+        data->point.x = tx;
+        data->point.y = ty;
+        if (!touch_pressed) {
+            touch_pressed = true;
+            touch_press_start_us = esp_timer_get_time();
+            long_press_fired = false;
+        }
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
+        touch_pressed = false;
+        long_press_fired = false;
+    }
+}
+
+/* ================================================================
+ *  UART TX — send SET commands to MEGA
+ * ================================================================ */
+
+static void send_set_command(SettingId id)
+{
+    char cmd[48];
+    switch (id) {
+    case SETTING_TL_INTERVAL:
+        snprintf(cmd, sizeof(cmd), "SET:TL_INT:%d\n", settings[id].value);
+        break;
+    case SETTING_TL_STEPDIST:
+        snprintf(cmd, sizeof(cmd), "SET:TL_STEP:%d\n", settings[id].value);
+        break;
+    case SETTING_RUMBLE_MUTE:
+        snprintf(cmd, sizeof(cmd), "SET:RUMBLE_MUTE:%d\n", settings[id].value);
+        break;
+    default:
+        return;
+    }
+    uart_write_bytes(STATUS_UART_PORT, cmd, strlen(cmd));
+}
+
+/* ================================================================
+ *  Settings UI — forward declarations
+ * ================================================================ */
+
+static void close_settings_menu(void);
+static void open_editor(SettingId id);
+static void close_editor(void);
+static void set_drone_mode_visible(bool visible);
+
+/* ================================================================
+ *  Settings UI — Value editor (full screen)
+ * ================================================================ */
+
+static void format_setting_value(SettingId id, char *buf, size_t sz)
+{
+    const SettingDef *s = &settings[id];
+    if (s->type == STYPE_BOOL) {
+        if (id == SETTING_RUMBLE_MUTE) {
+            snprintf(buf, sz, "%s", s->value ? "ON" : "OFF");
+        } else if (id == SETTING_LOGO_THEME) {
+            snprintf(buf, sz, "%s", s->value ? "LIGHT" : "DARK");
+        } else {
+            snprintf(buf, sz, "%s", s->value ? "ON" : "OFF");
+        }
+    } else {
+        snprintf(buf, sz, "%d%s", s->value, s->unit);
+    }
+}
+
+static void update_editor_value_label(void)
+{
+    if (!editor_value_label) return;
+    char buf[16];
+    format_setting_value(editor_setting_id, buf, sizeof(buf));
+    lv_label_set_text(editor_value_label, buf);
+}
+
+static void editor_dec_cb(lv_event_t *e)
+{
+    (void)e;
+    SettingDef *s = &settings[editor_setting_id];
+    s->value -= s->step;
+    if (s->value < s->min_val) s->value = s->min_val;
+    update_editor_value_label();
+    if (!s->mega_backed) {
+        save_setting_to_nvs(editor_setting_id);
+        if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
+        if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+    }
+}
+
+static void editor_inc_cb(lv_event_t *e)
+{
+    (void)e;
+    SettingDef *s = &settings[editor_setting_id];
+    s->value += s->step;
+    if (s->value > s->max_val) s->value = s->max_val;
+    update_editor_value_label();
+    if (!s->mega_backed) {
+        save_setting_to_nvs(editor_setting_id);
+        if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
+        if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+    }
+}
+
+static void editor_done_cb(lv_event_t *e)
+{
+    (void)e;
+    SettingDef *s = &settings[editor_setting_id];
+    if (s->mega_backed) {
+        send_set_command(editor_setting_id);
+    }
+    close_editor();
+}
+
+/* helper: create a plain clickable rectangle — avoids lv_btn theme bleed */
+static lv_obj_t *make_plain_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
+                                   lv_color_t bg, lv_coord_t radius)
+{
+    lv_obj_t *obj = lv_obj_create(parent);
+    lv_obj_remove_style_all(obj);
+    lv_obj_set_size(obj, w, h);
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_style_bg_color(obj, bg, 0);
+    lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+    lv_obj_set_style_radius(obj, radius, 0);
+    lv_obj_set_style_border_width(obj, 0, 0);
+    return obj;
+}
+
+static void create_editor_panel(void)
+{
+    if (settings_editor_panel) return;
+
+    settings_editor_panel = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(settings_editor_panel);
+    lv_obj_set_size(settings_editor_panel, LCD_H_RES, LCD_V_RES);
+    lv_obj_set_pos(settings_editor_panel, 0, 0);
+    lv_obj_set_style_bg_color(settings_editor_panel, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(settings_editor_panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(settings_editor_panel, 0, 0);
+    lv_obj_set_style_pad_all(settings_editor_panel, 0, 0);
+    lv_obj_clear_flag(settings_editor_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_CLICKABLE); /* block pass-through */
+
+    editor_title_label = lv_label_create(settings_editor_panel);
+    lv_obj_set_style_text_color(editor_title_label, lv_color_make(160, 160, 160), 0);
+    lv_obj_set_style_text_font(editor_title_label, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_align(editor_title_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(editor_title_label, LCD_H_RES - 40);
+    lv_obj_set_pos(editor_title_label, 20, 30);
+
+    editor_value_label = lv_label_create(settings_editor_panel);
+    lv_obj_set_style_text_color(editor_value_label, lv_color_white(), 0);
+    lv_obj_set_style_text_font(editor_value_label, &lv_font_montserrat_120, 0);
+    lv_obj_set_style_text_align(editor_value_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(editor_value_label, LCD_H_RES - 40);
+    lv_obj_set_pos(editor_value_label, 20, 120);
+
+    /* Minus button */
+    lv_obj_t *dec_btn = make_plain_button(settings_editor_panel, 160, 80,
+                                          lv_color_make(60, 60, 60), 12);
+    lv_obj_set_pos(dec_btn, 40, 320);
+    lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *dec_lbl = lv_label_create(dec_btn);
+    lv_label_set_text(dec_lbl, LV_SYMBOL_MINUS);
+    lv_obj_set_style_text_font(dec_lbl, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(dec_lbl, lv_color_white(), 0);
+    lv_obj_center(dec_lbl);
+
+    /* Done button */
+    lv_obj_t *done_btn = make_plain_button(settings_editor_panel, 160, 80,
+                                           lv_color_make(0, 120, 200), 12);
+    lv_obj_align(done_btn, LV_ALIGN_BOTTOM_MID, 0, -40);
+    lv_obj_add_event_cb(done_btn, editor_done_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *done_lbl = lv_label_create(done_btn);
+    lv_label_set_text(done_lbl, "DONE");
+    lv_obj_set_style_text_font(done_lbl, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(done_lbl, lv_color_white(), 0);
+    lv_obj_center(done_lbl);
+
+    /* Plus button */
+    lv_obj_t *inc_btn = make_plain_button(settings_editor_panel, 160, 80,
+                                          lv_color_make(60, 60, 60), 12);
+    lv_obj_set_pos(inc_btn, LCD_H_RES - 200, 320);
+    lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *inc_lbl = lv_label_create(inc_btn);
+    lv_label_set_text(inc_lbl, LV_SYMBOL_PLUS);
+    lv_obj_set_style_text_font(inc_lbl, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(inc_lbl, lv_color_white(), 0);
+    lv_obj_center(inc_lbl);
+
+    lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void open_editor(SettingId id)
+{
+    editor_setting_id = id;
+    editor_visible = true;
+    if (editor_title_label) {
+        char title[64];
+        snprintf(title, sizeof(title), "%s\n%s",
+                 setting_group_names[settings[id].group], settings[id].name);
+        lv_label_set_text(editor_title_label, title);
+    }
+    update_editor_value_label();
+    if (settings_editor_panel) {
+        lv_obj_clear_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(settings_editor_panel);
+    }
+    if (settings_list_panel) lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void close_editor(void)
+{
+    editor_visible = false;
+    if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
+    if (settings_list_panel) {
+        lv_obj_clear_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_move_foreground(settings_list_panel);
+    }
+}
+
+/* ================================================================
+ *  Settings UI — Grouped list
+ * ================================================================ */
+
+static void setting_row_click_cb(lv_event_t *e)
+{
+    SettingId id = (SettingId)(intptr_t)lv_event_get_user_data(e);
+    open_editor(id);
+}
+
+static void reset_defaults_cb(lv_event_t *e)
+{
+    (void)e;
+    reset_all_settings_to_defaults();
+    apply_brightness();
+    apply_theme();
+    /* Send MEGA-backed defaults */
+    for (int i = 0; i < SETTING_COUNT; i++) {
+        if (settings[i].mega_backed) {
+            send_set_command((SettingId)i);
+        }
+    }
+    close_settings_menu();
+}
+
+static void create_settings_list(void)
+{
+    if (settings_list_panel) return;
+
+    settings_list_panel = lv_obj_create(lv_scr_act());
+    lv_obj_remove_style_all(settings_list_panel);
+    lv_obj_set_size(settings_list_panel, LCD_H_RES, LCD_V_RES);
+    lv_obj_set_pos(settings_list_panel, 0, 0);
+    lv_obj_set_style_bg_color(settings_list_panel, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(settings_list_panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(settings_list_panel, 0, 0);
+    lv_obj_set_style_pad_top(settings_list_panel, 10, 0);
+    lv_obj_set_style_pad_bottom(settings_list_panel, 10, 0);
+    lv_obj_set_style_pad_left(settings_list_panel, 20, 0);
+    lv_obj_set_style_pad_right(settings_list_panel, 20, 0);
+    lv_obj_set_flex_flow(settings_list_panel, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_style_pad_row(settings_list_panel, 4, 0);
+    lv_obj_set_scrollbar_mode(settings_list_panel, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_CLICKABLE);
+
+    /* Title bar */
+    lv_obj_t *title = lv_label_create(settings_list_panel);
+    lv_label_set_text(title, "SETTINGS");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(title, lv_color_white(), 0);
+    lv_obj_set_width(title, LCD_H_RES - 40);
+    lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
+
+    /* Build grouped rows */
+    for (int g = 0; g < SGRP_COUNT; g++) {
+        /* Group header */
+        lv_obj_t *gh = lv_label_create(settings_list_panel);
+        lv_label_set_text(gh, setting_group_names[g]);
+        lv_obj_set_style_text_color(gh, lv_color_white(), 0);
+        lv_obj_set_style_text_font(gh, &lv_font_montserrat_28, 0);
+        lv_obj_set_width(gh, LCD_H_RES - 40);
+
+        for (int i = 0; i < SETTING_COUNT; i++) {
+            if (settings[i].group != (SettingGroup)g) continue;
+
+            /* Row button */
+            lv_obj_t *row = make_plain_button(settings_list_panel,
+                                              LCD_H_RES - 60, 54,
+                                              lv_color_make(35, 35, 35), 8);
+            lv_obj_set_style_pad_left(row, 16, 0);
+            lv_obj_set_style_pad_right(row, 16, 0);
+            lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+
+            lv_obj_t *name_lbl = lv_label_create(row);
+            lv_label_set_text(name_lbl, settings[i].name);
+            lv_obj_set_style_text_color(name_lbl, lv_color_make(220, 220, 220), 0);
+            lv_obj_align(name_lbl, LV_ALIGN_LEFT_MID, 0, 0);
+
+            lv_obj_t *val_lbl = lv_label_create(row);
+            char buf[16];
+            format_setting_value((SettingId)i, buf, sizeof(buf));
+            lv_label_set_text(val_lbl, buf);
+            lv_obj_set_style_text_color(val_lbl, lv_color_make(160, 160, 160), 0);
+            lv_obj_align(val_lbl, LV_ALIGN_RIGHT_MID, 0, 0);
+        }
+    }
+
+    /* Reset defaults button */
+    lv_obj_t *reset_btn = make_plain_button(settings_list_panel,
+                                             LCD_H_RES - 60, 50,
+                                             lv_color_make(140, 30, 30), 8);
+    lv_obj_add_event_cb(reset_btn, reset_defaults_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *reset_lbl = lv_label_create(reset_btn);
+    lv_label_set_text(reset_lbl, "RESET DEFAULTS");
+    lv_obj_set_style_text_color(reset_lbl, lv_color_white(), 0);
+    lv_obj_center(reset_lbl);
+
+    lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
+}
+
+/* ================================================================
+ *  Settings open / close
+ * ================================================================ */
+
+static void open_settings_menu(void)
+{
+    settings_visible = true;
+    editor_visible = false;
+
+    /* refresh list values — rebuild is simplest for dynamic value labels */
+    if (settings_list_panel) {
+        lv_obj_del(settings_list_panel);
+        settings_list_panel = NULL;
+    }
+    create_settings_list();
+
+    lv_obj_clear_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(settings_list_panel);
+
+    /* hide everything else */
+    if (label_moco)   lv_obj_add_flag(label_moco,   LV_OBJ_FLAG_HIDDEN);
+    if (label_jib)    lv_obj_add_flag(label_jib,    LV_OBJ_FLAG_HIDDEN);
+    if (status_label) lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+    set_drone_mode_visible(false);
+}
+
+static void close_settings_menu(void)
+{
+    settings_visible = false;
+    editor_visible = false;
+    if (settings_list_panel) lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
+    if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
+
+    /* restore display */
+    if (current_display_mode == DISPLAY_MODE_MANUAL && !status_error_active && !mode_message_active) {
+        if (label_moco) lv_obj_clear_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+        if (label_jib)  lv_obj_clear_flag(label_jib,  LV_OBJ_FLAG_HIDDEN);
+    }
+    if (current_display_mode == DISPLAY_MODE_DRONE) {
+        set_drone_mode_visible(true);
+    }
+}
+
+/* ================================================================
+ *  Long-press detection timer
+ * ================================================================ */
+
+static void long_press_timer_cb(lv_timer_t *timer)
+{
+    (void)timer;
+    if (!touch_pressed || long_press_fired) return;
+
+    int64_t elapsed_ms = (esp_timer_get_time() - touch_press_start_us) / 1000;
+    if (elapsed_ms < LONG_PRESS_MS) return;
+
+    long_press_fired = true;
+
+    if (editor_visible) {
+        /* long-press in editor → close entire menu */
+        close_editor();
+        close_settings_menu();
+    } else if (settings_visible) {
+        close_settings_menu();
+    } else {
+        open_settings_menu();
+    }
+}
+
 static void show_status_on_display(const char *msg, bool is_error)
 {
     status_error_active = is_error;
@@ -276,11 +847,13 @@ static void show_status_on_display(const char *msg, bool is_error)
     if (status_label) {
         lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
     }
-    if (label_moco) {
-        lv_obj_clear_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-    }
-    if (label_jib) {
-        lv_obj_clear_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+    if (!settings_visible) {
+        if (label_moco) {
+            lv_obj_clear_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
+        }
+        if (label_jib) {
+            lv_obj_clear_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 }
 
@@ -901,6 +1474,7 @@ static void status_uart_task(void *arg)
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     int interval_seconds = 0;
                     if (!emergency_stop_active && sscanf(line, "TIMELAPSE_INTERVAL:%d", &interval_seconds) == 1) {
+                        settings[SETTING_TL_INTERVAL].value = interval_seconds;
                         show_timelapse_interval_on_display(interval_seconds, now_ms);
                     }
                     xSemaphoreGive(lvgl_mux);
@@ -909,12 +1483,14 @@ static void status_uart_task(void *arg)
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     int stepdist_ms = 0;
                     if (!emergency_stop_active && sscanf(line, "TIMELAPSE_STEPDIST:%d", &stepdist_ms) == 1) {
+                        settings[SETTING_TL_STEPDIST].value = stepdist_ms;
                         show_timelapse_stepdist_on_display(stepdist_ms, now_ms);
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
             } else if (strncmp(line, "RUMBLE_MUTE:ON", 14) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    settings[SETTING_RUMBLE_MUTE].value = 1;
                     if (!emergency_stop_active) {
                         mode_to_restore_after_message = current_display_mode;
                         restore_mode_after_message = true;
@@ -924,6 +1500,7 @@ static void status_uart_task(void *arg)
                 }
             } else if (strncmp(line, "RUMBLE_MUTE:OFF", 15) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    settings[SETTING_RUMBLE_MUTE].value = 0;
                     if (!emergency_stop_active) {
                         mode_to_restore_after_message = current_display_mode;
                         restore_mode_after_message = true;
@@ -1321,12 +1898,23 @@ void app_main(void)
         LCD_H_RES * LCD_V_RES * LCD_BIT_PER_PIXEL / 8);
     ESP_ERROR_CHECK(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
+    /* NVS init */
+    esp_err_t nvs_err = nvs_flash_init();
+    if (nvs_err == ESP_ERR_NVS_NO_FREE_PAGES || nvs_err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ESP_ERROR_CHECK(nvs_flash_init());
+    } else {
+        ESP_ERROR_CHECK(nvs_err);
+    }
+    load_settings_from_nvs();
+
     static lv_disp_drv_t disp_drv;
 
     ESP_LOGI(TAG, "Install panel IO");
     esp_lcd_panel_io_handle_t io_handle = NULL;
     const esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(PIN_NUM_LCD_CS, lvgl_flush_ready_cb, &disp_drv);
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
+    panel_io_global = io_handle;
 
     sh8601_vendor_config_t vendor_config = {
         .init_cmds = lcd_init_cmds,
@@ -1366,6 +1954,13 @@ void app_main(void)
     disp_drv.user_data = panel_handle;
     lv_disp_drv_register(&disp_drv);
 
+    /* Touch input device */
+    static lv_indev_drv_t indev_drv;
+    lv_indev_drv_init(&indev_drv);
+    indev_drv.type = LV_INDEV_TYPE_POINTER;
+    indev_drv.read_cb = touch_read_cb;
+    lv_indev_drv_register(&indev_drv);
+
     const esp_timer_create_args_t tick_timer_args = {
         .callback = lvgl_tick_cb,
         .name = "lvgl_tick",
@@ -1390,6 +1985,18 @@ void app_main(void)
     ESP_ERROR_CHECK(uart_param_config(STATUS_UART_PORT, &uart_cfg));
     ESP_ERROR_CHECK(uart_set_pin(STATUS_UART_PORT, STATUS_UART_TX_PIN, STATUS_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     xTaskCreatePinnedToCore(status_uart_task, "status_uart", 4096, NULL, 3, NULL, 1);
+
+    /* I2C for touch */
+    const i2c_config_t i2c_conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = TOUCH_I2C_SDA,
+        .scl_io_num = TOUCH_I2C_SCL,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = TOUCH_I2C_FREQ_HZ,
+    };
+    ESP_ERROR_CHECK(i2c_param_config(TOUCH_I2C_PORT, &i2c_conf));
+    ESP_ERROR_CHECK(i2c_driver_install(TOUCH_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
 
     xSemaphoreTake(lvgl_mux, portMAX_DELAY);
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);
@@ -1556,6 +2163,14 @@ void app_main(void)
 
     set_drone_mode_visible(false);
 
+    /* Create settings panels + long-press timer */
+    create_settings_list();
+    create_editor_panel();
+    lv_timer_create(long_press_timer_cb, 50, NULL);
+
+    /* Apply persisted theme */
+    apply_theme();
+
     lv_timer_handler();
 
     uint8_t brightness_ctrl = 0x20;
@@ -1564,11 +2179,12 @@ void app_main(void)
     ESP_ERROR_CHECK(sh8601_tx_param_qspi(io_handle, 0x51, &initial_brightness, 1));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
+    int target_brightness = (settings[SETTING_BRIGHTNESS].value * 255) / 100;
     lv_anim_t anim_reveal;
     lv_anim_init(&anim_reveal);
     lv_anim_set_var(&anim_reveal, io_handle);
     lv_anim_set_exec_cb(&anim_reveal, anim_set_panel_brightness);
-    lv_anim_set_values(&anim_reveal, 0, 255);
+    lv_anim_set_values(&anim_reveal, 0, target_brightness);
     lv_anim_set_time(&anim_reveal, 12000);
     lv_anim_set_path_cb(&anim_reveal, lv_anim_path_ease_in_out);
     lv_anim_start(&anim_reveal);
