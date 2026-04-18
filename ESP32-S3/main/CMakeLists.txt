@@ -6,6 +6,9 @@ idf_component_register(
         "lv_font_montserrat_150.c"
     INCLUDE_DIRS
         "."
+    EMBED_FILES
+        "moco_jib_logo_600x310_dark.bin"
+        "moco_jib_logo_600x310_light.bin"
 )
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE LV_LVGL_H_INCLUDE_SIMPLE)

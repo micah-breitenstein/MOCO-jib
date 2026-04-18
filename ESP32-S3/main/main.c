@@ -24,6 +24,22 @@ extern const lv_font_t lv_font_montserrat_150;
 extern const lv_font_t lv_font_montserrat_120;
 extern const lv_font_t lv_font_montserrat_48;
 
+/* Embedded logo images (600x310 RGB565 big-endian) */
+extern const uint8_t moco_jib_logo_600x310_dark_bin_start[]  asm("_binary_moco_jib_logo_600x310_dark_bin_start");
+extern const uint8_t moco_jib_logo_600x310_light_bin_start[] asm("_binary_moco_jib_logo_600x310_light_bin_start");
+
+static const lv_img_dsc_t logo_img_dark = {
+    .header = { .always_zero = 0, .w = 600, .h = 310, .cf = LV_IMG_CF_TRUE_COLOR },
+    .data_size = 600 * 310 * 2,
+    .data = moco_jib_logo_600x310_dark_bin_start,
+};
+
+static const lv_img_dsc_t logo_img_light = {
+    .header = { .always_zero = 0, .w = 600, .h = 310, .cf = LV_IMG_CF_TRUE_COLOR },
+    .data_size = 600 * 310 * 2,
+    .data = moco_jib_logo_600x310_light_bin_start,
+};
+
 static const char *TAG = "RIG";
 
 #define LCD_HOST SPI2_HOST
@@ -115,7 +131,7 @@ static SettingDef settings[SETTING_COUNT] = {
     [SETTING_TL_INTERVAL] = { "Interval",     "s",  SGRP_TIMELAPSE, STYPE_INT_RANGE, 15,  15,  1,   99,  1,  true,  true  },
     [SETTING_TL_STEPDIST] = { "Step Dist",    "ms", SGRP_TIMELAPSE, STYPE_INT_RANGE, 100, 100, 20,  150, 10, true,  true  },
     [SETTING_RUMBLE_MUTE] = { "Rumble Mute",  "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
-    [SETTING_BRIGHTNESS]  = { "Brightness",   "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 80,  80,  10,  100, 5,  false, false },
+    [SETTING_BRIGHTNESS]  = { "Brightness",   "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 10,  100, 5,  false, false },
     [SETTING_LOGO_THEME]  = { "Logo Theme",   "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
 };
 
@@ -126,6 +142,7 @@ static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "b
 static bool                settings_visible = false;
 static bool                editor_visible = false;
 static SettingId           editor_setting_id = SETTING_TL_INTERVAL;
+static int32_t             editor_original_value = 0;
 static esp_lcd_panel_io_handle_t panel_io_global = NULL;
 
 /* Touch state */
@@ -164,8 +181,7 @@ typedef enum {
 } DroneTiltDisplayState;
 
 static SemaphoreHandle_t lvgl_mux = NULL;
-static lv_obj_t *label_moco = NULL;
-static lv_obj_t *label_jib = NULL;
+static lv_obj_t *logo_img_obj = NULL;
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *drone_title_label = NULL;
 static lv_obj_t *drone_subtitle_label = NULL;
@@ -184,6 +200,7 @@ static lv_obj_t *drone_flowlapse_label = NULL;
 static lv_obj_t *drone_flowlapse_waypoint_label = NULL;
 static lv_obj_t *settings_list_panel = NULL;
 static lv_obj_t *settings_editor_panel = NULL;
+static lv_obj_t *settings_confirm_panel = NULL;
 static lv_obj_t *editor_title_label = NULL;
 static lv_obj_t *editor_value_label = NULL;
 static bool status_error_active = false;
@@ -388,11 +405,11 @@ static void apply_theme(void)
 {
     bool light = (settings[SETTING_LOGO_THEME].value != 0);
     lv_color_t bg  = light ? lv_color_white() : lv_color_black();
-    lv_color_t fg  = light ? lv_color_black() : lv_color_white();
 
     lv_obj_set_style_bg_color(lv_scr_act(), bg, LV_PART_MAIN);
-    if (label_moco) lv_obj_set_style_text_color(label_moco, fg, LV_PART_MAIN);
-    if (label_jib)  lv_obj_set_style_text_color(label_jib,  fg, LV_PART_MAIN);
+    if (logo_img_obj) {
+        lv_img_set_src(logo_img_obj, light ? &logo_img_light : &logo_img_dark);
+    }
 }
 
 /* ================================================================
@@ -544,15 +561,82 @@ static void editor_inc_cb(lv_event_t *e)
     }
 }
 
-static void editor_done_cb(lv_event_t *e)
+/* Forward declarations for helpers used in editor_done_cb */
+static lv_obj_t *create_obj_no_theme(lv_obj_t *parent);
+static lv_obj_t *create_label_no_theme(lv_obj_t *parent);
+static lv_obj_t *make_plain_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
+                                   lv_color_t bg, lv_coord_t radius);
+
+static void editor_save_cb(lv_event_t *e)
 {
     (void)e;
+    if (settings_confirm_panel) {
+        lv_obj_del(settings_confirm_panel);
+        settings_confirm_panel = NULL;
+    }
     SettingDef *s = &settings[editor_setting_id];
     save_setting_to_nvs(editor_setting_id);
     if (s->mega_backed) {
         send_set_command(editor_setting_id);
     }
     close_editor();
+}
+
+static void editor_exit_cb(lv_event_t *e)
+{
+    (void)e;
+    if (settings_confirm_panel) {
+        lv_obj_del(settings_confirm_panel);
+        settings_confirm_panel = NULL;
+    }
+    /* Restore original value and revert any live-previewed changes */
+    settings[editor_setting_id].value = editor_original_value;
+    if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
+    if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+    close_editor();
+}
+
+static void editor_done_cb(lv_event_t *e)
+{
+    (void)e;
+
+    settings_confirm_panel = create_obj_no_theme(lv_scr_act());
+    lv_obj_set_size(settings_confirm_panel, LCD_H_RES, LCD_V_RES);
+    lv_obj_set_pos(settings_confirm_panel, 0, 0);
+    lv_obj_set_style_bg_color(settings_confirm_panel, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(settings_confirm_panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(settings_confirm_panel, 0, 0);
+    lv_obj_clear_flag(settings_confirm_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_move_foreground(settings_confirm_panel);
+
+    lv_obj_t *prompt = create_label_no_theme(settings_confirm_panel);
+    lv_label_set_text(prompt, "Save changes?");
+    lv_obj_set_style_text_font(prompt, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(prompt, lv_color_white(), 0);
+    lv_obj_set_style_text_align(prompt, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(prompt, LV_ALIGN_CENTER, 0, -80);
+
+    /* SAVE button (right side visually, mirrored touch) */
+    lv_obj_t *save_btn = make_plain_button(settings_confirm_panel, 200, 70,
+                                           lv_color_make(0, 120, 200), 8);
+    lv_obj_align(save_btn, LV_ALIGN_CENTER, 120, 60);
+    lv_obj_add_event_cb(save_btn, editor_exit_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *save_lbl = create_label_no_theme(save_btn);
+    lv_label_set_text(save_lbl, "SAVE");
+    lv_obj_set_style_text_font(save_lbl, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(save_lbl, lv_color_white(), 0);
+    lv_obj_center(save_lbl);
+
+    /* EXIT button (left side visually, mirrored touch) */
+    lv_obj_t *exit_btn = make_plain_button(settings_confirm_panel, 200, 70,
+                                           lv_color_make(80, 80, 80), 8);
+    lv_obj_align(exit_btn, LV_ALIGN_CENTER, -120, 60);
+    lv_obj_add_event_cb(exit_btn, editor_save_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *exit_lbl = create_label_no_theme(exit_btn);
+    lv_label_set_text(exit_lbl, "EXIT");
+    lv_obj_set_style_text_font(exit_lbl, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(exit_lbl, lv_color_white(), 0);
+    lv_obj_center(exit_lbl);
 }
 
 /* helpers: create objects with theme fully suppressed */
@@ -673,6 +757,7 @@ static void create_editor_panel(void)
 static void open_editor(SettingId id)
 {
     editor_setting_id = id;
+    editor_original_value = settings[id].value;
     editor_visible = true;
     if (editor_title_label) {
         char title[64];
@@ -712,19 +797,76 @@ static void setting_row_click_cb(lv_event_t *e)
     open_editor(id);
 }
 
-static void reset_defaults_cb(lv_event_t *e)
+static void confirm_reset_yes_cb(lv_event_t *e)
 {
     (void)e;
+    if (settings_confirm_panel) {
+        lv_obj_del(settings_confirm_panel);
+        settings_confirm_panel = NULL;
+    }
     reset_all_settings_to_defaults();
     apply_brightness();
     apply_theme();
-    /* Send MEGA-backed defaults */
     for (int i = 0; i < SETTING_COUNT; i++) {
         if (settings[i].mega_backed) {
             send_set_command((SettingId)i);
         }
     }
     close_settings_menu();
+}
+
+static void confirm_reset_no_cb(lv_event_t *e)
+{
+    (void)e;
+    if (settings_confirm_panel) {
+        lv_obj_del(settings_confirm_panel);
+        settings_confirm_panel = NULL;
+    }
+}
+
+static void reset_defaults_cb(lv_event_t *e)
+{
+    (void)e;
+
+    /* Build confirmation dialog */
+    settings_confirm_panel = create_obj_no_theme(lv_scr_act());
+    lv_obj_set_size(settings_confirm_panel, LCD_H_RES, LCD_V_RES);
+    lv_obj_set_pos(settings_confirm_panel, 0, 0);
+    lv_obj_set_style_bg_color(settings_confirm_panel, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(settings_confirm_panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_width(settings_confirm_panel, 0, 0);
+    lv_obj_clear_flag(settings_confirm_panel, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_move_foreground(settings_confirm_panel);
+
+    /* Prompt text */
+    lv_obj_t *prompt = create_label_no_theme(settings_confirm_panel);
+    lv_label_set_text(prompt, "Reset all settings\nto defaults?");
+    lv_obj_set_style_text_font(prompt, &lv_font_montserrat_48, 0);
+    lv_obj_set_style_text_color(prompt, lv_color_white(), 0);
+    lv_obj_set_style_text_align(prompt, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(prompt, LV_ALIGN_CENTER, 0, -80);
+
+    /* YES button */
+    lv_obj_t *yes_btn = make_plain_button(settings_confirm_panel, 200, 70,
+                                          lv_color_make(200, 0, 0), 8);
+    lv_obj_align(yes_btn, LV_ALIGN_CENTER, 120, 60);
+    lv_obj_add_event_cb(yes_btn, confirm_reset_no_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *yes_lbl = create_label_no_theme(yes_btn);
+    lv_label_set_text(yes_lbl, "YES");
+    lv_obj_set_style_text_font(yes_lbl, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(yes_lbl, lv_color_white(), 0);
+    lv_obj_center(yes_lbl);
+
+    /* NO button */
+    lv_obj_t *no_btn = make_plain_button(settings_confirm_panel, 200, 70,
+                                         lv_color_make(80, 80, 80), 8);
+    lv_obj_align(no_btn, LV_ALIGN_CENTER, -120, 60);
+    lv_obj_add_event_cb(no_btn, confirm_reset_yes_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *no_lbl = create_label_no_theme(no_btn);
+    lv_label_set_text(no_lbl, "NO");
+    lv_obj_set_style_text_font(no_lbl, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_color(no_lbl, lv_color_white(), 0);
+    lv_obj_center(no_lbl);
 }
 
 static void create_settings_list(void)
@@ -808,6 +950,24 @@ static void create_settings_list(void)
  *  Settings open / close
  * ================================================================ */
 
+/* Rebuild the settings list if it is currently visible (call with lvgl_mux held) */
+static void refresh_settings_list_if_visible(void)
+{
+    if (!settings_visible) return;
+    if (editor_visible) {
+        /* Update the editor value label if it's showing a MEGA-backed setting */
+        update_editor_value_label();
+        return;
+    }
+    if (settings_list_panel) {
+        lv_obj_del(settings_list_panel);
+        settings_list_panel = NULL;
+    }
+    create_settings_list();
+    lv_obj_clear_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(settings_list_panel);
+}
+
 static void open_settings_menu(void)
 {
     settings_visible = true;
@@ -824,9 +984,8 @@ static void open_settings_menu(void)
     lv_obj_move_foreground(settings_list_panel);
 
     /* hide everything else */
-    if (label_moco)   lv_obj_add_flag(label_moco,   LV_OBJ_FLAG_HIDDEN);
-    if (label_jib)    lv_obj_add_flag(label_jib,    LV_OBJ_FLAG_HIDDEN);
-    if (status_label) lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
+    if (logo_img_obj) lv_obj_add_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
+    if (status_label)  lv_obj_add_flag(status_label,  LV_OBJ_FLAG_HIDDEN);
     set_drone_mode_visible(false);
 }
 
@@ -839,8 +998,7 @@ static void close_settings_menu(void)
 
     /* restore display */
     if (current_display_mode == DISPLAY_MODE_MANUAL && !status_error_active && !mode_message_active) {
-        if (label_moco) lv_obj_clear_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-        if (label_jib)  lv_obj_clear_flag(label_jib,  LV_OBJ_FLAG_HIDDEN);
+        if (logo_img_obj) lv_obj_clear_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
     }
     if (current_display_mode == DISPLAY_MODE_DRONE) {
         set_drone_mode_visible(true);
@@ -877,11 +1035,8 @@ static void show_status_on_display(const char *msg, bool is_error)
     status_error_active = is_error;
 
     if (is_error) {
-        if (label_moco) {
-            lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-        }
-        if (label_jib) {
-            lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+        if (logo_img_obj) {
+            lv_obj_add_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
         }
 
         if (status_label == NULL) {
@@ -904,11 +1059,8 @@ static void show_status_on_display(const char *msg, bool is_error)
         lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
     }
     if (!settings_visible) {
-        if (label_moco) {
-            lv_obj_clear_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-        }
-        if (label_jib) {
-            lv_obj_clear_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+        if (logo_img_obj) {
+            lv_obj_clear_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
         }
     }
 }
@@ -925,11 +1077,8 @@ static void show_mode_message_on_display(const char *mode_msg, uint64_t now_ms)
     mode_message_active = true;
     mode_message_until_ms = now_ms + MODE_MESSAGE_DURATION_MS;
 
-    if (label_moco) {
-        lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-    }
-    if (label_jib) {
-        lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+    if (logo_img_obj) {
+        lv_obj_add_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
     }
 
     if (status_label == NULL) {
@@ -961,11 +1110,8 @@ static void show_temporary_message_on_display(const char *msg, uint64_t now_ms)
     mode_message_active = true;
     mode_message_until_ms = now_ms + MODE_MESSAGE_DURATION_MS;
 
-    if (label_moco) {
-        lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-    }
-    if (label_jib) {
-        lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+    if (logo_img_obj) {
+        lv_obj_add_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
     }
 
     if (status_label == NULL) {
@@ -1303,11 +1449,8 @@ static void set_drone_mode_visible(bool visible)
     bool show_modifiers = visible && !flowlapse_active;
 
     if (visible) {
-        if (label_moco) {
-            lv_obj_add_flag(label_moco, LV_OBJ_FLAG_HIDDEN);
-        }
-        if (label_jib) {
-            lv_obj_add_flag(label_jib, LV_OBJ_FLAG_HIDDEN);
+        if (logo_img_obj) {
+            lv_obj_add_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
         }
         if (status_label) {
             lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
@@ -1531,7 +1674,8 @@ static void status_uart_task(void *arg)
                     int interval_seconds = 0;
                     if (!emergency_stop_active && sscanf(line, "TIMELAPSE_INTERVAL:%d", &interval_seconds) == 1) {
                         settings[SETTING_TL_INTERVAL].value = interval_seconds;
-                        show_timelapse_interval_on_display(interval_seconds, now_ms);
+                        refresh_settings_list_if_visible();
+                        if (!settings_visible) show_timelapse_interval_on_display(interval_seconds, now_ms);
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
@@ -1540,14 +1684,16 @@ static void status_uart_task(void *arg)
                     int stepdist_ms = 0;
                     if (!emergency_stop_active && sscanf(line, "TIMELAPSE_STEPDIST:%d", &stepdist_ms) == 1) {
                         settings[SETTING_TL_STEPDIST].value = stepdist_ms;
-                        show_timelapse_stepdist_on_display(stepdist_ms, now_ms);
+                        refresh_settings_list_if_visible();
+                        if (!settings_visible) show_timelapse_stepdist_on_display(stepdist_ms, now_ms);
                     }
                     xSemaphoreGive(lvgl_mux);
                 }
             } else if (strncmp(line, "RUMBLE_MUTE:ON", 14) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     settings[SETTING_RUMBLE_MUTE].value = 1;
-                    if (!emergency_stop_active) {
+                    refresh_settings_list_if_visible();
+                    if (!emergency_stop_active && !settings_visible) {
                         mode_to_restore_after_message = current_display_mode;
                         restore_mode_after_message = true;
                         show_temporary_message_on_display("RUMBLE\nMUTE ON", now_ms);
@@ -1557,7 +1703,8 @@ static void status_uart_task(void *arg)
             } else if (strncmp(line, "RUMBLE_MUTE:OFF", 15) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     settings[SETTING_RUMBLE_MUTE].value = 0;
-                    if (!emergency_stop_active) {
+                    refresh_settings_list_if_visible();
+                    if (!emergency_stop_active && !settings_visible) {
                         mode_to_restore_after_message = current_display_mode;
                         restore_mode_after_message = true;
                         show_temporary_message_on_display("RUMBLE\nMUTE OFF", now_ms);
@@ -2061,29 +2208,9 @@ void app_main(void)
     lv_obj_set_style_bg_color(lv_scr_act(), lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(lv_scr_act(), LV_OPA_COVER, LV_PART_MAIN);
 
-    label_moco = lv_label_create(lv_scr_act());
-    lv_label_set_text(label_moco, "MOCO");
-    lv_obj_set_style_text_font(label_moco, &lv_font_montserrat_150, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label_moco, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_letter_space(label_moco, 2, LV_PART_MAIN);
-    lv_obj_set_style_text_align(label_moco, LV_TEXT_ALIGN_LEFT, LV_PART_MAIN);
-    const int32_t moco_target_y = 110;
-    lv_obj_set_pos(label_moco, 16, moco_target_y);
-    lv_obj_set_style_text_color(label_moco, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(label_moco, LV_OPA_COVER, LV_PART_MAIN);
-
-    label_jib = lv_label_create(lv_scr_act());
-    lv_label_set_text(label_jib, "jib");
-    lv_obj_set_style_text_font(label_jib, &lv_font_montserrat_150, LV_PART_MAIN);
-    lv_obj_set_style_text_color(label_jib, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_letter_space(label_jib, 2, LV_PART_MAIN);
-    lv_obj_set_style_text_align(label_jib, LV_TEXT_ALIGN_RIGHT, LV_PART_MAIN);
-    lv_obj_update_layout(lv_scr_act());
-    const int32_t jib_target_y = 260;
-    lv_coord_t jib_width = lv_obj_get_width(label_jib);
-    lv_obj_set_pos(label_jib, LCD_H_RES - 16 - jib_width, jib_target_y);
-    lv_obj_set_style_text_color(label_jib, lv_color_white(), LV_PART_MAIN);
-    lv_obj_set_style_text_opa(label_jib, LV_OPA_COVER, LV_PART_MAIN);
+    logo_img_obj = lv_img_create(lv_scr_act());
+    lv_img_set_src(logo_img_obj, &logo_img_dark);
+    lv_obj_set_pos(logo_img_obj, 0, (LCD_V_RES - 310) / 2);
 
     drone_title_label = lv_label_create(lv_scr_act());
     lv_label_set_text(drone_title_label, "DRONE MODE");
