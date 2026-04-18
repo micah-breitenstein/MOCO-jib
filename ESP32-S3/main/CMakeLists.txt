@@ -4,6 +4,7 @@ idf_component_register(
         "esp_lcd_sh8601.c"
         "lv_font_montserrat_120.c"
         "lv_font_montserrat_150.c"
+        "lv_font_montserrat_40_limited.c"
     INCLUDE_DIRS
         "."
     EMBED_FILES

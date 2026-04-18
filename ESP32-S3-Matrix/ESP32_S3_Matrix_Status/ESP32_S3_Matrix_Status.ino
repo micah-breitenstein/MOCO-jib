@@ -417,7 +417,7 @@ void showSettingsOpen() {
   droneModeActive = false;
   modeIndicatorActive = false;
   applyPulseBrightnessSetting();
-  fillMatrix(255, 120, 0);  // orange
+  fillMatrix(255, 50, 0);  // deep orange
 }
 
 void showSettingsClose() {

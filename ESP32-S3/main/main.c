@@ -23,6 +23,7 @@
 extern const lv_font_t lv_font_montserrat_150;
 extern const lv_font_t lv_font_montserrat_120;
 extern const lv_font_t lv_font_montserrat_48;
+extern const lv_font_t lv_font_montserrat_40_limited;
 
 /* Embedded logo images (600x310 RGB565 big-endian) */
 extern const uint8_t moco_jib_logo_600x310_dark_bin_start[]  asm("_binary_moco_jib_logo_600x310_dark_bin_start");
@@ -817,8 +818,8 @@ static void setting_row_released_cb(lv_event_t *e)
     lv_obj_t *row = lv_event_get_target(e);
     selected_row = row;
     /* Keep this row orange after finger lift */
-    lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), 0);
-    lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), 0);
+    lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), LV_STATE_FOCUSED);
 }
 
 static void setting_row_click_cb(lv_event_t *e)
@@ -917,6 +918,7 @@ static void create_settings_list(void)
     lv_obj_set_flex_flow(settings_list_panel, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(settings_list_panel, 4, 0);
     lv_obj_set_scrollbar_mode(settings_list_panel, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_scroll_dir(settings_list_panel, LV_DIR_VER);
     lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_CLICKABLE);
 
     /* Title bar */
@@ -933,7 +935,7 @@ static void create_settings_list(void)
         lv_obj_t *gh = create_label_no_theme(settings_list_panel);
         lv_label_set_text(gh, setting_group_names[g]);
         lv_obj_set_style_text_color(gh, lv_color_white(), 0);
-        lv_obj_set_style_text_font(gh, &lv_font_montserrat_28, 0);
+        lv_obj_set_style_text_font(gh, &lv_font_montserrat_48, 0);
         lv_obj_set_width(gh, LCD_H_RES - 40);
 
         for (int i = 0; i < SETTING_COUNT; i++) {
@@ -946,10 +948,10 @@ static void create_settings_list(void)
             lv_obj_set_style_pad_left(row, 16, 0);
             lv_obj_set_style_pad_right(row, 16, 0);
             lv_obj_set_style_text_color(row, lv_color_white(), 0);
-            lv_obj_set_style_text_font(row, &lv_font_montserrat_28, 0);
+            lv_obj_set_style_text_font(row, &lv_font_montserrat_40_limited, 0);
             /* Override pressed state to orange for instant touch feedback */
-            lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_PRESSED);
-            lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_PRESSED | LV_STATE_FOCUSED);
+            lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), LV_STATE_PRESSED);
+            lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), LV_STATE_PRESSED | LV_STATE_FOCUSED);
             lv_obj_add_event_cb(row, setting_row_pressed_cb, LV_EVENT_PRESSED, NULL);
             lv_obj_add_event_cb(row, setting_row_released_cb, LV_EVENT_RELEASED, NULL);
             lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_LONG_PRESSED, (void *)(intptr_t)i);
@@ -976,7 +978,7 @@ static void create_settings_list(void)
     lv_obj_t *reset_lbl = create_label_no_theme(reset_btn);
     lv_label_set_text(reset_lbl, "Reset Defaults");
     lv_obj_set_style_text_color(reset_lbl, lv_color_white(), 0);
-    lv_obj_set_style_text_font(reset_lbl, &lv_font_montserrat_28, 0);
+    lv_obj_set_style_text_font(reset_lbl, &lv_font_montserrat_40_limited, 0);
     lv_obj_align(reset_lbl, LV_ALIGN_LEFT_MID, 0, 0);
 
     lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
@@ -1077,9 +1079,8 @@ static void long_press_timer_cb(lv_timer_t *timer)
     if (editor_visible) {
         /* Don't exit if touch is on the button row (-, DONE, +) */
         if (touch_start_y >= 300) return;
-        /* long-press in editor → close entire menu */
+        /* long-press in editor → back to settings list */
         close_editor();
-        close_settings_menu();
     } else if (settings_visible) {
         close_settings_menu();
     } else {
