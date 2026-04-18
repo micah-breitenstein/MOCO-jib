@@ -548,6 +548,7 @@ static void editor_done_cb(lv_event_t *e)
 {
     (void)e;
     SettingDef *s = &settings[editor_setting_id];
+    save_setting_to_nvs(editor_setting_id);
     if (s->mega_backed) {
         send_set_command(editor_setting_id);
     }
@@ -787,15 +788,18 @@ static void create_settings_list(void)
         }
     }
 
-    /* Reset defaults button */
+    /* Reset defaults — styled as a regular row */
     lv_obj_t *reset_btn = make_plain_button(settings_list_panel,
-                                             LCD_H_RES - 60, 50,
+                                             LCD_H_RES - 60, 64,
                                              lv_color_make(140, 30, 30), 8);
+    lv_obj_set_style_pad_left(reset_btn, 16, 0);
+    lv_obj_set_style_pad_right(reset_btn, 16, 0);
     lv_obj_add_event_cb(reset_btn, reset_defaults_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *reset_lbl = create_label_no_theme(reset_btn);
-    lv_label_set_text(reset_lbl, "RESET DEFAULTS");
+    lv_label_set_text(reset_lbl, "Reset Defaults");
     lv_obj_set_style_text_color(reset_lbl, lv_color_white(), 0);
-    lv_obj_center(reset_lbl);
+    lv_obj_set_style_text_font(reset_lbl, &lv_font_montserrat_28, 0);
+    lv_obj_align(reset_lbl, LV_ALIGN_LEFT_MID, 0, 0);
 
     lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
 }
