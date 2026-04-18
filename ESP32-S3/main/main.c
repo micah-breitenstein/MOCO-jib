@@ -132,6 +132,10 @@ static esp_lcd_panel_io_handle_t panel_io_global = NULL;
 static bool    touch_pressed = false;
 static int64_t touch_press_start_us = 0;
 static bool    long_press_fired = false;
+static uint16_t touch_start_x = 0;
+static uint16_t touch_start_y = 0;
+static bool    touch_moved = false;
+#define TOUCH_MOVE_THRESHOLD 20  /* pixels of movement to cancel long-press */
 
 typedef enum {
     DISPLAY_MODE_MANUAL = 0,
@@ -417,7 +421,7 @@ static bool read_ft6336_touch(uint16_t *x, uint16_t *y)
     uint16_t raw_x = ((data[1] & 0x0F) << 8) | data[2];
     uint16_t raw_y = ((data[3] & 0x0F) << 8) | data[4];
     *x = raw_y;
-    *y = 450 - raw_x;
+    *y = raw_x;
     return true;
 }
 
@@ -433,11 +437,21 @@ static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
             touch_pressed = true;
             touch_press_start_us = esp_timer_get_time();
             long_press_fired = false;
+            touch_start_x = tx;
+            touch_start_y = ty;
+            touch_moved = false;
+        } else if (!touch_moved) {
+            int dx = (int)tx - (int)touch_start_x;
+            int dy = (int)ty - (int)touch_start_y;
+            if (dx*dx + dy*dy > TOUCH_MOVE_THRESHOLD * TOUCH_MOVE_THRESHOLD) {
+                touch_moved = true;
+            }
         }
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
         touch_pressed = false;
         long_press_fired = false;
+        touch_moved = false;
     }
 }
 
@@ -539,19 +553,53 @@ static void editor_done_cb(lv_event_t *e)
     close_editor();
 }
 
+/* helpers: create objects with theme fully suppressed */
+static lv_obj_t *create_obj_no_theme(lv_obj_t *parent)
+{
+    lv_disp_t *d = lv_disp_get_default();
+    lv_theme_t *th = lv_disp_get_theme(d);
+    lv_disp_set_theme(d, NULL);
+    lv_obj_t *obj = lv_obj_create(parent);
+    lv_obj_remove_style_all(obj);
+    lv_disp_set_theme(d, th);
+    return obj;
+}
+
+static lv_obj_t *create_label_no_theme(lv_obj_t *parent)
+{
+    lv_disp_t *d = lv_disp_get_default();
+    lv_theme_t *th = lv_disp_get_theme(d);
+    lv_disp_set_theme(d, NULL);
+    lv_obj_t *lbl = lv_label_create(parent);
+    lv_disp_set_theme(d, th);
+    return lbl;
+}
+
 /* helper: create a plain clickable rectangle — avoids lv_btn theme bleed */
 static lv_obj_t *make_plain_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                    lv_color_t bg, lv_coord_t radius)
 {
-    lv_obj_t *obj = lv_obj_create(parent);
-    lv_obj_remove_style_all(obj);
+    lv_obj_t *obj = create_obj_no_theme(parent);
     lv_obj_set_size(obj, w, h);
     lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_clear_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_style_bg_color(obj, bg, 0);
-    lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+    /* Apply bg to default AND every interactive state so theme can't bleed */
+    static const lv_state_t states[] = {
+        0,
+        LV_STATE_PRESSED,
+        LV_STATE_FOCUSED,
+        LV_STATE_FOCUSED | LV_STATE_PRESSED,
+        LV_STATE_CHECKED,
+        LV_STATE_EDITED,
+    };
+    for (int i = 0; i < (int)(sizeof(states)/sizeof(states[0])); i++) {
+        lv_obj_set_style_bg_color(obj, bg, states[i]);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, states[i]);
+        lv_obj_set_style_border_width(obj, 0, states[i]);
+        lv_obj_set_style_outline_width(obj, 0, states[i]);
+        lv_obj_set_style_shadow_width(obj, 0, states[i]);
+    }
     lv_obj_set_style_radius(obj, radius, 0);
-    lv_obj_set_style_border_width(obj, 0, 0);
     return obj;
 }
 
@@ -570,14 +618,14 @@ static void create_editor_panel(void)
     lv_obj_clear_flag(settings_editor_panel, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_CLICKABLE); /* block pass-through */
 
-    editor_title_label = lv_label_create(settings_editor_panel);
+    editor_title_label = create_label_no_theme(settings_editor_panel);
     lv_obj_set_style_text_color(editor_title_label, lv_color_make(160, 160, 160), 0);
     lv_obj_set_style_text_font(editor_title_label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_align(editor_title_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(editor_title_label, LCD_H_RES - 40);
     lv_obj_set_pos(editor_title_label, 20, 30);
 
-    editor_value_label = lv_label_create(settings_editor_panel);
+    editor_value_label = create_label_no_theme(settings_editor_panel);
     lv_obj_set_style_text_color(editor_value_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(editor_value_label, &lv_font_montserrat_120, 0);
     lv_obj_set_style_text_align(editor_value_label, LV_TEXT_ALIGN_CENTER, 0);
@@ -589,7 +637,7 @@ static void create_editor_panel(void)
                                           lv_color_make(60, 60, 60), 12);
     lv_obj_set_pos(dec_btn, 40, 320);
     lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *dec_lbl = lv_label_create(dec_btn);
+    lv_obj_t *dec_lbl = create_label_no_theme(dec_btn);
     lv_label_set_text(dec_lbl, LV_SYMBOL_MINUS);
     lv_obj_set_style_text_font(dec_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(dec_lbl, lv_color_white(), 0);
@@ -600,7 +648,7 @@ static void create_editor_panel(void)
                                            lv_color_make(0, 120, 200), 12);
     lv_obj_align(done_btn, LV_ALIGN_BOTTOM_MID, 0, -40);
     lv_obj_add_event_cb(done_btn, editor_done_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *done_lbl = lv_label_create(done_btn);
+    lv_obj_t *done_lbl = create_label_no_theme(done_btn);
     lv_label_set_text(done_lbl, "DONE");
     lv_obj_set_style_text_font(done_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(done_lbl, lv_color_white(), 0);
@@ -611,7 +659,7 @@ static void create_editor_panel(void)
                                           lv_color_make(60, 60, 60), 12);
     lv_obj_set_pos(inc_btn, LCD_H_RES - 200, 320);
     lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *inc_lbl = lv_label_create(inc_btn);
+    lv_obj_t *inc_lbl = create_label_no_theme(inc_btn);
     lv_label_set_text(inc_lbl, LV_SYMBOL_PLUS);
     lv_obj_set_style_text_font(inc_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(inc_lbl, lv_color_white(), 0);
@@ -677,8 +725,7 @@ static void create_settings_list(void)
 {
     if (settings_list_panel) return;
 
-    settings_list_panel = lv_obj_create(lv_scr_act());
-    lv_obj_remove_style_all(settings_list_panel);
+    settings_list_panel = create_obj_no_theme(lv_scr_act());
     lv_obj_set_size(settings_list_panel, LCD_H_RES, LCD_V_RES);
     lv_obj_set_pos(settings_list_panel, 0, 0);
     lv_obj_set_style_bg_color(settings_list_panel, lv_color_black(), 0);
@@ -694,7 +741,7 @@ static void create_settings_list(void)
     lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_CLICKABLE);
 
     /* Title bar */
-    lv_obj_t *title = lv_label_create(settings_list_panel);
+    lv_obj_t *title = create_label_no_theme(settings_list_panel);
     lv_label_set_text(title, "SETTINGS");
     lv_obj_set_style_text_font(title, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(title, lv_color_white(), 0);
@@ -704,7 +751,7 @@ static void create_settings_list(void)
     /* Build grouped rows */
     for (int g = 0; g < SGRP_COUNT; g++) {
         /* Group header */
-        lv_obj_t *gh = lv_label_create(settings_list_panel);
+        lv_obj_t *gh = create_label_no_theme(settings_list_panel);
         lv_label_set_text(gh, setting_group_names[g]);
         lv_obj_set_style_text_color(gh, lv_color_white(), 0);
         lv_obj_set_style_text_font(gh, &lv_font_montserrat_28, 0);
@@ -715,22 +762,22 @@ static void create_settings_list(void)
 
             /* Row button */
             lv_obj_t *row = make_plain_button(settings_list_panel,
-                                              LCD_H_RES - 60, 54,
-                                              lv_color_make(35, 35, 35), 8);
+                                              LCD_H_RES - 60, 64,
+                                              lv_color_make(50, 50, 50), 8);
             lv_obj_set_style_pad_left(row, 16, 0);
             lv_obj_set_style_pad_right(row, 16, 0);
+            lv_obj_set_style_text_color(row, lv_color_white(), 0);
+            lv_obj_set_style_text_font(row, &lv_font_montserrat_28, 0);
             lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
 
-            lv_obj_t *name_lbl = lv_label_create(row);
+            lv_obj_t *name_lbl = create_label_no_theme(row);
             lv_label_set_text(name_lbl, settings[i].name);
-            lv_obj_set_style_text_color(name_lbl, lv_color_make(220, 220, 220), 0);
             lv_obj_align(name_lbl, LV_ALIGN_LEFT_MID, 0, 0);
 
-            lv_obj_t *val_lbl = lv_label_create(row);
+            lv_obj_t *val_lbl = create_label_no_theme(row);
             char buf[16];
             format_setting_value((SettingId)i, buf, sizeof(buf));
             lv_label_set_text(val_lbl, buf);
-            lv_obj_set_style_text_color(val_lbl, lv_color_make(160, 160, 160), 0);
             lv_obj_align(val_lbl, LV_ALIGN_RIGHT_MID, 0, 0);
         }
     }
@@ -740,7 +787,7 @@ static void create_settings_list(void)
                                              LCD_H_RES - 60, 50,
                                              lv_color_make(140, 30, 30), 8);
     lv_obj_add_event_cb(reset_btn, reset_defaults_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *reset_lbl = lv_label_create(reset_btn);
+    lv_obj_t *reset_lbl = create_label_no_theme(reset_btn);
     lv_label_set_text(reset_lbl, "RESET DEFAULTS");
     lv_obj_set_style_text_color(reset_lbl, lv_color_white(), 0);
     lv_obj_center(reset_lbl);
@@ -798,7 +845,7 @@ static void close_settings_menu(void)
 static void long_press_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
-    if (!touch_pressed || long_press_fired) return;
+    if (!touch_pressed || long_press_fired || touch_moved) return;
 
     int64_t elapsed_ms = (esp_timer_get_time() - touch_press_start_us) / 1000;
     if (elapsed_ms < LONG_PRESS_MS) return;
@@ -1927,7 +1974,7 @@ void app_main(void)
     esp_lcd_panel_handle_t panel_handle = NULL;
     const esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = PIN_NUM_LCD_RST,
-        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
         .bits_per_pixel = LCD_BIT_PER_PIXEL,
         .vendor_config = &vendor_config,
     };
@@ -1952,7 +1999,10 @@ void app_main(void)
     disp_drv.rounder_cb = lvgl_rounder_cb;
     disp_drv.draw_buf = &draw_buf;
     disp_drv.user_data = panel_handle;
-    lv_disp_drv_register(&disp_drv);
+    lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
+
+    /* Kill the default theme so it never injects styles into our objects */
+    lv_disp_set_theme(disp, NULL);
 
     /* Touch input device */
     static lv_indev_drv_t indev_drv;
