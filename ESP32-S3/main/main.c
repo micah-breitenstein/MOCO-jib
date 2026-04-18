@@ -81,7 +81,8 @@ static const char *TAG = "RIG";
 #define TOUCH_I2C_SCL     GPIO_NUM_48
 #define TOUCH_I2C_FREQ_HZ 400000
 #define TOUCH_FT6336_ADDR 0x38
-#define LONG_PRESS_MS     500
+#define LONG_PRESS_MS       500
+#define LONG_PRESS_CLOSE_MS 1000
 
 /* ---------- NVS ---------- */
 #define NVS_NAMESPACE "rig_cfg"
@@ -139,6 +140,8 @@ static SettingDef settings[SETTING_COUNT] = {
 static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "bright", "theme" };
 
 /* ---------- Settings menu state ---------- */
+static lv_obj_t           *selected_row = NULL;
+static volatile bool       settings_refresh_pending = false;
 static bool                settings_visible = false;
 static bool                editor_visible = false;
 static SettingId           editor_setting_id = SETTING_TL_INTERVAL;
@@ -149,6 +152,7 @@ static esp_lcd_panel_io_handle_t panel_io_global = NULL;
 static bool    touch_pressed = false;
 static int64_t touch_press_start_us = 0;
 static bool    long_press_fired = false;
+static bool    touch_guard = false;  /* block interaction until finger lift */
 static uint16_t touch_start_x = 0;
 static uint16_t touch_start_y = 0;
 static bool    touch_moved = false;
@@ -330,12 +334,18 @@ static void anim_set_panel_brightness(void *obj, int32_t value)
     (void)sh8601_tx_param_qspi(io_handle, 0x51, &level, 1);
 }
 
+static void refresh_settings_list_if_visible(void);
+
 static void lvgl_task(void *arg)
 {
     (void)arg;
     ESP_LOGI(TAG, "LVGL task started");
     while (1) {
         if (xSemaphoreTake(lvgl_mux, portMAX_DELAY) == pdTRUE) {
+            if (settings_refresh_pending) {
+                settings_refresh_pending = false;
+                refresh_settings_list_if_visible();
+            }
             uint32_t delay_ms = lv_timer_handler();
             xSemaphoreGive(lvgl_mux);
             if (delay_ms > LVGL_TASK_MAX_DELAY_MS) {
@@ -469,6 +479,7 @@ static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
         touch_pressed = false;
         long_press_fired = false;
         touch_moved = false;
+        touch_guard = false;
     }
 }
 
@@ -570,10 +581,6 @@ static lv_obj_t *make_plain_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
 static void editor_save_cb(lv_event_t *e)
 {
     (void)e;
-    if (settings_confirm_panel) {
-        lv_obj_del(settings_confirm_panel);
-        settings_confirm_panel = NULL;
-    }
     SettingDef *s = &settings[editor_setting_id];
     save_setting_to_nvs(editor_setting_id);
     if (s->mega_backed) {
@@ -585,10 +592,6 @@ static void editor_save_cb(lv_event_t *e)
 static void editor_exit_cb(lv_event_t *e)
 {
     (void)e;
-    if (settings_confirm_panel) {
-        lv_obj_del(settings_confirm_panel);
-        settings_confirm_panel = NULL;
-    }
     /* Restore original value and revert any live-previewed changes */
     settings[editor_setting_id].value = editor_original_value;
     if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
@@ -776,23 +779,46 @@ static void open_editor(SettingId id)
 static void close_editor(void)
 {
     editor_visible = false;
+    if (settings_confirm_panel) {
+        lv_obj_del_async(settings_confirm_panel);
+        settings_confirm_panel = NULL;
+    }
     if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
     /* Rebuild the list so row value labels reflect any changes */
     if (settings_list_panel) {
         lv_obj_del(settings_list_panel);
         settings_list_panel = NULL;
+        selected_row = NULL;
     }
     create_settings_list();
     lv_obj_clear_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(settings_list_panel);
+    touch_guard = true;  /* require finger lift before interacting with list */
 }
 
 /* ================================================================
  *  Settings UI — Grouped list
  * ================================================================ */
 
+static void setting_row_released_cb(lv_event_t *e)
+{
+    if (touch_guard) return;
+    lv_obj_t *row = lv_event_get_target(e);
+    if (selected_row && selected_row != row && settings_list_panel
+        && lv_obj_get_parent(selected_row) != NULL) {
+        /* Revert previous selection to gray */
+        lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), 0);
+        lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), LV_STATE_FOCUSED);
+    }
+    selected_row = row;
+    /* Keep this row orange after finger lift */
+    lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), 0);
+    lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_FOCUSED);
+}
+
 static void setting_row_click_cb(lv_event_t *e)
 {
+    if (touch_guard) return;
     SettingId id = (SettingId)(intptr_t)lv_event_get_user_data(e);
     open_editor(id);
 }
@@ -801,7 +827,7 @@ static void confirm_reset_yes_cb(lv_event_t *e)
 {
     (void)e;
     if (settings_confirm_panel) {
-        lv_obj_del(settings_confirm_panel);
+        lv_obj_del_async(settings_confirm_panel);
         settings_confirm_panel = NULL;
     }
     reset_all_settings_to_defaults();
@@ -819,7 +845,7 @@ static void confirm_reset_no_cb(lv_event_t *e)
 {
     (void)e;
     if (settings_confirm_panel) {
-        lv_obj_del(settings_confirm_panel);
+        lv_obj_del_async(settings_confirm_panel);
         settings_confirm_panel = NULL;
     }
 }
@@ -910,13 +936,17 @@ static void create_settings_list(void)
 
             /* Row button */
             lv_obj_t *row = make_plain_button(settings_list_panel,
-                                              LCD_H_RES - 60, 64,
+                                              LCD_H_RES - 20, 80,
                                               lv_color_make(50, 50, 50), 8);
             lv_obj_set_style_pad_left(row, 16, 0);
             lv_obj_set_style_pad_right(row, 16, 0);
             lv_obj_set_style_text_color(row, lv_color_white(), 0);
             lv_obj_set_style_text_font(row, &lv_font_montserrat_28, 0);
-            lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_CLICKED, (void *)(intptr_t)i);
+            /* Override pressed state to orange for instant touch feedback */
+            lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_PRESSED);
+            lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_PRESSED | LV_STATE_FOCUSED);
+            lv_obj_add_event_cb(row, setting_row_released_cb, LV_EVENT_RELEASED, NULL);
+            lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_LONG_PRESSED, (void *)(intptr_t)i);
 
             lv_obj_t *name_lbl = create_label_no_theme(row);
             lv_label_set_text(name_lbl, settings[i].name);
@@ -962,21 +992,30 @@ static void refresh_settings_list_if_visible(void)
     if (settings_list_panel) {
         lv_obj_del(settings_list_panel);
         settings_list_panel = NULL;
+        selected_row = NULL;
     }
     create_settings_list();
     lv_obj_clear_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
     lv_obj_move_foreground(settings_list_panel);
 }
 
+/* Deferred refresh — safe to call from UART task with lvgl_mux held */
+static void request_settings_refresh(void)
+{
+    settings_refresh_pending = true;
+}
+
 static void open_settings_menu(void)
 {
     settings_visible = true;
     editor_visible = false;
+    touch_guard = true;  /* block until finger lifts */
 
     /* refresh list values — rebuild is simplest for dynamic value labels */
     if (settings_list_panel) {
         lv_obj_del(settings_list_panel);
         settings_list_panel = NULL;
+        selected_row = NULL;
     }
     create_settings_list();
 
@@ -993,6 +1032,7 @@ static void close_settings_menu(void)
 {
     settings_visible = false;
     editor_visible = false;
+    selected_row = NULL;
     if (settings_list_panel) lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
     if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
 
@@ -1015,11 +1055,14 @@ static void long_press_timer_cb(lv_timer_t *timer)
     if (!touch_pressed || long_press_fired || touch_moved) return;
 
     int64_t elapsed_ms = (esp_timer_get_time() - touch_press_start_us) / 1000;
-    if (elapsed_ms < LONG_PRESS_MS) return;
+    int64_t threshold = (editor_visible || settings_visible) ? LONG_PRESS_CLOSE_MS : LONG_PRESS_MS;
+    if (elapsed_ms < threshold) return;
 
     long_press_fired = true;
 
     if (editor_visible) {
+        /* Don't exit if touch is on the button row (-, DONE, +) */
+        if (touch_start_y >= 300) return;
         /* long-press in editor → close entire menu */
         close_editor();
         close_settings_menu();
@@ -1674,7 +1717,7 @@ static void status_uart_task(void *arg)
                     int interval_seconds = 0;
                     if (!emergency_stop_active && sscanf(line, "TIMELAPSE_INTERVAL:%d", &interval_seconds) == 1) {
                         settings[SETTING_TL_INTERVAL].value = interval_seconds;
-                        refresh_settings_list_if_visible();
+                        request_settings_refresh();
                         if (!settings_visible) show_timelapse_interval_on_display(interval_seconds, now_ms);
                     }
                     xSemaphoreGive(lvgl_mux);
@@ -1684,7 +1727,7 @@ static void status_uart_task(void *arg)
                     int stepdist_ms = 0;
                     if (!emergency_stop_active && sscanf(line, "TIMELAPSE_STEPDIST:%d", &stepdist_ms) == 1) {
                         settings[SETTING_TL_STEPDIST].value = stepdist_ms;
-                        refresh_settings_list_if_visible();
+                        request_settings_refresh();
                         if (!settings_visible) show_timelapse_stepdist_on_display(stepdist_ms, now_ms);
                     }
                     xSemaphoreGive(lvgl_mux);
@@ -1692,7 +1735,7 @@ static void status_uart_task(void *arg)
             } else if (strncmp(line, "RUMBLE_MUTE:ON", 14) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     settings[SETTING_RUMBLE_MUTE].value = 1;
-                    refresh_settings_list_if_visible();
+                    request_settings_refresh();
                     if (!emergency_stop_active && !settings_visible) {
                         mode_to_restore_after_message = current_display_mode;
                         restore_mode_after_message = true;
@@ -1703,7 +1746,7 @@ static void status_uart_task(void *arg)
             } else if (strncmp(line, "RUMBLE_MUTE:OFF", 15) == 0) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     settings[SETTING_RUMBLE_MUTE].value = 0;
-                    refresh_settings_list_if_visible();
+                    request_settings_refresh();
                     if (!emergency_stop_active && !settings_visible) {
                         mode_to_restore_after_message = current_display_mode;
                         restore_mode_after_message = true;
