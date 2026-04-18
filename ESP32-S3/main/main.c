@@ -639,7 +639,7 @@ static void create_editor_panel(void)
     lv_obj_set_pos(dec_btn, LCD_H_RES - 200, 320);
     lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *dec_lbl = create_label_no_theme(dec_btn);
-    lv_label_set_text(dec_lbl, "-");
+    lv_label_set_text(dec_lbl, "+");
     lv_obj_set_style_text_font(dec_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(dec_lbl, lv_color_white(), 0);
     lv_obj_center(dec_lbl);
@@ -661,7 +661,7 @@ static void create_editor_panel(void)
     lv_obj_set_pos(inc_btn, 40, 320);
     lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *inc_lbl = create_label_no_theme(inc_btn);
-    lv_label_set_text(inc_lbl, "+");
+    lv_label_set_text(inc_lbl, "-");
     lv_obj_set_style_text_font(inc_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(inc_lbl, lv_color_white(), 0);
     lv_obj_center(inc_lbl);
