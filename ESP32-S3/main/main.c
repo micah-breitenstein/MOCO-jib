@@ -809,6 +809,7 @@ static void setting_row_pressed_cb(lv_event_t *e)
         && lv_obj_get_parent(selected_row) != NULL) {
         lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), 0);
         lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_grad_dir(selected_row, LV_GRAD_DIR_NONE, 0);
     }
 }
 
@@ -817,9 +818,13 @@ static void setting_row_released_cb(lv_event_t *e)
     if (touch_guard || touch_moved) return;
     lv_obj_t *row = lv_event_get_target(e);
     selected_row = row;
-    /* Keep this row orange after finger lift */
-    lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), 0);
-    lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), LV_STATE_FOCUSED);
+    /* Keep this row orange gradient after finger lift */
+    lv_obj_set_style_bg_color(row, lv_color_make(180, 70, 0), 0);
+    lv_obj_set_style_bg_grad_color(row, lv_color_make(255, 140, 0), 0);
+    lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_HOR, 0);
+    lv_obj_set_style_bg_color(row, lv_color_make(180, 70, 0), LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_grad_color(row, lv_color_make(255, 140, 0), LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_HOR, LV_STATE_FOCUSED);
 }
 
 static void setting_row_click_cb(lv_event_t *e)
@@ -949,9 +954,13 @@ static void create_settings_list(void)
             lv_obj_set_style_pad_right(row, 16, 0);
             lv_obj_set_style_text_color(row, lv_color_white(), 0);
             lv_obj_set_style_text_font(row, &lv_font_montserrat_40_limited, 0);
-            /* Override pressed state to orange for instant touch feedback */
-            lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), LV_STATE_PRESSED);
-            lv_obj_set_style_bg_color(row, lv_color_make(230, 110, 0), LV_STATE_PRESSED | LV_STATE_FOCUSED);
+            /* Override pressed state to orange gradient for instant touch feedback */
+            lv_obj_set_style_bg_color(row, lv_color_make(180, 70, 0), LV_STATE_PRESSED);
+            lv_obj_set_style_bg_grad_color(row, lv_color_make(255, 140, 0), LV_STATE_PRESSED);
+            lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_HOR, LV_STATE_PRESSED);
+            lv_obj_set_style_bg_color(row, lv_color_make(180, 70, 0), LV_STATE_PRESSED | LV_STATE_FOCUSED);
+            lv_obj_set_style_bg_grad_color(row, lv_color_make(255, 140, 0), LV_STATE_PRESSED | LV_STATE_FOCUSED);
+            lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_HOR, LV_STATE_PRESSED | LV_STATE_FOCUSED);
             lv_obj_add_event_cb(row, setting_row_pressed_cb, LV_EVENT_PRESSED, NULL);
             lv_obj_add_event_cb(row, setting_row_released_cb, LV_EVENT_RELEASED, NULL);
             lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_LONG_PRESSED, (void *)(intptr_t)i);
