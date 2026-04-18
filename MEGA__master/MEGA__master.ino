@@ -4822,6 +4822,11 @@ void processDisplayCommands() {
             startRumbleUnmuteFeedback();
           }
         }
+      } else if (strncmp(displayCmdBuf, "SETTINGS:", 9) == 0) {
+        // Relay settings open/close to RGB matrix
+        sendToRGBESP(displayCmdBuf);
+        Serial.print(F("Display "));
+        Serial.println(displayCmdBuf);
       }
       continue;
     }

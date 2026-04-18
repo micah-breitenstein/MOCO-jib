@@ -800,16 +800,21 @@ static void close_editor(void)
  *  Settings UI — Grouped list
  * ================================================================ */
 
-static void setting_row_released_cb(lv_event_t *e)
+static void setting_row_pressed_cb(lv_event_t *e)
 {
     if (touch_guard) return;
     lv_obj_t *row = lv_event_get_target(e);
     if (selected_row && selected_row != row && settings_list_panel
         && lv_obj_get_parent(selected_row) != NULL) {
-        /* Revert previous selection to gray */
         lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), 0);
         lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), LV_STATE_FOCUSED);
     }
+}
+
+static void setting_row_released_cb(lv_event_t *e)
+{
+    if (touch_guard || touch_moved) return;
+    lv_obj_t *row = lv_event_get_target(e);
     selected_row = row;
     /* Keep this row orange after finger lift */
     lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), 0);
@@ -945,6 +950,7 @@ static void create_settings_list(void)
             /* Override pressed state to orange for instant touch feedback */
             lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_PRESSED);
             lv_obj_set_style_bg_color(row, lv_color_make(255, 165, 0), LV_STATE_PRESSED | LV_STATE_FOCUSED);
+            lv_obj_add_event_cb(row, setting_row_pressed_cb, LV_EVENT_PRESSED, NULL);
             lv_obj_add_event_cb(row, setting_row_released_cb, LV_EVENT_RELEASED, NULL);
             lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_LONG_PRESSED, (void *)(intptr_t)i);
 
@@ -1026,6 +1032,10 @@ static void open_settings_menu(void)
     if (logo_img_obj) lv_obj_add_flag(logo_img_obj, LV_OBJ_FLAG_HIDDEN);
     if (status_label)  lv_obj_add_flag(status_label,  LV_OBJ_FLAG_HIDDEN);
     set_drone_mode_visible(false);
+
+    /* Notify MEGA → matrix */
+    const char *cmd = "SETTINGS:OPEN\n";
+    uart_write_bytes(STATUS_UART_PORT, cmd, strlen(cmd));
 }
 
 static void close_settings_menu(void)
@@ -1035,6 +1045,10 @@ static void close_settings_menu(void)
     selected_row = NULL;
     if (settings_list_panel) lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
     if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
+
+    /* Notify MEGA → matrix */
+    const char *cmd = "SETTINGS:CLOSE\n";
+    uart_write_bytes(STATUS_UART_PORT, cmd, strlen(cmd));
 
     /* restore display */
     if (current_display_mode == DISPLAY_MODE_MANUAL && !status_error_active && !mode_message_active) {

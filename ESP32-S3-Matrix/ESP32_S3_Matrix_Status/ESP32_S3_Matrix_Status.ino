@@ -133,6 +133,10 @@ unsigned long modeIndicatorUntilMs = 0;
 uint8_t modeIndicatorR = 0;
 uint8_t modeIndicatorG = 0;
 uint8_t modeIndicatorB = 0;
+bool settingsMenuActive = false;
+bool preSettingsErrorActive = false;
+bool preSettingsDroneModeActive = false;
+LatchedModeState preSettingsLatchedMode = LatchedModeState::IDLE;
 
 void updateStructuredStride(unsigned long nowMs) {
   if (nextStructuredStrideChangeMs == 0) {
@@ -403,6 +407,30 @@ void showDroneModeHold() {
   showLatchedMode(LatchedModeState::DRONE);
 }
 
+void showSettingsOpen() {
+  preSettingsErrorActive = errorActive;
+  preSettingsDroneModeActive = droneModeActive;
+  preSettingsLatchedMode = latchedModeState;
+  settingsMenuActive = true;
+  emergencyStopActive = false;
+  errorActive = false;
+  droneModeActive = false;
+  modeIndicatorActive = false;
+  applyPulseBrightnessSetting();
+  fillMatrix(255, 120, 0);  // orange
+}
+
+void showSettingsClose() {
+  settingsMenuActive = false;
+  if (preSettingsErrorActive) {
+    showError();
+  } else if (preSettingsLatchedMode != LatchedModeState::IDLE) {
+    showLatchedMode(preSettingsLatchedMode);
+  } else {
+    showOk();
+  }
+}
+
 void handleStatusLine(const String& line) {
   if (line.startsWith("EMERGENCY_STOP:ACTIVE")
       || (line.startsWith("EMERGENCY STOP") && line.indexOf("RELEASED") < 0)) {
@@ -420,6 +448,22 @@ void handleStatusLine(const String& line) {
   if (emergencyStopActive) {
     Serial.println("Matrix status: emergency latched, ignoring non-release status line");
     return;
+  }
+
+  if (settingsMenuActive) {
+    /* Track state changes for restore on close, but keep showing orange */
+    if (line.startsWith("CONTROLLER_ERROR:")) {
+      preSettingsErrorActive = true;
+    } else if (line.startsWith("CONTROLLER_OK:")) {
+      preSettingsErrorActive = false;
+    } else if (line.startsWith("MODE:")) {
+      String modeMsg = line.substring(5);
+      modeMsg.trim();
+      if (modeMsg.startsWith("DRONE")) preSettingsLatchedMode = LatchedModeState::DRONE;
+      else if (modeMsg.startsWith("TIMELAPSE")) preSettingsLatchedMode = LatchedModeState::TIMELAPSE;
+      else if (modeMsg.startsWith("BOUNCE")) preSettingsLatchedMode = LatchedModeState::BOUNCE;
+    }
+    if (!line.startsWith("SETTINGS:")) return;
   }
 
   if (line.startsWith("CONTROLLER_ERROR:")) {
@@ -460,6 +504,18 @@ void handleStatusLine(const String& line) {
     return;
   }
 
+  if (line.startsWith("SETTINGS:OPEN")) {
+    showSettingsOpen();
+    Serial.println("Matrix status: SETTINGS OPEN -> ORANGE");
+    return;
+  }
+
+  if (line.startsWith("SETTINGS:CLOSE")) {
+    showSettingsClose();
+    Serial.println("Matrix status: SETTINGS CLOSE -> restored");
+    return;
+  }
+
   Serial.print("Matrix received unhandled line: ");
   Serial.println(line);
 }
@@ -488,12 +544,14 @@ void setup() {
 void loop() {
   unsigned long now = millis();
 
-  if (!emergencyStopActive && errorActive && (now - lastStatusRxMs > STATUS_SIGNAL_TIMEOUT_MS)) {
+  if (!emergencyStopActive && !settingsMenuActive && errorActive && (now - lastStatusRxMs > STATUS_SIGNAL_TIMEOUT_MS)) {
     showOk();
     Serial.println("Matrix status timeout -> OK (dim green)");
   }
 
-  if (emergencyStopActive) {
+  if (settingsMenuActive) {
+    /* Hold solid orange, skip all other rendering */
+  } else if (emergencyStopActive) {
     const unsigned long phaseSpan = TWINKLE_FAST_PHASE_MS + TWINKLE_SLOW_PHASE_MS;
     const unsigned long phasePos = now % phaseSpan;
     bool fastPhase = phasePos < TWINKLE_FAST_PHASE_MS;
