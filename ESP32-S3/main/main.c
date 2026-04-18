@@ -485,6 +485,7 @@ static void send_set_command(SettingId id)
 static void close_settings_menu(void);
 static void open_editor(SettingId id);
 static void close_editor(void);
+static void create_settings_list(void);
 static void set_drone_mode_visible(bool visible);
 
 /* ================================================================
@@ -632,13 +633,13 @@ static void create_editor_panel(void)
     lv_obj_set_width(editor_value_label, LCD_H_RES - 40);
     lv_obj_set_pos(editor_value_label, 20, 120);
 
-    /* Minus button */
+    /* Minus button (right side due to display orientation) */
     lv_obj_t *dec_btn = make_plain_button(settings_editor_panel, 160, 80,
                                           lv_color_make(60, 60, 60), 12);
-    lv_obj_set_pos(dec_btn, 40, 320);
+    lv_obj_set_pos(dec_btn, LCD_H_RES - 200, 320);
     lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *dec_lbl = create_label_no_theme(dec_btn);
-    lv_label_set_text(dec_lbl, LV_SYMBOL_MINUS);
+    lv_label_set_text(dec_lbl, "-");
     lv_obj_set_style_text_font(dec_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(dec_lbl, lv_color_white(), 0);
     lv_obj_center(dec_lbl);
@@ -654,13 +655,13 @@ static void create_editor_panel(void)
     lv_obj_set_style_text_color(done_lbl, lv_color_white(), 0);
     lv_obj_center(done_lbl);
 
-    /* Plus button */
+    /* Plus button (left side due to display orientation) */
     lv_obj_t *inc_btn = make_plain_button(settings_editor_panel, 160, 80,
                                           lv_color_make(60, 60, 60), 12);
-    lv_obj_set_pos(inc_btn, LCD_H_RES - 200, 320);
+    lv_obj_set_pos(inc_btn, 40, 320);
     lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *inc_lbl = create_label_no_theme(inc_btn);
-    lv_label_set_text(inc_lbl, LV_SYMBOL_PLUS);
+    lv_label_set_text(inc_lbl, "+");
     lv_obj_set_style_text_font(inc_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(inc_lbl, lv_color_white(), 0);
     lv_obj_center(inc_lbl);
@@ -690,10 +691,14 @@ static void close_editor(void)
 {
     editor_visible = false;
     if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
+    /* Rebuild the list so row value labels reflect any changes */
     if (settings_list_panel) {
-        lv_obj_clear_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_move_foreground(settings_list_panel);
+        lv_obj_del(settings_list_panel);
+        settings_list_panel = NULL;
     }
+    create_settings_list();
+    lv_obj_clear_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(settings_list_panel);
 }
 
 /* ================================================================
