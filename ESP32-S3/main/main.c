@@ -613,6 +613,22 @@ typedef struct {
     lv_color_t press_bg;
 } btn_press_ctx_t;
 static void outline_btn_press_cb(lv_event_t *e);
+static bool point_in_obj(lv_obj_t *obj, lv_point_t *p);
+static void highlight_btn(btn_press_ctx_t *ctx, bool pressed);
+
+typedef struct {
+    lv_obj_t *btn_a;
+    lv_obj_t *btn_b;
+    btn_press_ctx_t *hl_a;     /* highlight when touch on btn_a area */
+    btn_press_ctx_t *hl_b;     /* highlight when touch on btn_b area */
+    void (*act_a)(lv_event_t *);
+    void (*act_b)(lv_event_t *);
+} confirm_pair_t;
+static void confirm_touch_cb(lv_event_t *e);
+static confirm_pair_t save_dlg_pair;
+static confirm_pair_t reset_dlg_pair;
+static confirm_pair_t editor_pm_pair;
+
 static btn_press_ctx_t save_press_ctx;
 static btn_press_ctx_t cancel_press_ctx;
 static btn_press_ctx_t done_press_ctx;
@@ -660,49 +676,55 @@ static void editor_done_cb(lv_event_t *e)
     lv_obj_set_style_text_align(prompt, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(prompt, LV_ALIGN_CENTER, 0, -80);
 
-    /* SAVE button — Close theme (orange outline), right side visually, mirrored touch */
+    /* SAVE button — Close theme (orange outline), visual-only */
     lv_obj_t *save_btn = make_plain_button(settings_confirm_panel, 200, 70,
                                            lv_color_make(20, 20, 20), 8);
     set_border_all_states(save_btn, lv_color_make(155, 60, 0), 2);
     lv_obj_align(save_btn, LV_ALIGN_CENTER, 120, 60);
-    lv_obj_add_event_cb(save_btn, editor_exit_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_clear_flag(save_btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_t *save_lbl = create_label_no_theme(save_btn);
     lv_label_set_text(save_lbl, "SAVE");
     lv_obj_set_style_text_font(save_lbl, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(save_lbl, lv_color_make(200, 120, 40), 0);
     lv_obj_center(save_lbl);
 
-    /* CANCEL button — gray outline, left side visually, mirrored touch */
+    /* CANCEL button — gray outline, visual-only */
     lv_obj_t *exit_btn = make_plain_button(settings_confirm_panel, 200, 70,
                                            lv_color_make(20, 20, 20), 8);
     set_border_all_states(exit_btn, lv_color_make(90, 90, 90), 2);
     lv_obj_align(exit_btn, LV_ALIGN_CENTER, -120, 60);
-    lv_obj_add_event_cb(exit_btn, editor_save_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_clear_flag(exit_btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_t *exit_lbl = create_label_no_theme(exit_btn);
     lv_label_set_text(exit_lbl, "CANCEL");
     lv_obj_set_style_text_font(exit_lbl, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(exit_lbl, lv_color_white(), 0);
     lv_obj_center(exit_lbl);
 
-    /* Mirror-aware press feedback: visual SAVE tap → PRESSED on exit_btn → fill save_btn */
+    /* Set up press visual contexts */
     save_press_ctx.lbl = save_lbl;
     save_press_ctx.btn = save_btn;
     save_press_ctx.idle_text = lv_color_make(200, 120, 40);
     save_press_ctx.idle_bg = lv_color_make(20, 20, 20);
     save_press_ctx.press_bg = lv_color_make(155, 60, 0);
-    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &save_press_ctx);
-    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &save_press_ctx);
-    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &save_press_ctx);
-
-    /* Visual CANCEL tap → PRESSED on save_btn → darken exit_btn */
     cancel_press_ctx.lbl = exit_lbl;
     cancel_press_ctx.btn = exit_btn;
     cancel_press_ctx.idle_text = lv_color_white();
     cancel_press_ctx.idle_bg = lv_color_make(20, 20, 20);
     cancel_press_ctx.press_bg = lv_color_make(70, 70, 70);
-    lv_obj_add_event_cb(save_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &cancel_press_ctx);
-    lv_obj_add_event_cb(save_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &cancel_press_ctx);
-    lv_obj_add_event_cb(save_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &cancel_press_ctx);
+
+    /* Panel-level slideable touch: touch on exit_btn area → user over visual SAVE,
+       touch on save_btn area → user over visual CANCEL (X-mirror) */
+    save_dlg_pair.btn_a = exit_btn;
+    save_dlg_pair.btn_b = save_btn;
+    save_dlg_pair.hl_a = &save_press_ctx;
+    save_dlg_pair.hl_b = &cancel_press_ctx;
+    save_dlg_pair.act_a = editor_save_cb;
+    save_dlg_pair.act_b = editor_exit_cb;
+    lv_obj_add_flag(settings_confirm_panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESSED, &save_dlg_pair);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESSING, &save_dlg_pair);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_RELEASED, &save_dlg_pair);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESS_LOST, &save_dlg_pair);
 }
 
 /* helpers: create objects with theme fully suppressed */
@@ -796,13 +818,12 @@ static void create_editor_panel(void)
     lv_obj_set_width(editor_value_label, LCD_H_RES - 40);
     lv_obj_set_pos(editor_value_label, 20, 160);
 
-    /* Minus button (right side due to display orientation) — gray outline */
+    /* Minus button (right side due to display orientation) — gray outline, visual-only */
     lv_obj_t *dec_btn = make_plain_button(settings_editor_panel, 160, 80,
                                           lv_color_make(20, 20, 20), 12);
     set_border_all_states(dec_btn, lv_color_make(90, 90, 90), 2);
     lv_obj_set_pos(dec_btn, LCD_H_RES - 200, 320);
-    lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_LONG_PRESSED_REPEAT, NULL);
+    lv_obj_clear_flag(dec_btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_t *dec_lbl = create_label_no_theme(dec_btn);
     lv_label_set_text(dec_lbl, "+");
     lv_obj_set_style_text_font(dec_lbl, &lv_font_montserrat_48, 0);
@@ -814,7 +835,7 @@ static void create_editor_panel(void)
     dec_press_ctx.idle_bg = lv_color_make(20, 20, 20);
     dec_press_ctx.press_bg = lv_color_make(70, 70, 70);
 
-    /* Done button — Close theme (orange outline) */
+    /* Done button — Close theme (orange outline), stays clickable */
     lv_obj_t *done_btn = make_plain_button(settings_editor_panel, 160, 80,
                                            lv_color_make(20, 20, 20), 12);
     set_border_all_states(done_btn, lv_color_make(155, 60, 0), 2);
@@ -834,13 +855,12 @@ static void create_editor_panel(void)
     lv_obj_add_event_cb(done_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &done_press_ctx);
     lv_obj_add_event_cb(done_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &done_press_ctx);
 
-    /* Plus button (left side due to display orientation) — gray outline */
+    /* Plus button (left side due to display orientation) — gray outline, visual-only */
     lv_obj_t *inc_btn = make_plain_button(settings_editor_panel, 160, 80,
                                           lv_color_make(20, 20, 20), 12);
     set_border_all_states(inc_btn, lv_color_make(90, 90, 90), 2);
     lv_obj_set_pos(inc_btn, 40, 320);
-    lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_LONG_PRESSED_REPEAT, NULL);
+    lv_obj_clear_flag(inc_btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_t *inc_lbl = create_label_no_theme(inc_btn);
     lv_label_set_text(inc_lbl, "-");
     lv_obj_set_style_text_font(inc_lbl, &lv_font_montserrat_48, 0);
@@ -851,14 +871,19 @@ static void create_editor_panel(void)
     inc_press_ctx.idle_text = lv_color_white();
     inc_press_ctx.idle_bg = lv_color_make(20, 20, 20);
     inc_press_ctx.press_bg = lv_color_make(70, 70, 70);
-    /* Cross-wire for X-mirror: visual + tap → PRESSED on inc_btn → fill dec_btn */
-    lv_obj_add_event_cb(inc_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &dec_press_ctx);
-    lv_obj_add_event_cb(inc_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &dec_press_ctx);
-    lv_obj_add_event_cb(inc_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &dec_press_ctx);
-    /* Visual - tap → PRESSED on dec_btn → fill inc_btn */
-    lv_obj_add_event_cb(dec_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &inc_press_ctx);
-    lv_obj_add_event_cb(dec_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &inc_press_ctx);
-    lv_obj_add_event_cb(dec_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &inc_press_ctx);
+
+    /* Panel-level slideable touch for +/- with auto-repeat (X-mirror aware) */
+    editor_pm_pair.btn_a = dec_btn;
+    editor_pm_pair.btn_b = inc_btn;
+    editor_pm_pair.hl_a = &inc_press_ctx;   /* touch on dec_btn area → highlight inc_btn visual */
+    editor_pm_pair.hl_b = &dec_press_ctx;   /* touch on inc_btn area → highlight dec_btn visual */
+    editor_pm_pair.act_a = editor_dec_cb;
+    editor_pm_pair.act_b = editor_inc_cb;
+    lv_obj_add_event_cb(settings_editor_panel, confirm_touch_cb, LV_EVENT_PRESSED, &editor_pm_pair);
+    lv_obj_add_event_cb(settings_editor_panel, confirm_touch_cb, LV_EVENT_PRESSING, &editor_pm_pair);
+    lv_obj_add_event_cb(settings_editor_panel, confirm_touch_cb, LV_EVENT_RELEASED, &editor_pm_pair);
+    lv_obj_add_event_cb(settings_editor_panel, confirm_touch_cb, LV_EVENT_PRESS_LOST, &editor_pm_pair);
+    lv_obj_add_event_cb(settings_editor_panel, confirm_touch_cb, LV_EVENT_LONG_PRESSED_REPEAT, &editor_pm_pair);
 
     lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
 }
@@ -996,20 +1021,60 @@ static void settings_exit_cb(lv_event_t *e)
     close_settings_menu();
 }
 
+static bool point_in_obj(lv_obj_t *obj, lv_point_t *p)
+{
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return p->x >= a.x1 && p->x <= a.x2 && p->y >= a.y1 && p->y <= a.y2;
+}
+
+static void highlight_btn(btn_press_ctx_t *ctx, bool pressed)
+{
+    static const lv_state_t sts[] = {0, LV_STATE_PRESSED,
+        LV_STATE_FOCUSED, LV_STATE_FOCUSED | LV_STATE_PRESSED,
+        LV_STATE_CHECKED, LV_STATE_EDITED};
+    lv_color_t bg = pressed ? ctx->press_bg : ctx->idle_bg;
+    lv_color_t txt = pressed ? lv_color_black() : ctx->idle_text;
+    for (int i = 0; i < (int)(sizeof(sts)/sizeof(sts[0])); i++)
+        lv_obj_set_style_bg_color(ctx->btn, bg, sts[i]);
+    lv_obj_set_style_text_color(ctx->lbl, txt, 0);
+    lv_obj_invalidate(ctx->btn);
+}
+
 static void outline_btn_press_cb(lv_event_t *e)
 {
     btn_press_ctx_t *ctx = (btn_press_ctx_t *)lv_event_get_user_data(e);
     lv_event_code_t code = lv_event_get_code(e);
-    static const lv_state_t sts[] = {0, LV_STATE_PRESSED,
-        LV_STATE_FOCUSED, LV_STATE_FOCUSED | LV_STATE_PRESSED,
-        LV_STATE_CHECKED, LV_STATE_EDITED};
-    lv_color_t c = (code == LV_EVENT_PRESSED) ? ctx->press_bg : ctx->idle_bg;
-    lv_color_t t = (code == LV_EVENT_PRESSED) ? lv_color_black() : ctx->idle_text;
-    for (int i = 0; i < (int)(sizeof(sts)/sizeof(sts[0])); i++) {
-        lv_obj_set_style_bg_color(ctx->btn, c, sts[i]);
+    highlight_btn(ctx, code == LV_EVENT_PRESSED);
+}
+
+/* Panel-level touch for confirm dialogs — allows sliding between buttons */
+static void confirm_touch_cb(lv_event_t *e)
+{
+    confirm_pair_t *pair = (confirm_pair_t *)lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_indev_t *indev = lv_indev_get_next(NULL);
+    lv_point_t p;
+    lv_indev_get_point(indev, &p);
+
+    bool on_a = point_in_obj(pair->btn_a, &p);
+    bool on_b = point_in_obj(pair->btn_b, &p);
+
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING) {
+        highlight_btn(pair->hl_a, on_a);
+        highlight_btn(pair->hl_b, on_b);
+    } else if (code == LV_EVENT_RELEASED) {
+        highlight_btn(pair->hl_a, false);
+        highlight_btn(pair->hl_b, false);
+        if (on_a) pair->act_a(e);
+        else if (on_b) pair->act_b(e);
+    } else if (code == LV_EVENT_LONG_PRESSED_REPEAT) {
+        if (on_a) pair->act_a(e);
+        else if (on_b) pair->act_b(e);
+    } else if (code == LV_EVENT_PRESS_LOST) {
+        highlight_btn(pair->hl_a, false);
+        highlight_btn(pair->hl_b, false);
     }
-    lv_obj_set_style_text_color(ctx->lbl, t, 0);
-    lv_obj_invalidate(ctx->btn);
 }
 
 static btn_press_ctx_t reset_press_ctx;
@@ -1038,51 +1103,55 @@ static void reset_defaults_cb(lv_event_t *e)
     lv_obj_set_style_text_align(prompt, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(prompt, LV_ALIGN_CENTER, 0, -80);
 
-    /* YES button — Reset Defaults theme (red outline) */
+    /* YES button — Reset Defaults theme (red outline), visual-only */
     lv_obj_t *yes_btn = make_plain_button(settings_confirm_panel, 200, 70,
                                           lv_color_make(20, 20, 20), 8);
     set_border_all_states(yes_btn, lv_color_make(160, 40, 40), 2);
     lv_obj_align(yes_btn, LV_ALIGN_CENTER, 120, 60);
-    lv_obj_add_event_cb(yes_btn, confirm_reset_no_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_clear_flag(yes_btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_t *yes_lbl = create_label_no_theme(yes_btn);
     lv_label_set_text(yes_lbl, "YES");
     lv_obj_set_style_text_font(yes_lbl, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(yes_lbl, lv_color_make(180, 50, 50), 0);
     lv_obj_center(yes_lbl);
 
-    /* NO button — Close theme (orange outline) */
+    /* NO button — Close theme (orange outline), visual-only */
     lv_obj_t *no_btn = make_plain_button(settings_confirm_panel, 200, 70,
                                          lv_color_make(20, 20, 20), 8);
     set_border_all_states(no_btn, lv_color_make(155, 60, 0), 2);
     lv_obj_align(no_btn, LV_ALIGN_CENTER, -120, 60);
-    lv_obj_add_event_cb(no_btn, confirm_reset_yes_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_clear_flag(no_btn, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_t *no_lbl = create_label_no_theme(no_btn);
     lv_label_set_text(no_lbl, "NO");
     lv_obj_set_style_text_font(no_lbl, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(no_lbl, lv_color_make(200, 120, 40), 0);
     lv_obj_center(no_lbl);
 
-    /* Mirror-aware press feedback: visual YES tap → PRESSED on no_btn,
-       visual NO tap → PRESSED on yes_btn.  Register cross-button ctx. */
+    /* Set up press visual contexts */
     yes_press_ctx.lbl = yes_lbl;
     yes_press_ctx.btn = yes_btn;
     yes_press_ctx.idle_text = lv_color_make(180, 50, 50);
     yes_press_ctx.idle_bg = lv_color_make(20, 20, 20);
     yes_press_ctx.press_bg = lv_color_make(160, 35, 35);
-    /* Touching visual YES fires PRESSED on no_btn → change yes_btn */
-    lv_obj_add_event_cb(no_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &yes_press_ctx);
-    lv_obj_add_event_cb(no_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &yes_press_ctx);
-    lv_obj_add_event_cb(no_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &yes_press_ctx);
-
     close_press_ctx.lbl = no_lbl;
     close_press_ctx.btn = no_btn;
     close_press_ctx.idle_text = lv_color_make(200, 120, 40);
     close_press_ctx.idle_bg = lv_color_make(20, 20, 20);
     close_press_ctx.press_bg = lv_color_make(155, 60, 0);
-    /* Touching visual NO fires PRESSED on yes_btn → change no_btn */
-    lv_obj_add_event_cb(yes_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &close_press_ctx);
-    lv_obj_add_event_cb(yes_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &close_press_ctx);
-    lv_obj_add_event_cb(yes_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &close_press_ctx);
+
+    /* Panel-level slideable touch: touch on no_btn area → user over visual YES,
+       touch on yes_btn area → user over visual NO (X-mirror) */
+    reset_dlg_pair.btn_a = no_btn;
+    reset_dlg_pair.btn_b = yes_btn;
+    reset_dlg_pair.hl_a = &yes_press_ctx;
+    reset_dlg_pair.hl_b = &close_press_ctx;
+    reset_dlg_pair.act_a = confirm_reset_yes_cb;
+    reset_dlg_pair.act_b = confirm_reset_no_cb;
+    lv_obj_add_flag(settings_confirm_panel, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESSED, &reset_dlg_pair);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESSING, &reset_dlg_pair);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_RELEASED, &reset_dlg_pair);
+    lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESS_LOST, &reset_dlg_pair);
 }
 
 static void create_settings_list(void)
