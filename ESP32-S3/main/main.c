@@ -1576,12 +1576,12 @@ static void update_drone_stick_colors(void)
 {
     if (drone_left_stick) {
         lv_obj_set_style_bg_color(drone_left_stick,
-                                  drone_left_stick_pressed ? lv_color_make(255, 50, 50) : lv_color_white(),
+                                  drone_left_stick_pressed ? lv_color_make(200, 100, 255) : lv_color_white(),
                                   LV_PART_MAIN);
     }
     if (drone_right_stick) {
         lv_obj_set_style_bg_color(drone_right_stick,
-                                  drone_right_stick_pressed ? lv_color_make(255, 50, 50) : lv_color_white(),
+                                  drone_right_stick_pressed ? lv_color_make(200, 100, 255) : lv_color_white(),
                                   LV_PART_MAIN);
     }
 }
@@ -1761,13 +1761,13 @@ static void set_drone_modifier_indicator(bool precision_active, bool boost_activ
 
     if (drone_precision_state_box) {
         lv_obj_set_style_bg_color(drone_precision_state_box,
-                                  precision_active ? lv_color_make(0, 255, 0) : lv_color_make(120, 120, 120),
+                                  precision_active ? lv_color_make(160, 50, 255) : lv_color_make(120, 120, 120),
                                   LV_PART_MAIN);
     }
 
     if (drone_boost_state_box) {
         lv_obj_set_style_bg_color(drone_boost_state_box,
-                                  boost_active ? lv_color_make(0, 255, 0) : lv_color_make(120, 120, 120),
+                                  boost_active ? lv_color_make(160, 50, 255) : lv_color_make(120, 120, 120),
                                   LV_PART_MAIN);
     }
 
@@ -2762,7 +2762,9 @@ void app_main(void)
     lv_obj_set_size(drone_flowlapse_fill, 0, FLOWLAPSE_BAR_NORMAL_H - 6);
     lv_obj_set_pos(drone_flowlapse_fill, 3, 3);
     lv_obj_set_style_radius(drone_flowlapse_fill, 4, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(drone_flowlapse_fill, lv_color_make(200, 120, 40), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(drone_flowlapse_fill, lv_color_make(100, 0, 255), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(drone_flowlapse_fill, lv_color_make(220, 50, 220), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_dir(drone_flowlapse_fill, LV_GRAD_DIR_HOR, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(drone_flowlapse_fill, LV_OPA_COVER, LV_PART_MAIN);
 
     drone_flowlapse_label = lv_label_create(lv_scr_act());
