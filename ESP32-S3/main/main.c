@@ -142,6 +142,7 @@ static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "b
 
 /* ---------- Settings menu state ---------- */
 static lv_obj_t           *selected_row = NULL;
+static lv_obj_t           *group_header_cont[SGRP_COUNT] = {NULL};
 static volatile bool       settings_refresh_pending = false;
 static bool                settings_visible = false;
 static bool                editor_visible = false;
@@ -206,6 +207,7 @@ static lv_obj_t *drone_flowlapse_waypoint_label = NULL;
 static lv_obj_t *settings_list_panel = NULL;
 static lv_obj_t *settings_editor_panel = NULL;
 static lv_obj_t *settings_confirm_panel = NULL;
+static lv_obj_t *reset_defaults_btn = NULL;
 static lv_obj_t *editor_title_label = NULL;
 static lv_obj_t *editor_value_label = NULL;
 static bool status_error_active = false;
@@ -537,11 +539,32 @@ static void format_setting_value(SettingId id, char *buf, size_t sz)
     }
 }
 
+static void anim_set_text_color_mix(void *obj, int32_t v)
+{
+    /* v goes 0→255: interpolate white (255,255,255) → light orange (255,180,80) */
+    lv_color_t c = lv_color_make(255, 255 - (75 * v / 255), 255 - (175 * v / 255));
+    lv_obj_set_style_text_color((lv_obj_t *)obj, c, 0);
+}
+
+static void editor_value_pop(void)
+{
+    if (!editor_value_label) return;
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, editor_value_label);
+    lv_anim_set_exec_cb(&a, anim_set_text_color_mix);
+    lv_anim_set_values(&a, 0, 255); /* white → light orange */
+    lv_anim_set_time(&a, 300);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_in);
+    lv_anim_start(&a);
+}
+
 static void update_editor_value_label(void)
 {
     if (!editor_value_label) return;
-    char buf[16];
-    format_setting_value(editor_setting_id, buf, sizeof(buf));
+    char val[16], buf[20];
+    format_setting_value(editor_setting_id, val, sizeof(val));
+    snprintf(buf, sizeof(buf), "[ %s ]", val);
     lv_label_set_text(editor_value_label, buf);
 }
 
@@ -552,6 +575,7 @@ static void editor_dec_cb(lv_event_t *e)
     s->value -= s->step;
     if (s->value < s->min_val) s->value = s->min_val;
     update_editor_value_label();
+    editor_value_pop();
     if (!s->mega_backed) {
         save_setting_to_nvs(editor_setting_id);
         if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
@@ -566,6 +590,7 @@ static void editor_inc_cb(lv_event_t *e)
     s->value += s->step;
     if (s->value > s->max_val) s->value = s->max_val;
     update_editor_value_label();
+    editor_value_pop();
     if (!s->mega_backed) {
         save_setting_to_nvs(editor_setting_id);
         if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
@@ -578,6 +603,21 @@ static lv_obj_t *create_obj_no_theme(lv_obj_t *parent);
 static lv_obj_t *create_label_no_theme(lv_obj_t *parent);
 static lv_obj_t *make_plain_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
                                    lv_color_t bg, lv_coord_t radius);
+static void set_border_all_states(lv_obj_t *obj, lv_color_t color, lv_coord_t w);
+
+typedef struct {
+    lv_obj_t *lbl;
+    lv_obj_t *btn;
+    lv_color_t idle_text;
+    lv_color_t idle_bg;
+    lv_color_t press_bg;
+} btn_press_ctx_t;
+static void outline_btn_press_cb(lv_event_t *e);
+static btn_press_ctx_t save_press_ctx;
+static btn_press_ctx_t cancel_press_ctx;
+static btn_press_ctx_t done_press_ctx;
+static btn_press_ctx_t dec_press_ctx;
+static btn_press_ctx_t inc_press_ctx;
 
 static void editor_save_cb(lv_event_t *e)
 {
@@ -620,27 +660,49 @@ static void editor_done_cb(lv_event_t *e)
     lv_obj_set_style_text_align(prompt, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(prompt, LV_ALIGN_CENTER, 0, -80);
 
-    /* SAVE button (right side visually, mirrored touch) */
+    /* SAVE button — Close theme (orange outline), right side visually, mirrored touch */
     lv_obj_t *save_btn = make_plain_button(settings_confirm_panel, 200, 70,
-                                           lv_color_make(0, 120, 200), 8);
+                                           lv_color_make(20, 20, 20), 8);
+    set_border_all_states(save_btn, lv_color_make(155, 60, 0), 2);
     lv_obj_align(save_btn, LV_ALIGN_CENTER, 120, 60);
     lv_obj_add_event_cb(save_btn, editor_exit_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *save_lbl = create_label_no_theme(save_btn);
     lv_label_set_text(save_lbl, "SAVE");
     lv_obj_set_style_text_font(save_lbl, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(save_lbl, lv_color_white(), 0);
+    lv_obj_set_style_text_color(save_lbl, lv_color_make(200, 120, 40), 0);
     lv_obj_center(save_lbl);
 
-    /* EXIT button (left side visually, mirrored touch) */
+    /* CANCEL button — gray outline, left side visually, mirrored touch */
     lv_obj_t *exit_btn = make_plain_button(settings_confirm_panel, 200, 70,
-                                           lv_color_make(80, 80, 80), 8);
+                                           lv_color_make(20, 20, 20), 8);
+    set_border_all_states(exit_btn, lv_color_make(90, 90, 90), 2);
     lv_obj_align(exit_btn, LV_ALIGN_CENTER, -120, 60);
     lv_obj_add_event_cb(exit_btn, editor_save_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *exit_lbl = create_label_no_theme(exit_btn);
-    lv_label_set_text(exit_lbl, "EXIT");
+    lv_label_set_text(exit_lbl, "CANCEL");
     lv_obj_set_style_text_font(exit_lbl, &lv_font_montserrat_28, 0);
     lv_obj_set_style_text_color(exit_lbl, lv_color_white(), 0);
     lv_obj_center(exit_lbl);
+
+    /* Mirror-aware press feedback: visual SAVE tap → PRESSED on exit_btn → fill save_btn */
+    save_press_ctx.lbl = save_lbl;
+    save_press_ctx.btn = save_btn;
+    save_press_ctx.idle_text = lv_color_make(200, 120, 40);
+    save_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    save_press_ctx.press_bg = lv_color_make(155, 60, 0);
+    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &save_press_ctx);
+    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &save_press_ctx);
+    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &save_press_ctx);
+
+    /* Visual CANCEL tap → PRESSED on save_btn → darken exit_btn */
+    cancel_press_ctx.lbl = exit_lbl;
+    cancel_press_ctx.btn = exit_btn;
+    cancel_press_ctx.idle_text = lv_color_white();
+    cancel_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    cancel_press_ctx.press_bg = lv_color_make(70, 70, 70);
+    lv_obj_add_event_cb(save_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &cancel_press_ctx);
+    lv_obj_add_event_cb(save_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &cancel_press_ctx);
+    lv_obj_add_event_cb(save_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &cancel_press_ctx);
 }
 
 /* helpers: create objects with theme fully suppressed */
@@ -693,6 +755,18 @@ static lv_obj_t *make_plain_button(lv_obj_t *parent, lv_coord_t w, lv_coord_t h,
     return obj;
 }
 
+/* Set border color + width on all 6 interactive states */
+static void set_border_all_states(lv_obj_t *obj, lv_color_t color, lv_coord_t w)
+{
+    static const lv_state_t sts[] = {0, LV_STATE_PRESSED,
+        LV_STATE_FOCUSED, LV_STATE_FOCUSED | LV_STATE_PRESSED,
+        LV_STATE_CHECKED, LV_STATE_EDITED};
+    for (int i = 0; i < (int)(sizeof(sts)/sizeof(sts[0])); i++) {
+        lv_obj_set_style_border_color(obj, color, sts[i]);
+        lv_obj_set_style_border_width(obj, w, sts[i]);
+    }
+}
+
 static void create_editor_panel(void)
 {
     if (settings_editor_panel) return;
@@ -716,44 +790,75 @@ static void create_editor_panel(void)
     lv_obj_set_pos(editor_title_label, 20, 30);
 
     editor_value_label = create_label_no_theme(settings_editor_panel);
-    lv_obj_set_style_text_color(editor_value_label, lv_color_white(), 0);
+    lv_obj_set_style_text_color(editor_value_label, lv_color_make(255, 180, 80), 0);
     lv_obj_set_style_text_font(editor_value_label, &lv_font_montserrat_120, 0);
     lv_obj_set_style_text_align(editor_value_label, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(editor_value_label, LCD_H_RES - 40);
-    lv_obj_set_pos(editor_value_label, 20, 120);
+    lv_obj_set_pos(editor_value_label, 20, 160);
 
-    /* Minus button (right side due to display orientation) */
+    /* Minus button (right side due to display orientation) — gray outline */
     lv_obj_t *dec_btn = make_plain_button(settings_editor_panel, 160, 80,
-                                          lv_color_make(60, 60, 60), 12);
+                                          lv_color_make(20, 20, 20), 12);
+    set_border_all_states(dec_btn, lv_color_make(90, 90, 90), 2);
     lv_obj_set_pos(dec_btn, LCD_H_RES - 200, 320);
     lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(dec_btn, editor_dec_cb, LV_EVENT_LONG_PRESSED_REPEAT, NULL);
     lv_obj_t *dec_lbl = create_label_no_theme(dec_btn);
     lv_label_set_text(dec_lbl, "+");
     lv_obj_set_style_text_font(dec_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(dec_lbl, lv_color_white(), 0);
     lv_obj_center(dec_lbl);
+    dec_press_ctx.lbl = dec_lbl;
+    dec_press_ctx.btn = dec_btn;
+    dec_press_ctx.idle_text = lv_color_white();
+    dec_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    dec_press_ctx.press_bg = lv_color_make(70, 70, 70);
 
-    /* Done button */
+    /* Done button — Close theme (orange outline) */
     lv_obj_t *done_btn = make_plain_button(settings_editor_panel, 160, 80,
-                                           lv_color_make(0, 120, 200), 12);
+                                           lv_color_make(20, 20, 20), 12);
+    set_border_all_states(done_btn, lv_color_make(155, 60, 0), 2);
     lv_obj_align(done_btn, LV_ALIGN_BOTTOM_MID, 0, -40);
     lv_obj_add_event_cb(done_btn, editor_done_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *done_lbl = create_label_no_theme(done_btn);
     lv_label_set_text(done_lbl, "DONE");
     lv_obj_set_style_text_font(done_lbl, &lv_font_montserrat_48, 0);
-    lv_obj_set_style_text_color(done_lbl, lv_color_white(), 0);
+    lv_obj_set_style_text_color(done_lbl, lv_color_make(200, 120, 40), 0);
     lv_obj_center(done_lbl);
+    done_press_ctx.lbl = done_lbl;
+    done_press_ctx.btn = done_btn;
+    done_press_ctx.idle_text = lv_color_make(200, 120, 40);
+    done_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    done_press_ctx.press_bg = lv_color_make(155, 60, 0);
+    lv_obj_add_event_cb(done_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &done_press_ctx);
+    lv_obj_add_event_cb(done_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &done_press_ctx);
+    lv_obj_add_event_cb(done_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &done_press_ctx);
 
-    /* Plus button (left side due to display orientation) */
+    /* Plus button (left side due to display orientation) — gray outline */
     lv_obj_t *inc_btn = make_plain_button(settings_editor_panel, 160, 80,
-                                          lv_color_make(60, 60, 60), 12);
+                                          lv_color_make(20, 20, 20), 12);
+    set_border_all_states(inc_btn, lv_color_make(90, 90, 90), 2);
     lv_obj_set_pos(inc_btn, 40, 320);
     lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(inc_btn, editor_inc_cb, LV_EVENT_LONG_PRESSED_REPEAT, NULL);
     lv_obj_t *inc_lbl = create_label_no_theme(inc_btn);
     lv_label_set_text(inc_lbl, "-");
     lv_obj_set_style_text_font(inc_lbl, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(inc_lbl, lv_color_white(), 0);
     lv_obj_center(inc_lbl);
+    inc_press_ctx.lbl = inc_lbl;
+    inc_press_ctx.btn = inc_btn;
+    inc_press_ctx.idle_text = lv_color_white();
+    inc_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    inc_press_ctx.press_bg = lv_color_make(70, 70, 70);
+    /* Cross-wire for X-mirror: visual + tap → PRESSED on inc_btn → fill dec_btn */
+    lv_obj_add_event_cb(inc_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &dec_press_ctx);
+    lv_obj_add_event_cb(inc_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &dec_press_ctx);
+    lv_obj_add_event_cb(inc_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &dec_press_ctx);
+    /* Visual - tap → PRESSED on dec_btn → fill inc_btn */
+    lv_obj_add_event_cb(dec_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &inc_press_ctx);
+    lv_obj_add_event_cb(dec_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &inc_press_ctx);
+    lv_obj_add_event_cb(dec_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &inc_press_ctx);
 
     lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
 }
@@ -801,6 +906,20 @@ static void close_editor(void)
  *  Settings UI — Grouped list
  * ================================================================ */
 
+static void update_accent_bars(int active_group)
+{
+    for (int g = 0; g < SGRP_COUNT; g++) {
+        if (!group_header_cont[g]) continue;
+        if (g == active_group) {
+            lv_obj_set_style_border_color(group_header_cont[g], lv_color_make(230, 120, 0), 0);
+            lv_obj_set_style_border_opa(group_header_cont[g], LV_OPA_COVER, 0);
+        } else {
+            lv_obj_set_style_border_color(group_header_cont[g], lv_color_make(100, 60, 0), 0);
+            lv_obj_set_style_border_opa(group_header_cont[g], LV_OPA_70, 0);
+        }
+    }
+}
+
 static void setting_row_pressed_cb(lv_event_t *e)
 {
     if (touch_guard) return;
@@ -831,6 +950,10 @@ static void setting_row_released_cb(lv_event_t *e)
     /* Make value label white on selected row */
     lv_obj_t *sel_val = lv_obj_get_child(row, 1);
     if (sel_val) lv_obj_set_style_text_color(sel_val, lv_color_white(), 0);
+    /* Highlight accent bar for this row's group */
+    int setting_idx = (int)(intptr_t)lv_obj_get_user_data(row);
+    if (setting_idx >= 0 && setting_idx < SETTING_COUNT)
+        update_accent_bars((int)settings[setting_idx].group);
 }
 
 static void setting_row_click_cb(lv_event_t *e)
@@ -867,6 +990,32 @@ static void confirm_reset_no_cb(lv_event_t *e)
     }
 }
 
+static void settings_exit_cb(lv_event_t *e)
+{
+    (void)e;
+    close_settings_menu();
+}
+
+static void outline_btn_press_cb(lv_event_t *e)
+{
+    btn_press_ctx_t *ctx = (btn_press_ctx_t *)lv_event_get_user_data(e);
+    lv_event_code_t code = lv_event_get_code(e);
+    static const lv_state_t sts[] = {0, LV_STATE_PRESSED,
+        LV_STATE_FOCUSED, LV_STATE_FOCUSED | LV_STATE_PRESSED,
+        LV_STATE_CHECKED, LV_STATE_EDITED};
+    lv_color_t c = (code == LV_EVENT_PRESSED) ? ctx->press_bg : ctx->idle_bg;
+    lv_color_t t = (code == LV_EVENT_PRESSED) ? lv_color_black() : ctx->idle_text;
+    for (int i = 0; i < (int)(sizeof(sts)/sizeof(sts[0])); i++) {
+        lv_obj_set_style_bg_color(ctx->btn, c, sts[i]);
+    }
+    lv_obj_set_style_text_color(ctx->lbl, t, 0);
+    lv_obj_invalidate(ctx->btn);
+}
+
+static btn_press_ctx_t reset_press_ctx;
+static btn_press_ctx_t close_press_ctx;
+static btn_press_ctx_t yes_press_ctx;
+
 static void reset_defaults_cb(lv_event_t *e)
 {
     (void)e;
@@ -889,27 +1038,51 @@ static void reset_defaults_cb(lv_event_t *e)
     lv_obj_set_style_text_align(prompt, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(prompt, LV_ALIGN_CENTER, 0, -80);
 
-    /* YES button */
+    /* YES button — Reset Defaults theme (red outline) */
     lv_obj_t *yes_btn = make_plain_button(settings_confirm_panel, 200, 70,
-                                          lv_color_make(200, 0, 0), 8);
+                                          lv_color_make(20, 20, 20), 8);
+    set_border_all_states(yes_btn, lv_color_make(160, 40, 40), 2);
     lv_obj_align(yes_btn, LV_ALIGN_CENTER, 120, 60);
     lv_obj_add_event_cb(yes_btn, confirm_reset_no_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *yes_lbl = create_label_no_theme(yes_btn);
     lv_label_set_text(yes_lbl, "YES");
     lv_obj_set_style_text_font(yes_lbl, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(yes_lbl, lv_color_white(), 0);
+    lv_obj_set_style_text_color(yes_lbl, lv_color_make(180, 50, 50), 0);
     lv_obj_center(yes_lbl);
 
-    /* NO button */
+    /* NO button — Close theme (orange outline) */
     lv_obj_t *no_btn = make_plain_button(settings_confirm_panel, 200, 70,
-                                         lv_color_make(80, 80, 80), 8);
+                                         lv_color_make(20, 20, 20), 8);
+    set_border_all_states(no_btn, lv_color_make(155, 60, 0), 2);
     lv_obj_align(no_btn, LV_ALIGN_CENTER, -120, 60);
     lv_obj_add_event_cb(no_btn, confirm_reset_yes_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *no_lbl = create_label_no_theme(no_btn);
     lv_label_set_text(no_lbl, "NO");
     lv_obj_set_style_text_font(no_lbl, &lv_font_montserrat_28, 0);
-    lv_obj_set_style_text_color(no_lbl, lv_color_white(), 0);
+    lv_obj_set_style_text_color(no_lbl, lv_color_make(200, 120, 40), 0);
     lv_obj_center(no_lbl);
+
+    /* Mirror-aware press feedback: visual YES tap → PRESSED on no_btn,
+       visual NO tap → PRESSED on yes_btn.  Register cross-button ctx. */
+    yes_press_ctx.lbl = yes_lbl;
+    yes_press_ctx.btn = yes_btn;
+    yes_press_ctx.idle_text = lv_color_make(180, 50, 50);
+    yes_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    yes_press_ctx.press_bg = lv_color_make(160, 35, 35);
+    /* Touching visual YES fires PRESSED on no_btn → change yes_btn */
+    lv_obj_add_event_cb(no_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &yes_press_ctx);
+    lv_obj_add_event_cb(no_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &yes_press_ctx);
+    lv_obj_add_event_cb(no_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &yes_press_ctx);
+
+    close_press_ctx.lbl = no_lbl;
+    close_press_ctx.btn = no_btn;
+    close_press_ctx.idle_text = lv_color_make(200, 120, 40);
+    close_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    close_press_ctx.press_bg = lv_color_make(155, 60, 0);
+    /* Touching visual NO fires PRESSED on yes_btn → change no_btn */
+    lv_obj_add_event_cb(yes_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &close_press_ctx);
+    lv_obj_add_event_cb(yes_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &close_press_ctx);
+    lv_obj_add_event_cb(yes_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &close_press_ctx);
 }
 
 static void create_settings_list(void)
@@ -923,7 +1096,7 @@ static void create_settings_list(void)
     lv_obj_set_style_bg_opa(settings_list_panel, LV_OPA_COVER, 0);
     lv_obj_set_style_border_width(settings_list_panel, 0, 0);
     lv_obj_set_style_pad_top(settings_list_panel, 10, 0);
-    lv_obj_set_style_pad_bottom(settings_list_panel, 10, 0);
+    lv_obj_set_style_pad_bottom(settings_list_panel, 40, 0);
     lv_obj_set_style_pad_left(settings_list_panel, 20, 0);
     lv_obj_set_style_pad_right(settings_list_panel, 20, 0);
     lv_obj_set_flex_flow(settings_list_panel, LV_FLEX_FLOW_COLUMN);
@@ -941,14 +1114,16 @@ static void create_settings_list(void)
         lv_obj_set_style_bg_opa(gh_cont, LV_OPA_TRANSP, 0);
         lv_obj_set_style_border_width(gh_cont, 4, 0);
         lv_obj_set_style_border_side(gh_cont, LV_BORDER_SIDE_LEFT, 0);
-        lv_obj_set_style_border_color(gh_cont, lv_color_make(230, 120, 0), 0);
+        lv_obj_set_style_border_color(gh_cont, lv_color_make(100, 60, 0), 0);
+        lv_obj_set_style_border_opa(gh_cont, LV_OPA_70, 0);
         lv_obj_set_style_pad_left(gh_cont, 12, 0);
         lv_obj_set_style_pad_top(gh_cont, 4, 0);
         lv_obj_set_style_pad_bottom(gh_cont, 4, 0);
+        group_header_cont[g] = gh_cont;
 
         lv_obj_t *gh = create_label_no_theme(gh_cont);
         lv_label_set_text(gh, setting_group_names[g]);
-        lv_obj_set_style_text_color(gh, lv_color_white(), 0);
+        lv_obj_set_style_text_color(gh, lv_color_make(150, 150, 150), 0);
         lv_obj_set_style_text_font(gh, &lv_font_montserrat_48, 0);
 
         for (int i = 0; i < SETTING_COUNT; i++) {
@@ -956,7 +1131,7 @@ static void create_settings_list(void)
 
             /* Row button */
             lv_obj_t *row = make_plain_button(settings_list_panel,
-                                              LCD_H_RES - 20, 80,
+                                              LCD_H_RES - 20, 70,
                                               lv_color_make(50, 50, 50), 8);
             lv_obj_set_style_pad_left(row, 16, 0);
             lv_obj_set_style_pad_right(row, 16, 0);
@@ -972,6 +1147,7 @@ static void create_settings_list(void)
             lv_obj_add_event_cb(row, setting_row_pressed_cb, LV_EVENT_PRESSED, NULL);
             lv_obj_add_event_cb(row, setting_row_released_cb, LV_EVENT_RELEASED, NULL);
             lv_obj_add_event_cb(row, setting_row_click_cb, LV_EVENT_LONG_PRESSED, (void *)(intptr_t)i);
+            lv_obj_set_user_data(row, (void *)(intptr_t)i);
 
             lv_obj_t *name_lbl = create_label_no_theme(row);
             lv_label_set_text(name_lbl, settings[i].name);
@@ -986,18 +1162,65 @@ static void create_settings_list(void)
         }
     }
 
-    /* Reset defaults — styled as a regular row */
-    lv_obj_t *reset_btn = make_plain_button(settings_list_panel,
-                                             LCD_H_RES - 60, 64,
-                                             lv_color_make(140, 30, 30), 8);
-    lv_obj_set_style_pad_left(reset_btn, 16, 0);
-    lv_obj_set_style_pad_right(reset_btn, 16, 0);
-    lv_obj_add_event_cb(reset_btn, reset_defaults_cb, LV_EVENT_CLICKED, NULL);
-    lv_obj_t *reset_lbl = create_label_no_theme(reset_btn);
+    /* Close button — back to logo, orange outline idle, fill on press */
+    lv_obj_t *exit_spacer = create_obj_no_theme(settings_list_panel);
+    lv_obj_set_size(exit_spacer, LCD_H_RES - 60, 16);
+    lv_obj_set_style_bg_opa(exit_spacer, LV_OPA_TRANSP, 0);
+    lv_obj_t *exit_btn = make_plain_button(settings_list_panel,
+                                            LCD_H_RES - 160, 64,
+                                            lv_color_make(20, 20, 20), 8);
+    set_border_all_states(exit_btn, lv_color_make(155, 60, 0), 2);
+    lv_obj_set_style_bg_color(exit_btn, lv_color_make(155, 60, 0), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(exit_btn, LV_OPA_COVER, LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(exit_btn, lv_color_make(155, 60, 0), LV_STATE_FOCUSED | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(exit_btn, LV_OPA_COVER, LV_STATE_FOCUSED | LV_STATE_PRESSED);
+    lv_obj_add_event_cb(exit_btn, settings_exit_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *exit_lbl = create_label_no_theme(exit_btn);
+    lv_label_set_text(exit_lbl, "Close");
+    lv_obj_set_style_text_color(exit_lbl, lv_color_make(200, 120, 40), 0);
+    lv_obj_set_style_text_font(exit_lbl, &lv_font_montserrat_40_limited, 0);
+    lv_obj_align(exit_lbl, LV_ALIGN_CENTER, 0, 0);
+    close_press_ctx.lbl = exit_lbl;
+    close_press_ctx.btn = exit_btn;
+    close_press_ctx.idle_text = lv_color_make(200, 120, 40);
+    close_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    close_press_ctx.press_bg = lv_color_make(155, 60, 0);
+    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &close_press_ctx);
+    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &close_press_ctx);
+    lv_obj_add_event_cb(exit_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &close_press_ctx);
+
+    /* Reset defaults — visually separated footer action */
+    lv_obj_t *reset_spacer = create_obj_no_theme(settings_list_panel);
+    lv_obj_set_size(reset_spacer, LCD_H_RES - 60, 8);
+    lv_obj_set_style_bg_opa(reset_spacer, LV_OPA_TRANSP, 0);
+    reset_defaults_btn = make_plain_button(settings_list_panel,
+                                             LCD_H_RES - 160, 64,
+                                             lv_color_make(20, 20, 20), 8);
+    set_border_all_states(reset_defaults_btn, lv_color_make(160, 40, 40), 2);
+    /* Pressed state: full red fill */
+    lv_obj_set_style_bg_color(reset_defaults_btn, lv_color_make(160, 35, 35), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(reset_defaults_btn, LV_OPA_COVER, LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(reset_defaults_btn, lv_color_make(160, 35, 35), LV_STATE_FOCUSED | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_opa(reset_defaults_btn, LV_OPA_COVER, LV_STATE_FOCUSED | LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(reset_defaults_btn, lv_color_make(160, 35, 35), LV_STATE_CHECKED);
+    lv_obj_set_style_bg_opa(reset_defaults_btn, LV_OPA_COVER, LV_STATE_CHECKED);
+    lv_obj_set_style_pad_left(reset_defaults_btn, 16, 0);
+    lv_obj_set_style_pad_right(reset_defaults_btn, 16, 0);
+    lv_obj_add_event_cb(reset_defaults_btn, reset_defaults_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t *reset_lbl = create_label_no_theme(reset_defaults_btn);
     lv_label_set_text(reset_lbl, "Reset Defaults");
-    lv_obj_set_style_text_color(reset_lbl, lv_color_white(), 0);
+    lv_obj_set_style_text_color(reset_lbl, lv_color_make(180, 50, 50), 0);
     lv_obj_set_style_text_font(reset_lbl, &lv_font_montserrat_40_limited, 0);
-    lv_obj_align(reset_lbl, LV_ALIGN_LEFT_MID, 0, 0);
+    lv_obj_align(reset_lbl, LV_ALIGN_CENTER, 0, 0);
+    /* Press/release callbacks to toggle label color */
+    reset_press_ctx.lbl = reset_lbl;
+    reset_press_ctx.btn = reset_defaults_btn;
+    reset_press_ctx.idle_text = lv_color_make(180, 50, 50);
+    reset_press_ctx.idle_bg = lv_color_make(20, 20, 20);
+    reset_press_ctx.press_bg = lv_color_make(160, 35, 35);
+    lv_obj_add_event_cb(reset_defaults_btn, outline_btn_press_cb, LV_EVENT_PRESSED, &reset_press_ctx);
+    lv_obj_add_event_cb(reset_defaults_btn, outline_btn_press_cb, LV_EVENT_RELEASED, &reset_press_ctx);
+    lv_obj_add_event_cb(reset_defaults_btn, outline_btn_press_cb, LV_EVENT_PRESS_LOST, &reset_press_ctx);
 
     lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
 }
@@ -1097,9 +1320,19 @@ static void long_press_timer_cb(lv_timer_t *timer)
     if (editor_visible) {
         /* Don't exit if touch is on the button row (-, DONE, +) */
         if (touch_start_y >= 300) return;
-        /* long-press in editor → back to settings list */
+        /* long-press in editor → discard change, back to settings list */
+        settings[editor_setting_id].value = editor_original_value;
+        save_setting_to_nvs(editor_setting_id);
+        if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
+        if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
         close_editor();
     } else if (settings_visible) {
+        /* Don't close if user is holding the Reset Defaults button */
+        lv_indev_t *indev = lv_indev_get_next(NULL);
+        if (indev && reset_defaults_btn) {
+            lv_obj_t *pressed = indev->proc.types.pointer.act_obj;
+            if (pressed == reset_defaults_btn) return;
+        }
         close_settings_menu();
     } else {
         open_settings_menu();
@@ -2286,7 +2519,7 @@ void app_main(void)
 
     logo_img_obj = lv_img_create(lv_scr_act());
     lv_img_set_src(logo_img_obj, &logo_img_dark);
-    lv_obj_set_pos(logo_img_obj, 0, (LCD_V_RES - 310) / 2);
+    lv_obj_set_pos(logo_img_obj, 0, (LCD_V_RES - 310) / 2 - 20);
 
     drone_title_label = lv_label_create(lv_scr_act());
     lv_label_set_text(drone_title_label, "DRONE MODE");
