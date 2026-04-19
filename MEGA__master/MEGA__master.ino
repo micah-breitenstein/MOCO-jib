@@ -211,10 +211,10 @@ constexpr uint8_t EMERGENCY_RELEASE_RUMBLE_PULSES = 1;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_ON_MS = 200;
 constexpr unsigned long L3_ENDPOINT_RUMBLE_TOTAL_MS = 350;
 constexpr uint8_t L3_ENDPOINT_RUMBLE_PULSES = 2;
-constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON_MS = 260;
-constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_LONG_TOTAL_MS = 420;
-constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON_MS = 100;
-constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_TOTAL_MS = 220;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_LONG_ON_MS = 1000;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_LONG_TOTAL_MS = 1200;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON_MS = 450;
+constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_TOTAL_MS = 600;
 constexpr unsigned long BOUNCE_MIN_MOVE_DURATION_MS = 150;
 
 // Drone mode constants
@@ -3224,12 +3224,14 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
 
   if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
     handleFlowlapseCaptureStep(now, deltaSeconds);
+    logDroneSpeedModifierStateIfChanged();
     droneLastActivityMs = now;
     return;
   }
 
   if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED) {
     stopAllMotors();
+    logDroneSpeedModifierStateIfChanged();
     droneLastActivityMs = now;
     return;
   }
@@ -3279,6 +3281,7 @@ void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
   if (flowlapseState == FLOWLAPSE_STATE_READY_FOR_PREVIEW
       || flowlapseState == FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
     stopAllMotors();
+    logDroneSpeedModifierStateIfChanged();
     handleFocusAxis();
     return;
   }

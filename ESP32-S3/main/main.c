@@ -1352,9 +1352,19 @@ static void open_settings_menu(void)
 
 static void close_settings_menu(void)
 {
+    /* Revert any unsaved editor changes */
+    if (editor_visible) {
+        settings[editor_setting_id].value = editor_original_value;
+        if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
+        if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+    }
     settings_visible = false;
     editor_visible = false;
     selected_row = NULL;
+    if (settings_confirm_panel) {
+        lv_obj_del_async(settings_confirm_panel);
+        settings_confirm_panel = NULL;
+    }
     if (settings_list_panel) lv_obj_add_flag(settings_list_panel, LV_OBJ_FLAG_HIDDEN);
     if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
 
@@ -1566,12 +1576,12 @@ static void update_drone_stick_colors(void)
 {
     if (drone_left_stick) {
         lv_obj_set_style_bg_color(drone_left_stick,
-                                  drone_left_stick_pressed ? lv_color_make(0, 255, 0) : lv_color_white(),
+                                  drone_left_stick_pressed ? lv_color_make(255, 50, 50) : lv_color_white(),
                                   LV_PART_MAIN);
     }
     if (drone_right_stick) {
         lv_obj_set_style_bg_color(drone_right_stick,
-                                  drone_right_stick_pressed ? lv_color_make(0, 255, 0) : lv_color_white(),
+                                  drone_right_stick_pressed ? lv_color_make(255, 50, 50) : lv_color_white(),
                                   LV_PART_MAIN);
     }
 }
@@ -1751,13 +1761,13 @@ static void set_drone_modifier_indicator(bool precision_active, bool boost_activ
 
     if (drone_precision_state_box) {
         lv_obj_set_style_bg_color(drone_precision_state_box,
-                                  precision_active ? lv_color_make(0, 0, 255) : lv_color_make(120, 120, 120),
+                                  precision_active ? lv_color_make(0, 255, 0) : lv_color_make(120, 120, 120),
                                   LV_PART_MAIN);
     }
 
     if (drone_boost_state_box) {
         lv_obj_set_style_bg_color(drone_boost_state_box,
-                                  boost_active ? lv_color_make(0, 0, 255) : lv_color_make(120, 120, 120),
+                                  boost_active ? lv_color_make(0, 255, 0) : lv_color_make(120, 120, 120),
                                   LV_PART_MAIN);
     }
 
@@ -1903,6 +1913,36 @@ static const char *display_mode_to_text(DisplayMode mode)
     }
 }
 
+static const char *timelapse_variant_text(int v)
+{
+    switch (v) {
+    case 1: return "TIMELAPSE\nSwing Left\nBoom Down";
+    case 2: return "TIMELAPSE\nSwing Left\nBoom Up";
+    case 3: return "TIMELAPSE\nSwing Right\nBoom Up";
+    case 4: return "TIMELAPSE\nSwing Right\nBoom Down";
+    case 5: return "TIMELAPSE\nSwing Left";
+    case 6: return "TIMELAPSE\nBoom Up";
+    case 7: return "TIMELAPSE\nSwing Right";
+    case 8: return "TIMELAPSE\nBoom Down";
+    default: return "TIMELAPSE";
+    }
+}
+
+static const char *bounce_variant_text(int v)
+{
+    switch (v) {
+    case 1: return "BOUNCE\nSwing Left\nBoom Down";
+    case 2: return "BOUNCE\nSwing Left\nBoom Up";
+    case 3: return "BOUNCE\nSwing Right\nBoom Up";
+    case 4: return "BOUNCE\nSwing Right\nBoom Down";
+    case 5: return "BOUNCE\nSwing Left";
+    case 6: return "BOUNCE\nBoom Up";
+    case 7: return "BOUNCE\nSwing Right";
+    case 8: return "BOUNCE\nBoom Down";
+    default: return "BOUNCE";
+    }
+}
+
 static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64_t now_ms)
 {
     DisplayMode previous_mode = current_display_mode;
@@ -1959,7 +1999,8 @@ static void switch_display_mode(DisplayMode mode, const char *detail_msg, uint64
 
     set_flowlapse_status(false, NULL);
     restore_mode_after_message = false;
-    show_mode_message_on_display(display_mode_to_text(mode), now_ms);
+    show_mode_message_on_display(
+        (detail_msg && detail_msg[0]) ? detail_msg : display_mode_to_text(mode), now_ms);
 }
 
 static void status_uart_task(void *arg)
@@ -1982,7 +2023,11 @@ static void status_uart_task(void *arg)
         }
 
         if (mode_message_active && now_ms >= mode_message_until_ms) {
-            if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+            /* TIMELAPSE / BOUNCE: keep mode text on screen permanently */
+            if (current_display_mode == DISPLAY_MODE_TIMELAPSE
+                || current_display_mode == DISPLAY_MODE_BOUNCE) {
+                mode_message_until_ms = now_ms + 60000; /* re-arm so we don't spin */
+            } else if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                 mode_message_active = false;
                 if (restore_mode_after_message) {
                     restore_mode_after_message = false;
@@ -2018,6 +2063,7 @@ static void status_uart_task(void *arg)
                 || (strncmp(line, "EMERGENCY STOP", 14) == 0 && strstr(line, "RELEASED") == NULL)) {
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
                     emergency_stop_active = true;
+                    if (settings_visible || editor_visible) close_settings_menu();
                     switch_display_mode(DISPLAY_MODE_ERROR, "EMERGENCY\nSTOP", now_ms);
                     xSemaphoreGive(lvgl_mux);
                 }
@@ -2160,15 +2206,25 @@ static void status_uart_task(void *arg)
             } else if (strstr(line, "MODE:") != NULL) {
                 const char *mode_msg = strstr(line, "MODE:") + 5;
                 if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
-                    if (!emergency_stop_active && !mode_message_active) {
+                    if (!emergency_stop_active) {
                         if (strncmp(mode_msg, "MANUAL", 6) == 0) {
-                            switch_display_mode(DISPLAY_MODE_MANUAL, NULL, now_ms);
+                            if (current_display_mode != DISPLAY_MODE_MANUAL)
+                                switch_display_mode(DISPLAY_MODE_MANUAL, NULL, now_ms);
                         } else if (strncmp(mode_msg, "DRONE", 5) == 0) {
-                            switch_display_mode(DISPLAY_MODE_DRONE, NULL, now_ms);
+                            if (current_display_mode != DISPLAY_MODE_DRONE)
+                                switch_display_mode(DISPLAY_MODE_DRONE, NULL, now_ms);
                         } else if (strncmp(mode_msg, "TIMELAPSE", 9) == 0) {
-                            switch_display_mode(DISPLAY_MODE_TIMELAPSE, NULL, now_ms);
+                            int variant = 0;
+                            sscanf(mode_msg + 9, " %d", &variant);
+                            if (!mode_message_active || current_display_mode != DISPLAY_MODE_TIMELAPSE)
+                                switch_display_mode(DISPLAY_MODE_TIMELAPSE,
+                                                    timelapse_variant_text(variant), now_ms);
                         } else if (strncmp(mode_msg, "BOUNCE", 6) == 0) {
-                            switch_display_mode(DISPLAY_MODE_BOUNCE, NULL, now_ms);
+                            int variant = 0;
+                            sscanf(mode_msg + 6, " %d", &variant);
+                            if (!mode_message_active || current_display_mode != DISPLAY_MODE_BOUNCE)
+                                switch_display_mode(DISPLAY_MODE_BOUNCE,
+                                                    bounce_variant_text(variant), now_ms);
                         } else {
                             switch_display_mode(DISPLAY_MODE_MANUAL, NULL, now_ms);
                         }
@@ -2706,7 +2762,7 @@ void app_main(void)
     lv_obj_set_size(drone_flowlapse_fill, 0, FLOWLAPSE_BAR_NORMAL_H - 6);
     lv_obj_set_pos(drone_flowlapse_fill, 3, 3);
     lv_obj_set_style_radius(drone_flowlapse_fill, 4, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(drone_flowlapse_fill, lv_color_make(0, 180, 255), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(drone_flowlapse_fill, lv_color_make(200, 120, 40), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(drone_flowlapse_fill, LV_OPA_COVER, LV_PART_MAIN);
 
     drone_flowlapse_label = lv_label_create(lv_scr_act());
