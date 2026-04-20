@@ -1,5 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #include <math.h>
+#include <Preferences.h>
 
 constexpr uint8_t UART_RX_PIN = 44;
 constexpr uint8_t UART_TX_PIN = 43;
@@ -10,6 +11,7 @@ constexpr uint8_t MATRIX_DATA_PIN = 14;
 constexpr uint16_t MATRIX_LED_COUNT = 64;
 
 Adafruit_NeoPixel matrixStrip(MATRIX_LED_COUNT, MATRIX_DATA_PIN, NEO_RGB + NEO_KHZ800);
+Preferences prefs;
 
 String lineBuffer;
 bool errorActive = false;
@@ -90,6 +92,10 @@ uint8_t twinkleWhitePeak = 200;
 uint8_t randomTwinklePeakMin = 70;
 uint8_t randomTwinklePeakMax = 170;
 uint8_t errorStripBrightness = 255;
+uint8_t masterBrightnessPercent = 100;
+
+constexpr char PREF_NS[] = "matrix_cfg";
+constexpr char PREF_KEY_BRIGHT[] = "mtx_brt";
 
 PulseBrightnessProfile getPulseBrightnessProfile(PulseBrightnessSetting setting) {
   switch (setting) {
@@ -166,7 +172,8 @@ bool isStructuredPixel(uint16_t index, unsigned long nowMs) {
 
 void applyErrorBrightnessSetting() {
   ErrorBrightnessProfile profile = getErrorBrightnessProfile(ERROR_BRIGHTNESS_SETTING);
-  errorStripBrightness = profile.stripBrightness;
+  errorStripBrightness = (uint8_t)(((uint16_t)255U * masterBrightnessPercent) / 100U);
+  if (errorStripBrightness < 1 && masterBrightnessPercent > 0) errorStripBrightness = 1;
   baseErrorRed = profile.baseRed;
   twinkleWhitePeak = profile.twinkleWhitePeak;
   randomTwinklePeakMin = profile.randomPeakMin;
@@ -293,7 +300,9 @@ void applyPulseBrightnessSetting() {
   okPulseMinLevel = profile.pulseMinLevel;
   okPulseMaxLevel = profile.pulseMaxLevel;
   okPulseBlueScale = profile.blueScale;
-  matrixStrip.setBrightness(profile.stripBrightness);
+  uint8_t scaled = (uint8_t)(((uint16_t)255U * masterBrightnessPercent) / 100U);
+  if (scaled < 1 && masterBrightnessPercent > 0) scaled = 1;
+  matrixStrip.setBrightness(scaled);
 }
 
 void renderOkPulseFrame(uint8_t pulseBase, uint8_t frac255) {
@@ -463,7 +472,7 @@ void handleStatusLine(const String& line) {
       else if (modeMsg.startsWith("TIMELAPSE")) preSettingsLatchedMode = LatchedModeState::TIMELAPSE;
       else if (modeMsg.startsWith("BOUNCE")) preSettingsLatchedMode = LatchedModeState::BOUNCE;
     }
-    if (!line.startsWith("SETTINGS:")) return;
+    if (!line.startsWith("SETTINGS:") && !line.startsWith("SET:MTX_BRT:")) return;
   }
 
   if (line.startsWith("CONTROLLER_ERROR:")) {
@@ -504,6 +513,36 @@ void handleStatusLine(const String& line) {
     return;
   }
 
+  if (line.startsWith("SET:MTX_BRT:")) {
+    int val = line.substring(12).toInt();
+    if (val >= 10 && val <= 100) {
+      masterBrightnessPercent = (uint8_t)val;
+      prefs.putUChar(PREF_KEY_BRIGHT, masterBrightnessPercent);
+      applyPulseBrightnessSetting();
+      applyErrorBrightnessSetting();
+
+      // Push an immediate frame so brightness changes are visible instantly.
+      if (settingsMenuActive) {
+        fillMatrix(255, 50, 0);
+      } else if (emergencyStopActive || errorActive) {
+        matrixStrip.setBrightness(errorStripBrightness);
+        renderErrorTwinkleFrame(millis(), TWINKLE_CYCLE_FAST_MS);
+      } else if (latchedModeState != LatchedModeState::IDLE) {
+        renderLatchedModeColor();
+      } else if (modeIndicatorActive) {
+        fillMatrix(modeIndicatorR, modeIndicatorG, modeIndicatorB);
+      } else {
+        fillMatrix(okPulseMinLevel, okPulseMinLevel,
+                   (uint8_t)(((uint16_t)okPulseMinLevel * okPulseBlueScale) / 255U));
+      }
+
+      Serial.print("Matrix brightness set to ");
+      Serial.print(val);
+      Serial.println("%");
+    }
+    return;
+  }
+
   if (line.startsWith("SETTINGS:OPEN")) {
     showSettingsOpen();
     Serial.println("Matrix status: SETTINGS OPEN -> ORANGE");
@@ -523,6 +562,8 @@ void handleStatusLine(const String& line) {
 void setup() {
   Serial.begin(115200);
   Serial1.begin(UART_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
+  prefs.begin(PREF_NS, false);
+  masterBrightnessPercent = 10;
   randomSeed((uint32_t)(micros() ^ millis()));
 
   matrixStrip.begin();

@@ -4946,6 +4946,10 @@ void processDisplayCommands() {
             startRumbleUnmuteFeedback();
           }
         }
+      } else if (strncmp(displayCmdBuf, "SET:MTX_BRT:", 12) == 0) {
+        sendToRGBESP(displayCmdBuf);
+        Serial.print(F("Display "));
+        Serial.println(displayCmdBuf);
       } else if (strncmp(displayCmdBuf, "SETTINGS_SAVED", 14) == 0) {
         if (!isRumbleFeedbackActive()) {
           startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);

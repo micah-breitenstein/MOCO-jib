@@ -106,6 +106,7 @@ typedef enum {
     SETTING_TL_STEPDIST,
     SETTING_RUMBLE_MUTE,
     SETTING_BRIGHTNESS,
+    SETTING_MTX_BRIGHTNESS,
     SETTING_LOGO_THEME,
     SETTING_COUNT,
 } SettingId;
@@ -130,15 +131,16 @@ typedef struct {
 } SettingDef;
 
 static SettingDef settings[SETTING_COUNT] = {
-    [SETTING_TL_INTERVAL] = { "Interval",     "s",  SGRP_TIMELAPSE, STYPE_INT_RANGE, 15,  15,  1,   99,  1,  true,  true  },
-    [SETTING_TL_STEPDIST] = { "Step Dist",    "ms", SGRP_TIMELAPSE, STYPE_INT_RANGE, 100, 100, 20,  150, 10, true,  true  },
-    [SETTING_RUMBLE_MUTE] = { "Rumble Mute",  "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
-    [SETTING_BRIGHTNESS]  = { "Brightness",   "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 10,  100, 5,  false, false },
-    [SETTING_LOGO_THEME]  = { "Logo Theme",   "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
+    [SETTING_TL_INTERVAL]    = { "Interval",         "s",  SGRP_TIMELAPSE, STYPE_INT_RANGE, 15,  15,  1,   99,  1,  true,  true  },
+    [SETTING_TL_STEPDIST]    = { "Step Dist",        "ms", SGRP_TIMELAPSE, STYPE_INT_RANGE, 100, 100, 20,  150, 10, true,  true  },
+    [SETTING_RUMBLE_MUTE]    = { "Rumble Mute",      "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
+    [SETTING_BRIGHTNESS]     = { "Brightness",       "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 10,  100, 5,  false, false },
+    [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 10,  100, 5,  true,  false },
+    [SETTING_LOGO_THEME]     = { "Logo Theme",       "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
 };
 
 /* NVS keys for the 5 settings (short for 15-char NVS limit) */
-static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "bright", "theme" };
+static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "bright", "mtx_brt", "theme" };
 
 /* ---------- Settings menu state ---------- */
 static lv_obj_t           *selected_row = NULL;
@@ -505,6 +507,9 @@ static void send_set_command(SettingId id)
     case SETTING_RUMBLE_MUTE:
         snprintf(cmd, sizeof(cmd), "SET:RUMBLE_MUTE:%d\n", settings[id].value);
         break;
+    case SETTING_MTX_BRIGHTNESS:
+        snprintf(cmd, sizeof(cmd), "SET:MTX_BRT:%d\n", settings[id].value);
+        break;
     default:
         return;
     }
@@ -704,6 +709,9 @@ static void editor_dec_cb(lv_event_t *e)
         save_setting_to_nvs(editor_setting_id);
         if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
         if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+    } else if (editor_setting_id == SETTING_MTX_BRIGHTNESS) {
+        /* Live preview matrix brightness while editing, like display brightness. */
+        send_set_command(editor_setting_id);
     }
 }
 
@@ -719,6 +727,9 @@ static void editor_inc_cb(lv_event_t *e)
         save_setting_to_nvs(editor_setting_id);
         if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
         if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+    } else if (editor_setting_id == SETTING_MTX_BRIGHTNESS) {
+        /* Live preview matrix brightness while editing, like display brightness. */
+        send_set_command(editor_setting_id);
     }
 }
 
@@ -780,6 +791,7 @@ static void editor_exit_cb(lv_event_t *e)
     settings[editor_setting_id].value = editor_original_value;
     if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
     if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+    if (editor_setting_id == SETTING_MTX_BRIGHTNESS) send_set_command(editor_setting_id);
     close_editor();
 }
 
@@ -1348,6 +1360,7 @@ static void create_settings_list(void)
 
             lv_obj_t *name_lbl = create_label_no_theme(row);
             lv_label_set_text(name_lbl, settings[i].name);
+            lv_obj_set_style_text_font(name_lbl, &lv_font_montserrat_48, 0);
             lv_obj_align(name_lbl, LV_ALIGN_LEFT_MID, 0, 0);
 
             lv_obj_t *val_lbl = create_label_no_theme(row);
