@@ -418,6 +418,7 @@ struct PackedFlags {
   uint8_t unsupportedControllerWarningShown : 1;
   uint8_t rumbleSeparatorActive : 1;
   uint8_t chainStepDistAfterInterval : 1;
+  uint8_t settingsMode : 1;
 
   PackedFlags()
     : isSwingReversed(false),
@@ -455,7 +456,8 @@ struct PackedFlags {
       flowlapsePreviewFrameModeActive(false),
       unsupportedControllerWarningShown(false),
       rumbleSeparatorActive(false),
-      chainStepDistAfterInterval(false) {}
+      chainStepDistAfterInterval(false),
+      settingsMode(false) {}
 };
 
 PackedFlags packedFlags;
@@ -493,6 +495,7 @@ bool lastSelectButtonState = false;
 bool lastStartButtonState = false;
 bool lastTriangleButtonState = false;
 bool lastL3ButtonState = false;
+bool lastL3SettingsState = false;
 bool lastPadRightButtonState = false;
 bool lastPadLeftButtonState = false;
 bool lastDroneSelectButtonState = false;
@@ -573,6 +576,7 @@ unsigned long lastLoopBypassLogMs = 0;
 char lastLoopBypassReason[32] = "";
 #define unsupportedControllerWarningShown packedFlags.unsupportedControllerWarningShown
 #define rumbleSeparatorActive packedFlags.rumbleSeparatorActive
+#define settingsMode packedFlags.settingsMode
 #define chainStepDistAfterInterval packedFlags.chainStepDistAfterInterval
 bool persistedSettingsResetComboActive = false;
 bool persistedSettingsResetLatched = false;
@@ -3994,7 +3998,122 @@ bool handlePersistedSettingsReset(unsigned long now) {
   return true;
 }
 
+void enterSettingsMode() {
+  settingsMode = true;
+  stopAllMotors();
+  sendToDisplayESP("SETTINGS_NAV:OPEN");
+  sendToRGBESP("SETTINGS:OPEN");
+  Serial.println(F("Settings mode activated."));
+}
+
+void exitSettingsMode() {
+  settingsMode = false;
+  lastL3ButtonState = ps2x.Button(PSB_L3);
+  sendToDisplayESP("SETTINGS_NAV:CLOSE");
+  sendToRGBESP("SETTINGS:CLOSE");
+  Serial.println(F("Settings mode deactivated."));
+}
+
+void handleSettingsModeToggle() {
+  if (droneMode) return;
+
+  bool currentL3State = ps2x.Button(PSB_L3);
+  bool l3JustReleased = lastL3SettingsState && !currentL3State;
+  lastL3SettingsState = currentL3State;
+
+  if (!l3JustReleased) return;
+
+  if (settingsMode) {
+    exitSettingsMode();
+  } else {
+    enterSettingsMode();
+  }
+}
+
+void handleSettingsInput() {
+  static bool lastDpadUp = false;
+  static bool lastDpadDown = false;
+  static bool lastCircle = false;
+  static bool lastCross = false;
+  static unsigned long dpadUpHoldStart = 0;
+  static unsigned long dpadDownHoldStart = 0;
+  static unsigned long dpadUpLastRepeat = 0;
+  static unsigned long dpadDownLastRepeat = 0;
+  static bool lastDpadRight = false;
+  static bool lastDpadLeft = false;
+  static unsigned long dpadRightHoldStart = 0;
+  static unsigned long dpadLeftHoldStart = 0;
+  static unsigned long dpadRightLastRepeat = 0;
+  static unsigned long dpadLeftLastRepeat = 0;
+  static const unsigned long REPEAT_DELAY = 400;
+  static const unsigned long REPEAT_INTERVAL = 150;
+
+  bool dpadUp = ps2x.Button(PSB_PAD_UP);
+  bool dpadDown = ps2x.Button(PSB_PAD_DOWN);
+  bool dpadRight = ps2x.Button(PSB_PAD_RIGHT);
+  bool dpadLeft = ps2x.Button(PSB_PAD_LEFT);
+  bool circle = ps2x.Button(PSB_CIRCLE);
+  bool cross = ps2x.Button(PSB_CROSS);
+  unsigned long now = millis();
+
+  if (dpadUp && !lastDpadUp) {
+    sendToDisplayESP("SETTINGS_NAV:UP");
+    dpadUpHoldStart = now;
+    dpadUpLastRepeat = now;
+  } else if (dpadUp && (now - dpadUpHoldStart >= REPEAT_DELAY)
+             && (now - dpadUpLastRepeat >= REPEAT_INTERVAL)) {
+    sendToDisplayESP("SETTINGS_NAV:UP");
+    dpadUpLastRepeat = now;
+  }
+
+  if (dpadDown && !lastDpadDown) {
+    sendToDisplayESP("SETTINGS_NAV:DOWN");
+    dpadDownHoldStart = now;
+    dpadDownLastRepeat = now;
+  } else if (dpadDown && (now - dpadDownHoldStart >= REPEAT_DELAY)
+             && (now - dpadDownLastRepeat >= REPEAT_INTERVAL)) {
+    sendToDisplayESP("SETTINGS_NAV:DOWN");
+    dpadDownLastRepeat = now;
+  }
+
+  if (circle && !lastCircle) {
+    sendToDisplayESP("SETTINGS_NAV:SELECT");
+  }
+  if (cross && !lastCross) {
+    sendToDisplayESP("SETTINGS_NAV:BACK");
+  }
+
+  if (dpadRight && !lastDpadRight) {
+    sendToDisplayESP("SETTINGS_NAV:RIGHT");
+    dpadRightHoldStart = now;
+    dpadRightLastRepeat = now;
+  } else if (dpadRight && (now - dpadRightHoldStart >= REPEAT_DELAY)
+             && (now - dpadRightLastRepeat >= REPEAT_INTERVAL)) {
+    sendToDisplayESP("SETTINGS_NAV:RIGHT");
+    dpadRightLastRepeat = now;
+  }
+
+  if (dpadLeft && !lastDpadLeft) {
+    sendToDisplayESP("SETTINGS_NAV:LEFT");
+    dpadLeftHoldStart = now;
+    dpadLeftLastRepeat = now;
+  } else if (dpadLeft && (now - dpadLeftHoldStart >= REPEAT_DELAY)
+             && (now - dpadLeftLastRepeat >= REPEAT_INTERVAL)) {
+    sendToDisplayESP("SETTINGS_NAV:LEFT");
+    dpadLeftLastRepeat = now;
+  }
+
+  lastDpadUp = dpadUp;
+  lastDpadDown = dpadDown;
+  lastDpadRight = dpadRight;
+  lastDpadLeft = dpadLeft;
+  lastCircle = circle;
+  lastCross = cross;
+}
+
 void handleDroneModeToggle() {
+  if (settingsMode) return;
+
   bool currentR3ButtonState = ps2x.Button(PSB_R3);
   unsigned long now = millis();
   if (!lastR3ButtonState && currentR3ButtonState) {
@@ -4049,6 +4168,7 @@ bool handleEmergencyStop() {
     broadcastStatus("EMERGENCY_STOP:ACTIVE");
     resetTimelapseState();
     resetBounceState();
+    settingsMode = false;
     if (droneMode) {
       resetFlowlapseSession(false);
       Serial.println(F("Flowlapse: canceled by emergency stop."));
@@ -4760,7 +4880,8 @@ void setup() {
   Serial.print(timelapseIntervalSeconds);
   Serial.print(F("s, stepDist="));
   Serial.print(stepDist);
-  Serial.println(F("ms"));
+  Serial.print(F("ms, rumbleMuted="));
+  Serial.println(rumbleMuted ? F("YES") : F("NO"));
   Serial.println(persistedSettingsLoaded
       ? F("Persisted settings: timelapse interval restored from EEPROM.")
       : F("Persisted settings: defaults active."));
@@ -4825,11 +4946,24 @@ void processDisplayCommands() {
             startRumbleUnmuteFeedback();
           }
         }
-      } else if (strncmp(displayCmdBuf, "SETTINGS:", 9) == 0) {
-        // Relay settings open/close to RGB matrix
+      } else if (strncmp(displayCmdBuf, "SETTINGS_SAVED", 14) == 0) {
+        if (!isRumbleFeedbackActive()) {
+          startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+        }
+        Serial.println(F("Settings: save confirmed (rumble)."));
+      } else if (strncmp(displayCmdBuf, "SETTINGS:OPEN", 13) == 0) {
+        if (!settingsMode) {
+          settingsMode = true;
+          stopAllMotors();
+          Serial.println(F("Settings mode activated (display)."));
+        }
         sendToRGBESP(displayCmdBuf);
-        Serial.print(F("Display "));
-        Serial.println(displayCmdBuf);
+      } else if (strncmp(displayCmdBuf, "SETTINGS:CLOSE", 14) == 0) {
+        if (settingsMode) {
+          settingsMode = false;
+          Serial.println(F("Settings mode deactivated (display)."));
+        }
+        sendToRGBESP(displayCmdBuf);
       }
       continue;
     }
@@ -4905,6 +5039,15 @@ void loop() {
   }
 
   handleDroneModeToggle();
+
+  if (!droneMode) {
+    handleSettingsModeToggle();
+  }
+
+  if (settingsMode) {
+    handleSettingsInput();
+    return;
+  }
 
   if (!droneMode) {
     if (handlePersistedSettingsReset(now)) {

@@ -143,11 +143,13 @@ static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "b
 /* ---------- Settings menu state ---------- */
 static lv_obj_t           *selected_row = NULL;
 static lv_obj_t           *group_header_cont[SGRP_COUNT] = {NULL};
+static lv_obj_t           *setting_row_objs[SETTING_COUNT] = {NULL};
 static volatile bool       settings_refresh_pending = false;
 static bool                settings_visible = false;
 static bool                editor_visible = false;
 static SettingId           editor_setting_id = SETTING_TL_INTERVAL;
 static int32_t             editor_original_value = 0;
+static int                 controller_nav_index = -1;  /* -1 = none highlighted */
 static esp_lcd_panel_io_handle_t panel_io_global = NULL;
 
 /* Touch state */
@@ -518,6 +520,128 @@ static void open_editor(SettingId id);
 static void close_editor(void);
 static void create_settings_list(void);
 static void set_drone_mode_visible(bool visible);
+static void update_accent_bars(int active_group);
+static void editor_inc_cb(lv_event_t *e);
+static void editor_dec_cb(lv_event_t *e);
+static void editor_save_cb(lv_event_t *e);
+static void editor_exit_cb(lv_event_t *e);
+static void open_settings_menu(void);
+
+/* ================================================================
+ *  Settings UI — controller navigation helpers
+ * ================================================================ */
+
+static void controller_highlight_row(int idx)
+{
+    /* Unhighlight previous */
+    if (selected_row && settings_list_panel
+        && lv_obj_get_parent(selected_row) != NULL) {
+        lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), 0);
+        lv_obj_set_style_bg_color(selected_row, lv_color_make(50, 50, 50), LV_STATE_FOCUSED);
+        lv_obj_set_style_bg_grad_dir(selected_row, LV_GRAD_DIR_NONE, 0);
+        lv_obj_t *prev_val = lv_obj_get_child(selected_row, 1);
+        if (prev_val) lv_obj_set_style_text_color(prev_val, lv_color_make(255, 180, 80), 0);
+    }
+
+    if (idx < 0 || idx >= SETTING_COUNT || !setting_row_objs[idx]) {
+        selected_row = NULL;
+        controller_nav_index = -1;
+        return;
+    }
+
+    controller_nav_index = idx;
+    lv_obj_t *row = setting_row_objs[idx];
+    selected_row = row;
+
+    /* Orange gradient highlight */
+    lv_obj_set_style_bg_color(row, lv_color_make(180, 70, 0), 0);
+    lv_obj_set_style_bg_grad_color(row, lv_color_make(255, 140, 0), 0);
+    lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_HOR, 0);
+    lv_obj_set_style_bg_color(row, lv_color_make(180, 70, 0), LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_grad_color(row, lv_color_make(255, 140, 0), LV_STATE_FOCUSED);
+    lv_obj_set_style_bg_grad_dir(row, LV_GRAD_DIR_HOR, LV_STATE_FOCUSED);
+    lv_obj_t *sel_val = lv_obj_get_child(row, 1);
+    if (sel_val) lv_obj_set_style_text_color(sel_val, lv_color_white(), 0);
+    update_accent_bars((int)settings[idx].group);
+
+    /* Scroll row into view */
+    lv_obj_scroll_to_view(row, LV_ANIM_ON);
+}
+
+static void handle_settings_nav(const char *nav_cmd)
+{
+    if (strcmp(nav_cmd, "OPEN") == 0) {
+        if (!settings_visible && !editor_visible) {
+            open_settings_menu();
+            controller_nav_index = -1;
+        }
+        return;
+    }
+    if (strcmp(nav_cmd, "CLOSE") == 0) {
+        if (settings_visible || editor_visible) {
+            close_settings_menu();
+            controller_nav_index = -1;
+        }
+        return;
+    }
+
+    /* Confirm dialog is showing */
+    if (settings_confirm_panel) {
+        if (strcmp(nav_cmd, "SELECT") == 0) {
+            editor_save_cb(NULL);
+        } else if (strcmp(nav_cmd, "BACK") == 0) {
+            editor_exit_cb(NULL);
+        }
+        return;
+    }
+
+    /* Editor is open */
+    if (editor_visible) {
+        if (strcmp(nav_cmd, "UP") == 0 || strcmp(nav_cmd, "RIGHT") == 0) {
+            editor_inc_cb(NULL);
+        } else if (strcmp(nav_cmd, "DOWN") == 0 || strcmp(nav_cmd, "LEFT") == 0) {
+            editor_dec_cb(NULL);
+        } else if (strcmp(nav_cmd, "SELECT") == 0) {
+            /* Save and return to list (skip confirm dialog for controller) */
+            SettingDef *s = &settings[editor_setting_id];
+            save_setting_to_nvs(editor_setting_id);
+            if (s->mega_backed) {
+                send_set_command(editor_setting_id);
+            }
+            /* Notify MEGA to rumble */
+            const char *saved_cmd = "SETTINGS_SAVED\n";
+            uart_write_bytes(STATUS_UART_PORT, saved_cmd, strlen(saved_cmd));
+            close_editor();
+        } else if (strcmp(nav_cmd, "BACK") == 0) {
+            /* Cancel — revert value */
+            settings[editor_setting_id].value = editor_original_value;
+            if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
+            if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
+            close_editor();
+        }
+        return;
+    }
+
+    /* Settings list navigation */
+    if (!settings_visible) return;
+
+    if (strcmp(nav_cmd, "UP") == 0) {
+        int next = controller_nav_index - 1;
+        if (next < 0) next = SETTING_COUNT - 1;
+        controller_highlight_row(next);
+    } else if (strcmp(nav_cmd, "DOWN") == 0) {
+        int next = controller_nav_index + 1;
+        if (next >= SETTING_COUNT) next = 0;
+        controller_highlight_row(next);
+    } else if (strcmp(nav_cmd, "SELECT") == 0) {
+        if (controller_nav_index >= 0 && controller_nav_index < SETTING_COUNT) {
+            open_editor((SettingId)controller_nav_index);
+        }
+    } else if (strcmp(nav_cmd, "BACK") == 0) {
+        close_settings_menu();
+        controller_nav_index = -1;
+    }
+}
 
 /* ================================================================
  *  Settings UI — Value editor (full screen)
@@ -643,6 +767,9 @@ static void editor_save_cb(lv_event_t *e)
     if (s->mega_backed) {
         send_set_command(editor_setting_id);
     }
+    /* Notify MEGA to rumble */
+    const char *saved_cmd = "SETTINGS_SAVED\n";
+    uart_write_bytes(STATUS_UART_PORT, saved_cmd, strlen(saved_cmd));
     close_editor();
 }
 
@@ -1202,6 +1329,7 @@ static void create_settings_list(void)
             lv_obj_t *row = make_plain_button(settings_list_panel,
                                               LCD_H_RES - 20, 70,
                                               lv_color_make(50, 50, 50), 8);
+            setting_row_objs[i] = row;
             lv_obj_set_style_pad_left(row, 16, 0);
             lv_obj_set_style_pad_right(row, 16, 0);
             lv_obj_set_style_text_color(row, lv_color_white(), 0);
@@ -2500,6 +2628,11 @@ static void status_uart_task(void *arg)
                         xSemaphoreGive(lvgl_mux);
                     }
                 }
+            } else if (strncmp(line, "SETTINGS_NAV:", 13) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    handle_settings_nav(line + 13);
+                    xSemaphoreGive(lvgl_mux);
+                }
             }
 
             line_len = 0;
@@ -2762,8 +2895,8 @@ void app_main(void)
     lv_obj_set_size(drone_flowlapse_fill, 0, FLOWLAPSE_BAR_NORMAL_H - 6);
     lv_obj_set_pos(drone_flowlapse_fill, 3, 3);
     lv_obj_set_style_radius(drone_flowlapse_fill, 4, LV_PART_MAIN);
-    lv_obj_set_style_bg_color(drone_flowlapse_fill, lv_color_make(100, 0, 255), LV_PART_MAIN);
-    lv_obj_set_style_bg_grad_color(drone_flowlapse_fill, lv_color_make(220, 50, 220), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(drone_flowlapse_fill, lv_color_make(50, 0, 120), LV_PART_MAIN);
+    lv_obj_set_style_bg_grad_color(drone_flowlapse_fill, lv_color_make(140, 40, 255), LV_PART_MAIN);
     lv_obj_set_style_bg_grad_dir(drone_flowlapse_fill, LV_GRAD_DIR_HOR, LV_PART_MAIN);
     lv_obj_set_style_bg_opa(drone_flowlapse_fill, LV_OPA_COVER, LV_PART_MAIN);
 
