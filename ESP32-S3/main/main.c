@@ -134,8 +134,8 @@ static SettingDef settings[SETTING_COUNT] = {
     [SETTING_TL_INTERVAL]    = { "Interval",         "s",  SGRP_TIMELAPSE, STYPE_INT_RANGE, 15,  15,  1,   99,  1,  true,  true  },
     [SETTING_TL_STEPDIST]    = { "Step Dist",        "ms", SGRP_TIMELAPSE, STYPE_INT_RANGE, 100, 100, 20,  150, 10, true,  true  },
     [SETTING_RUMBLE_MUTE]    = { "Rumble Mute",      "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
-    [SETTING_BRIGHTNESS]     = { "Brightness",       "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 10,  100, 5,  false, false },
-    [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 10,  100, 5,  true,  false },
+    [SETTING_BRIGHTNESS]     = { "Brightness",       "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 0,   100, 1,  false, false },
+    [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 10,  10,  0,   100, 1,  true,  false },
     [SETTING_LOGO_THEME]     = { "Logo Theme",       "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
 };
 
@@ -407,7 +407,7 @@ static void apply_brightness(void)
 {
     if (!panel_io_global) return;
     int pct = settings[SETTING_BRIGHTNESS].value;
-    if (pct < 10) pct = 10;
+    if (pct < 0) pct = 0;
     if (pct > 100) pct = 100;
     uint8_t level = (uint8_t)((pct * 255) / 100);
     uint32_t lcd_cmd = ((uint32_t)LCD_QSPI_WRITE_CMD << 24) | ((uint32_t)0x51 << 8);
@@ -618,11 +618,8 @@ static void handle_settings_nav(const char *nav_cmd)
             uart_write_bytes(STATUS_UART_PORT, saved_cmd, strlen(saved_cmd));
             close_editor();
         } else if (strcmp(nav_cmd, "BACK") == 0) {
-            /* Cancel — revert value */
-            settings[editor_setting_id].value = editor_original_value;
-            if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
-            if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
-            close_editor();
+            /* Cancel — use shared exit path so all live previews are reverted. */
+            editor_exit_cb(NULL);
         }
         return;
     }
@@ -2690,6 +2687,12 @@ void app_main(void)
         ESP_ERROR_CHECK(nvs_err);
     }
     load_settings_from_nvs();
+
+    /* Keep UI in sync with matrix boot behavior: always start at 10%. */
+    if (settings[SETTING_MTX_BRIGHTNESS].value != 10) {
+        settings[SETTING_MTX_BRIGHTNESS].value = 10;
+        save_setting_to_nvs(SETTING_MTX_BRIGHTNESS);
+    }
 
     static lv_disp_drv_t disp_drv;
 

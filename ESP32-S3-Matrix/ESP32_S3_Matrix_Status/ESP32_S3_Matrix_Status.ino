@@ -51,6 +51,7 @@ constexpr unsigned long RANDOM_TWINKLE_GAP_MAX_MS = 420;
 constexpr uint8_t BACKGROUND_ROW_SHIMMER_PEAK = 0;
 constexpr uint8_t RANDOM_TWINKLE_PEAK_MIN = 70;
 constexpr uint8_t RANDOM_TWINKLE_PEAK_MAX = 170;
+constexpr uint8_t OK_IDLE_WHITE_LEVEL = 64;
 
 enum class PulseBrightnessSetting : uint8_t {
   LEVEL_LOW,
@@ -173,7 +174,6 @@ bool isStructuredPixel(uint16_t index, unsigned long nowMs) {
 void applyErrorBrightnessSetting() {
   ErrorBrightnessProfile profile = getErrorBrightnessProfile(ERROR_BRIGHTNESS_SETTING);
   errorStripBrightness = (uint8_t)(((uint16_t)255U * masterBrightnessPercent) / 100U);
-  if (errorStripBrightness < 1 && masterBrightnessPercent > 0) errorStripBrightness = 1;
   baseErrorRed = profile.baseRed;
   twinkleWhitePeak = profile.twinkleWhitePeak;
   randomTwinklePeakMin = profile.randomPeakMin;
@@ -301,7 +301,6 @@ void applyPulseBrightnessSetting() {
   okPulseMaxLevel = profile.pulseMaxLevel;
   okPulseBlueScale = profile.blueScale;
   uint8_t scaled = (uint8_t)(((uint16_t)255U * masterBrightnessPercent) / 100U);
-  if (scaled < 1 && masterBrightnessPercent > 0) scaled = 1;
   matrixStrip.setBrightness(scaled);
 }
 
@@ -352,7 +351,7 @@ void showOk() {
   lastOkPulseLevel = 0;
   okPulseDitherAccumulator = 0;
   okPulseSmoothedLevel = okPulseMinLevel;
-  fillMatrix(okPulseMinLevel, okPulseMinLevel, (uint8_t)(((uint16_t)okPulseMinLevel * okPulseBlueScale) / 255U));
+  fillMatrix(OK_IDLE_WHITE_LEVEL, OK_IDLE_WHITE_LEVEL, OK_IDLE_WHITE_LEVEL);
 }
 
 void showModeIndicator(const String& modeText) {
@@ -515,7 +514,7 @@ void handleStatusLine(const String& line) {
 
   if (line.startsWith("SET:MTX_BRT:")) {
     int val = line.substring(12).toInt();
-    if (val >= 10 && val <= 100) {
+    if (val >= 0 && val <= 100) {
       masterBrightnessPercent = (uint8_t)val;
       prefs.putUChar(PREF_KEY_BRIGHT, masterBrightnessPercent);
       applyPulseBrightnessSetting();
@@ -629,30 +628,7 @@ void loop() {
       fillMatrix(modeIndicatorR, modeIndicatorG, modeIndicatorB);
     }
   } else {
-    unsigned long phase = now % OK_PULSE_CYCLE_MS;
-    float phaseRatio = (float)phase / (float)OK_PULSE_CYCLE_MS;
-    float eased = 0.5f - 0.5f * cosf(phaseRatio * 6.28318530718f);
-    float pulseFloat = okPulseMinLevel + eased * (float)(okPulseMaxLevel - okPulseMinLevel);
-    if (pulseFloat > okPulseSmoothedLevel) {
-      okPulseSmoothedLevel += (pulseFloat - okPulseSmoothedLevel) * 0.35f;
-    } else {
-      okPulseSmoothedLevel += (pulseFloat - okPulseSmoothedLevel) * 0.18f;
-    }
-
-    uint8_t pulseBase = (uint8_t)okPulseSmoothedLevel;
-    uint8_t pulseLevel = pulseBase;
-    uint8_t frac255 = (uint8_t)((okPulseSmoothedLevel - (float)pulseBase) * 255.0f);
-
-    okPulseDitherAccumulator = (uint8_t)(okPulseDitherAccumulator + frac255);
-    if (okPulseDitherAccumulator < frac255 && pulseLevel < okPulseMaxLevel) {
-      pulseLevel++;
-    }
-
-    if (now - lastOkPulseMs >= 5) {
-      lastOkPulseMs = now;
-      lastOkPulseLevel = pulseLevel;
-      renderOkPulseFrame(pulseBase, frac255);
-    }
+    fillMatrix(OK_IDLE_WHITE_LEVEL, OK_IDLE_WHITE_LEVEL, OK_IDLE_WHITE_LEVEL);
   }
 
   while (Serial1.available() > 0) {
