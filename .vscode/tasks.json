@@ -25,7 +25,7 @@
 				"upload",
 				"-v",
 				"-p",
-				"/dev/cu.usbmodem1301",
+				"/dev/cu.usbmodem11301",
 				"--fqbn",
 				"arduino:avr:mega",
 				"${workspaceFolder}/MEGA__master"
@@ -53,7 +53,7 @@
 				"upload",
 				"-v",
 				"-p",
-				"/dev/cu.usbmodem1401",
+				"/dev/cu.usbmodem11401",
 				"--fqbn",
 				"esp32:esp32:esp32s3",
 				"${workspaceFolder}/ESP32-S3-Matrix/ESP32_S3_Matrix_Status"
@@ -68,7 +68,7 @@
 			"args": [
 				"flash",
 				"-p",
-				"/dev/cu.usbmodem1101"
+				"/dev/cu.usbmodem11101"
 			],
 			"options": {
 				"cwd": "${workspaceFolder}/ESP32-S3"

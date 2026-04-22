@@ -12,7 +12,7 @@ A fully programmable, multi-axis motion control system for cinematic camera move
 
 ## ❤️ Why This Exists
 
-This project started with my cousin Will Goldenberg solving a real problem:
+This project started with my cousin Will Goldenberg solviallng a real problem:
 powerful motion-control tools are often locked behind expensive, proprietary ecosystems.
 Instead of buying into that model, he built his own.
 
@@ -1019,6 +1019,37 @@ The following handlers still use `ps2x.ButtonReleased()` directly:
 - **Shoulder speed buttons** (`L1/L2/R1/R2`) and **focus speed buttons** (`SQUARE/CIRCLE`) — these also call `ButtonReleased()` to set the pin `LOW` on release, but it is **unreachable dead code**: `pulseSpeedStageUpPin()` is a blocking synchronous call that pulses HIGH → delay → LOW before returning. The pin is already LOW before the `ButtonReleased()` branch is ever evaluated. No practical risk.
 
   > **History:** The original `handleAxisSpeedControl()` held pins `HIGH` continuously while the button was held — which *was* a real missed-event risk. During the debugging session in commit `bcea0b5` ("Fix speed button handling and tune diagnostic logging", Apr 12 2026), the function was rewritten to use `pulseSpeedStageUpPin()` — a blocking press-triggered pulse — which resolved the detection issue and made the `ButtonReleased()` LOW branch harmless residual code. The same session added `WILL_TEST_SPEED_BUILD` / `WILL_TEST_BYPASS_LOGS` diagnostic flags, `logShoulderSpeedButtonEdges()`, and `emitLoopBypassReason()` to observe what was happening on the hardware.
+
+## Headless Operation (No Display)
+
+> ⚠️ **This section is a placeholder.** A full headless operator quick-reference is tracked in [issue #11](https://github.com/micah-breitenstein/MOCO-jib/issues/11) and has not yet been written.
+
+The rig is fully operable without the ESP32-S3 display attached (e.g. Will's rig). All controller combos work identically; feedback comes from controller rumble patterns, the RGB matrix color state, and the Mega serial monitor.
+
+**What you lose without the display:**
+- Settings menu (timelapse interval, step distance, speed stages cannot be changed without reflashing or using serial)
+- Home/zero set/go/clear action rows (use the PS2 combos below instead)
+- Live flowlapse progress bar and ETA
+- Mode labels, error text, and stick position visualisation
+
+**Home / zero combos (Drone Mode only)**
+
+| Combo | Action | Blocked when | Feedback |
+|---|---|---|---|
+| `START + TRIANGLE` | Set home from current position | Flowlapse busy (preview/capture/undo/jog) | 2 short pulses (set) or deny rumble (blocked) |
+| `START + SQUARE` | Return to home | No home stored; flowlapse busy | Moving: short pulse. Reached: 3 pulses. Not set / blocked: deny rumble |
+| `START + CIRCLE` | Clear stored home | Flowlapse busy | 1 short pulse (cleared) or deny rumble (blocked) |
+
+Home return uses the same flowlapse motion system (smooth ramp toward target pose). Emergency stop (`L1+L2+R1+R2`) cancels an active home return.
+
+**Current display workflow note**
+
+- If you trigger `Go Home` from the display while the Settings menu is still open, you may see `Home return started.` immediately but not see `Home return complete.` until you exit Settings.
+- Reason: Settings mode is currently modal on the Mega, so the loop prioritizes settings navigation and does not continue the drone/home-return workflow until Settings closes.
+- Practical use: trigger `Go Home`, then close Settings to let the return finish.
+- For numeric verification, watch the Mega serial log. `Set Home` prints the saved pose as `Home pose set | swing=... lift=... pan=... tilt=...`, and `Go Home` prints `Home return started.` followed by `Home return complete.` when the state machine finishes.
+
+See [issue #11](https://github.com/micah-breitenstein/MOCO-jib/issues/11) for the full deliverable scope: complete control mapping table, pre-shot checklist, failure recovery, and a laminated one-page ops card.
 
 ## Project Details Sheet
 
