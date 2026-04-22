@@ -193,6 +193,7 @@ constexpr int TIMELAPSE_STEP_DIST_MIN_MS = 20;
 constexpr int TIMELAPSE_STEP_DIST_MAX_MS = 150;
 constexpr int TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS = 10;
 constexpr unsigned long PERSISTED_SETTINGS_RESET_HOLD_MS = 1500;
+constexpr unsigned long SETTINGS_TOGGLE_HOLD_MS = 800;
 constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 600;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_PAUSE_MS = 350;
@@ -4250,19 +4251,45 @@ void enterSettingsMode() {
 void exitSettingsMode() {
   settingsMode = false;
   lastL3ButtonState = ps2x.Button(PSB_L3);
+  lastStartButtonState = ps2x.Button(PSB_START);
+  lastSelectButtonState = ps2x.Button(PSB_SELECT);
   sendToDisplayESP("SETTINGS_NAV:CLOSE");
   sendToRGBESP("SETTINGS:CLOSE");
   Serial.println(F("Settings mode deactivated."));
 }
 
 void handleSettingsModeToggle() {
-  if (droneMode) return;
+  static bool settingsToggleHoldActive = false;
+  static bool settingsToggleLatched = false;
+  static unsigned long settingsToggleHoldStartMs = 0;
 
-  bool currentL3State = ps2x.Button(PSB_L3);
-  bool l3JustReleased = lastL3SettingsState && !currentL3State;
-  lastL3SettingsState = currentL3State;
+  bool settingsToggleComboActive = ps2x.Button(PSB_START)
+      && ps2x.Button(PSB_SELECT)
+      && !ps2x.Button(PSB_TRIANGLE)
+      && !ps2x.Button(PSB_CIRCLE)
+      && !ps2x.Button(PSB_CROSS)
+      && !ps2x.Button(PSB_SQUARE);
 
-  if (!l3JustReleased) return;
+  if (!settingsToggleComboActive) {
+    settingsToggleHoldActive = false;
+    settingsToggleLatched = false;
+    settingsToggleHoldStartMs = 0;
+    return;
+  }
+
+  unsigned long now = millis();
+  if (!settingsToggleHoldActive) {
+    settingsToggleHoldActive = true;
+    settingsToggleHoldStartMs = now;
+  }
+
+  if (settingsToggleLatched || (now - settingsToggleHoldStartMs < SETTINGS_TOGGLE_HOLD_MS)) {
+    return;
+  }
+
+  settingsToggleLatched = true;
+  suppressNextSelectRelease = true;
+  suppressNextStartRelease = true;
 
   if (settingsMode) {
     exitSettingsMode();
@@ -5317,9 +5344,7 @@ void loop() {
 
   handleDroneModeToggle();
 
-  if (!droneMode) {
-    handleSettingsModeToggle();
-  }
+  handleSettingsModeToggle();
 
   if (settingsMode) {
     handleSettingsInput();

@@ -12,7 +12,7 @@ A fully programmable, multi-axis motion control system for cinematic camera move
 
 ## ❤️ Why This Exists
 
-This project started with my cousin Will Goldenberg solving a real problem:
+This project started with my cousin Will Goldenberg solviallng a real problem:
 powerful motion-control tools are often locked behind expensive, proprietary ecosystems.
 Instead of buying into that model, he built his own.
 
@@ -1041,6 +1041,13 @@ The rig is fully operable without the ESP32-S3 display attached (e.g. Will's rig
 | `START + CIRCLE` | Clear stored home | Flowlapse busy | 1 short pulse (cleared) or deny rumble (blocked) |
 
 Home return uses the same flowlapse motion system (smooth ramp toward target pose). Emergency stop (`L1+L2+R1+R2`) cancels an active home return.
+
+**Current display workflow note**
+
+- If you trigger `Go Home` from the display while the Settings menu is still open, you may see `Home return started.` immediately but not see `Home return complete.` until you exit Settings.
+- Reason: Settings mode is currently modal on the Mega, so the loop prioritizes settings navigation and does not continue the drone/home-return workflow until Settings closes.
+- Practical use: trigger `Go Home`, then close Settings to let the return finish.
+- For numeric verification, watch the Mega serial log. `Set Home` prints the saved pose as `Home pose set | swing=... lift=... pan=... tilt=...`, and `Go Home` prints `Home return started.` followed by `Home return complete.` when the state machine finishes.
 
 See [issue #11](https://github.com/micah-breitenstein/MOCO-jib/issues/11) for the full deliverable scope: complete control mapping table, pre-shot checklist, failure recovery, and a laminated one-page ops card.
 

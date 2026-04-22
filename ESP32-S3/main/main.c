@@ -93,12 +93,14 @@ static const char *TAG = "RIG";
 typedef enum {
     SGRP_TIMELAPSE = 0,
     SGRP_SYSTEM,
+    SGRP_ZEROING,
     SGRP_COUNT,
 } SettingGroup;
 
 static const char *setting_group_names[SGRP_COUNT] = {
     "TIMELAPSE",
     "SYSTEM",
+    "ZEROING",
 };
 
 typedef enum {
@@ -141,9 +143,9 @@ static SettingDef settings[SETTING_COUNT] = {
     [SETTING_BRIGHTNESS]     = { "Brightness",       "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 0,   100, 1,  false, false },
     [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 5,   5,   0,   100, 1,  true,  false },
     [SETTING_LOGO_THEME]     = { "Logo Theme",       "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
-    [SETTING_HOME_SET]       = { "Set Home",         "",   SGRP_SYSTEM,    STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
-    [SETTING_HOME_GO]        = { "Go Home",          "",   SGRP_SYSTEM,    STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
-    [SETTING_HOME_CLEAR]     = { "Clear Home",       "",   SGRP_SYSTEM,    STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
+    [SETTING_HOME_SET]       = { "Set Home",         "",   SGRP_ZEROING,   STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
+    [SETTING_HOME_GO]        = { "Go Home",          "",   SGRP_ZEROING,   STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
+    [SETTING_HOME_CLEAR]     = { "Clear Home",       "",   SGRP_ZEROING,   STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
 };
 
 /* NVS keys for the 5 settings (short for 15-char NVS limit) */
