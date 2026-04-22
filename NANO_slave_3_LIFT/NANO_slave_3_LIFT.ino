@@ -25,6 +25,7 @@ int pd;
 int lastSpeedUp   = 0;
 int lastSpeedDown = 0;
 bool lastDirectionConflict = false;
+unsigned long speedIndicatorUntilMs = 0;
 
 void debugLog(const char* message) {
   if (LIFT_SERIAL_DEBUG) {
@@ -37,6 +38,10 @@ void debugLogStage(int stageValue) {
     Serial.print("STAGE");
     Serial.println(stageValue);
   }
+}
+
+void triggerSpeedIndicatorPulse() {
+  speedIndicatorUntilMs = millis() + 120;
 }
 
 ///// HELPERS
@@ -61,16 +66,19 @@ void updateSpeedStage(int speedUpRead, int speedDownRead) {
     stage--;
     count = STAGE_DELAYS[stage];
     debugLogStage(stage);
+    triggerSpeedIndicatorPulse();
   }
 
   if (stage == 0 && speedUpRead == 1) {
     stage = 1;
     count = STAGE_DELAYS[1];
     debugLog("STAGE1");
+    triggerSpeedIndicatorPulse();
   } else if (lastSpeedUp == 0 && speedUpRead == 1 && stage < STAGE_COUNT - 1) {
     stage++;
     count = STAGE_DELAYS[stage];
     debugLogStage(stage);
+    triggerSpeedIndicatorPulse();
   }
 
   lastSpeedUp   = speedUpRead;
@@ -91,7 +99,11 @@ void setup() {
 }
 
 void loop() {
-  digitalWrite(LED_BUILTIN, LOW);
+  if (millis() < speedIndicatorUntilMs) {
+    digitalWrite(LED_BUILTIN, HIGH);
+  } else {
+    digitalWrite(LED_BUILTIN, LOW);
+  }
 
   int upRead    = digitalRead(upButton);
   int downRead  = digitalRead(downButton);
