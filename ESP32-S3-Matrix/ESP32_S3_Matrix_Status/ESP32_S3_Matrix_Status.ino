@@ -562,7 +562,7 @@ void setup() {
   Serial.begin(115200);
   Serial1.begin(UART_BAUD, SERIAL_8N1, UART_RX_PIN, UART_TX_PIN);
   prefs.begin(PREF_NS, false);
-  masterBrightnessPercent = 10;
+  masterBrightnessPercent = 5;
   randomSeed((uint32_t)(micros() ^ millis()));
 
   matrixStrip.begin();

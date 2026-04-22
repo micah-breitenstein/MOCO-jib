@@ -135,7 +135,7 @@ static SettingDef settings[SETTING_COUNT] = {
     [SETTING_TL_STEPDIST]    = { "Step Dist",        "ms", SGRP_TIMELAPSE, STYPE_INT_RANGE, 100, 100, 20,  150, 10, true,  true  },
     [SETTING_RUMBLE_MUTE]    = { "Rumble Mute",      "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
     [SETTING_BRIGHTNESS]     = { "Brightness",       "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 0,   100, 1,  false, false },
-    [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 10,  10,  0,   100, 1,  true,  false },
+    [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 5,   5,   0,   100, 1,  true,  false },
     [SETTING_LOGO_THEME]     = { "Logo Theme",       "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
 };
 
@@ -2688,9 +2688,9 @@ void app_main(void)
     }
     load_settings_from_nvs();
 
-    /* Keep UI in sync with matrix boot behavior: always start at 10%. */
-    if (settings[SETTING_MTX_BRIGHTNESS].value != 10) {
-        settings[SETTING_MTX_BRIGHTNESS].value = 10;
+    /* Keep UI in sync with matrix boot behavior: always start at 5%. */
+    if (settings[SETTING_MTX_BRIGHTNESS].value != 5) {
+        settings[SETTING_MTX_BRIGHTNESS].value = 5;
         save_setting_to_nvs(SETTING_MTX_BRIGHTNESS);
     }
 

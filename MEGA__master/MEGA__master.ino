@@ -529,6 +529,8 @@ unsigned long flowlapsePreviewHoldUntilMs = 0;
 unsigned long flowlapseLastUpdateMs = 0;
 unsigned long flowlapseLastProgressLogMs = 0;
 unsigned long flowlapseCaptureRunStartMs = 0;
+unsigned long flowlapsePauseStartMs = 0;
+unsigned long flowlapseTotalPausedMs = 0;
 uint16_t flowlapsePingPongEdgeCount = 0;
 uint8_t flowlapseTargetWaypointIndex = 0;
 uint8_t flowlapseJogIndex = 0;
@@ -1234,6 +1236,8 @@ void resetFlowlapseSession(bool resetEstimatedPosition) {
   flowlapseLastUpdateMs = millis();
   flowlapseLastProgressLogMs = 0;
   flowlapseCaptureRunStartMs = 0;
+  flowlapsePauseStartMs = 0;
+  flowlapseTotalPausedMs = 0;
   flowlapsePingPongEdgeCount = 0;
   resetFlowlapseAxisTierState(flowlapseLastUpdateMs);
   digitalWrite(trigger, HIGH);
@@ -1275,7 +1279,7 @@ void logFlowlapseCaptureProgressIfDue(unsigned long now) {
   flowlapseLastProgressLogMs = now;
 
   unsigned long elapsedSeconds = (flowlapseCaptureRunStartMs > 0 && now >= flowlapseCaptureRunStartMs)
-      ? ((now - flowlapseCaptureRunStartMs) / 1000UL)
+      ? ((now - flowlapseCaptureRunStartMs - flowlapseTotalPausedMs) / 1000UL)
       : 0UL;
   unsigned int pingPongCycles = static_cast<unsigned int>(flowlapsePingPongEdgeCount / 2U);
 
@@ -1666,6 +1670,8 @@ void startFlowlapseCapture(unsigned long now) {
   flowlapseCaptureDwellMs = 0;
   flowlapseLastProgressLogMs = 0;
   flowlapseCaptureRunStartMs = now;
+  flowlapsePauseStartMs = 0;
+  flowlapseTotalPausedMs = 0;
   flowlapsePingPongEdgeCount = 0;
   resetFlowlapseAxisTierState(now);
 
@@ -2465,7 +2471,7 @@ void completeFlowlapseCapture(unsigned long now) {
     Serial.print(static_cast<unsigned int>(flowlapsePingPongEdgeCount / 2U));
     Serial.print(F(" elapsed="));
     Serial.print((flowlapseCaptureRunStartMs > 0 && now >= flowlapseCaptureRunStartMs)
-        ? ((now - flowlapseCaptureRunStartMs) / 1000UL)
+        ? ((now - flowlapseCaptureRunStartMs - flowlapseTotalPausedMs) / 1000UL)
         : 0UL);
     Serial.println(F("s"));
   } else if (!flowlapseFrameCountModeActive && FLOWLAPSE_LOOP_CAPTURE) {
@@ -3185,6 +3191,7 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       } else if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING) {
         // Pause capture
         stopAllMotors();
+        flowlapsePauseStartMs = now;
         flowlapseState = FLOWLAPSE_STATE_CAPTURE_PAUSED;
         startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
         const char* pauseMsg = "Flowlapse: capture paused. Press START again to resume.";
@@ -3193,7 +3200,13 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
         broadcastStatus("CAPTURE_STATE:PAUSED");
         droneLastActivityMs = now;
       } else if (flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED) {
-        // Resume capture
+        // Resume capture — compensate timestamps for time spent paused
+        if (flowlapsePauseStartMs > 0 && now >= flowlapsePauseStartMs) {
+          unsigned long pausedDurationMs = now - flowlapsePauseStartMs;
+          flowlapseTotalPausedMs += pausedDurationMs;
+          flowlapseCapturePhaseStartMs += pausedDurationMs;
+          flowlapsePauseStartMs = 0;
+        }
         flowlapseState = FLOWLAPSE_STATE_CAPTURE_RUNNING;
         startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
         const char* resumeMsg = "Flowlapse: capture resumed.";

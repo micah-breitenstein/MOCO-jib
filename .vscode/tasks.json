@@ -31,6 +31,63 @@
 				"${workspaceFolder}/MEGA__master"
 			],
 			"group": "build"
+		},
+		{
+			"label": "Arduino CLI: Build Matrix",
+			"type": "shell",
+			"command": "arduino-cli",
+			"args": [
+				"compile",
+				"--fqbn",
+				"esp32:esp32:esp32s3",
+				"${workspaceFolder}/ESP32-S3-Matrix/ESP32_S3_Matrix_Status"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "Arduino CLI: Upload Matrix",
+			"type": "shell",
+			"command": "arduino-cli",
+			"args": [
+				"upload",
+				"-v",
+				"-p",
+				"/dev/cu.usbmodem1401",
+				"--fqbn",
+				"esp32:esp32:esp32s3",
+				"${workspaceFolder}/ESP32-S3-Matrix/ESP32_S3_Matrix_Status"
+			],
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "IDF: Flash Display",
+			"type": "shell",
+			"command": "idf.py",
+			"args": [
+				"flash",
+				"-p",
+				"/dev/cu.usbmodem1101"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/ESP32-S3"
+			},
+			"group": "build",
+			"problemMatcher": []
+		},
+		{
+			"label": "IDF: Build Display",
+			"type": "shell",
+			"command": "idf.py",
+			"args": [
+				"build"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}/ESP32-S3"
+			},
+			"group": "build",
+			"problemMatcher": []
 		}
 	]
 }
