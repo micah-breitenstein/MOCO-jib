@@ -108,12 +108,16 @@ typedef enum {
     SETTING_BRIGHTNESS,
     SETTING_MTX_BRIGHTNESS,
     SETTING_LOGO_THEME,
+    SETTING_HOME_SET,
+    SETTING_HOME_GO,
+    SETTING_HOME_CLEAR,
     SETTING_COUNT,
 } SettingId;
 
 typedef enum {
     STYPE_INT_RANGE = 0,
     STYPE_BOOL,
+    STYPE_ACTION,
 } SettingType;
 
 typedef struct {
@@ -137,10 +141,13 @@ static SettingDef settings[SETTING_COUNT] = {
     [SETTING_BRIGHTNESS]     = { "Brightness",       "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 0,   100, 1,  false, false },
     [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 5,   5,   0,   100, 1,  true,  false },
     [SETTING_LOGO_THEME]     = { "Logo Theme",       "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
+    [SETTING_HOME_SET]       = { "Set Home",         "",   SGRP_SYSTEM,    STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
+    [SETTING_HOME_GO]        = { "Go Home",          "",   SGRP_SYSTEM,    STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
+    [SETTING_HOME_CLEAR]     = { "Clear Home",       "",   SGRP_SYSTEM,    STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
 };
 
 /* NVS keys for the 5 settings (short for 15-char NVS limit) */
-static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "bright", "mtx_brt", "theme" };
+static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "bright", "mtx_brt", "theme", "h_set", "h_go", "h_clr" };
 
 /* ---------- Settings menu state ---------- */
 static lv_obj_t           *selected_row = NULL;
@@ -369,11 +376,17 @@ static void lvgl_task(void *arg)
  *  NVS helpers
  * ================================================================ */
 
+static bool setting_is_persisted(SettingId id)
+{
+    return settings[id].type != STYPE_ACTION;
+}
+
 static void load_settings_from_nvs(void)
 {
     nvs_handle_t h;
     if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &h) != ESP_OK) return;
     for (int i = 0; i < SETTING_COUNT; i++) {
+        if (!setting_is_persisted((SettingId)i)) continue;
         int32_t v;
         if (nvs_get_i32(h, nvs_keys[i], &v) == ESP_OK) {
             settings[i].value = (int)v;
@@ -384,6 +397,7 @@ static void load_settings_from_nvs(void)
 
 static void save_setting_to_nvs(SettingId id)
 {
+    if (!setting_is_persisted(id)) return;
     nvs_handle_t h;
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h) != ESP_OK) return;
     nvs_set_i32(h, nvs_keys[id], (int32_t)settings[id].value);
@@ -395,7 +409,9 @@ static void reset_all_settings_to_defaults(void)
 {
     for (int i = 0; i < SETTING_COUNT; i++) {
         settings[i].value = settings[i].default_val;
-        save_setting_to_nvs((SettingId)i);
+        if (setting_is_persisted((SettingId)i)) {
+            save_setting_to_nvs((SettingId)i);
+        }
     }
 }
 
@@ -510,6 +526,15 @@ static void send_set_command(SettingId id)
     case SETTING_MTX_BRIGHTNESS:
         snprintf(cmd, sizeof(cmd), "SET:MTX_BRT:%d\n", settings[id].value);
         break;
+    case SETTING_HOME_SET:
+        snprintf(cmd, sizeof(cmd), "SET:HOME_SET:1\n");
+        break;
+    case SETTING_HOME_GO:
+        snprintf(cmd, sizeof(cmd), "SET:HOME_GO:1\n");
+        break;
+    case SETTING_HOME_CLEAR:
+        snprintf(cmd, sizeof(cmd), "SET:HOME_CLEAR:1\n");
+        break;
     default:
         return;
     }
@@ -609,7 +634,9 @@ static void handle_settings_nav(const char *nav_cmd)
         } else if (strcmp(nav_cmd, "SELECT") == 0) {
             /* Save and return to list (skip confirm dialog for controller) */
             SettingDef *s = &settings[editor_setting_id];
-            save_setting_to_nvs(editor_setting_id);
+            if (setting_is_persisted(editor_setting_id)) {
+                save_setting_to_nvs(editor_setting_id);
+            }
             if (s->mega_backed) {
                 send_set_command(editor_setting_id);
             }
@@ -652,7 +679,9 @@ static void handle_settings_nav(const char *nav_cmd)
 static void format_setting_value(SettingId id, char *buf, size_t sz)
 {
     const SettingDef *s = &settings[id];
-    if (s->type == STYPE_BOOL) {
+    if (s->type == STYPE_ACTION) {
+        snprintf(buf, sz, "%s", "RUN");
+    } else if (s->type == STYPE_BOOL) {
         if (id == SETTING_RUMBLE_MUTE) {
             snprintf(buf, sz, "%s", s->value ? "ON" : "OFF");
         } else if (id == SETTING_LOGO_THEME) {
@@ -698,6 +727,9 @@ static void editor_dec_cb(lv_event_t *e)
 {
     (void)e;
     SettingDef *s = &settings[editor_setting_id];
+    if (s->type == STYPE_ACTION) {
+        return;
+    }
     s->value -= s->step;
     if (s->value < s->min_val) s->value = s->min_val;
     update_editor_value_label();
@@ -716,6 +748,9 @@ static void editor_inc_cb(lv_event_t *e)
 {
     (void)e;
     SettingDef *s = &settings[editor_setting_id];
+    if (s->type == STYPE_ACTION) {
+        return;
+    }
     s->value += s->step;
     if (s->value > s->max_val) s->value = s->max_val;
     update_editor_value_label();
@@ -771,7 +806,9 @@ static void editor_save_cb(lv_event_t *e)
 {
     (void)e;
     SettingDef *s = &settings[editor_setting_id];
-    save_setting_to_nvs(editor_setting_id);
+    if (setting_is_persisted(editor_setting_id)) {
+        save_setting_to_nvs(editor_setting_id);
+    }
     if (s->mega_backed) {
         send_set_command(editor_setting_id);
     }
@@ -2270,6 +2307,27 @@ static void status_uart_task(void *arg)
                         mode_to_restore_after_message = current_display_mode;
                         restore_mode_after_message = true;
                         show_temporary_message_on_display("RUMBLE\nMUTE OFF", now_ms);
+                    }
+                    xSemaphoreGive(lvgl_mux);
+                }
+            } else if (strncmp(line, "HOME:", 5) == 0) {
+                if (xSemaphoreTake(lvgl_mux, pdMS_TO_TICKS(250)) == pdTRUE) {
+                    if (!emergency_stop_active) {
+                        mode_to_restore_after_message = current_display_mode;
+                        restore_mode_after_message = true;
+                        if (strcmp(line, "HOME:SET") == 0) {
+                            show_temporary_message_on_display("HOME\nSET", now_ms);
+                        } else if (strcmp(line, "HOME:MOVING") == 0) {
+                            show_temporary_message_on_display("RETURNING\nHOME", now_ms);
+                        } else if (strcmp(line, "HOME:REACHED") == 0) {
+                            show_temporary_message_on_display("HOME\nREACHED", now_ms);
+                        } else if (strcmp(line, "HOME:CLEARED") == 0) {
+                            show_temporary_message_on_display("HOME\nCLEARED", now_ms);
+                        } else if (strcmp(line, "HOME:NOT_SET") == 0) {
+                            show_temporary_message_on_display("HOME\nNOT SET", now_ms);
+                        } else if (strcmp(line, "HOME:BLOCKED") == 0) {
+                            show_temporary_message_on_display("HOME ACTION\nBLOCKED", now_ms);
+                        }
                     }
                     xSemaphoreGive(lvgl_mux);
                 }

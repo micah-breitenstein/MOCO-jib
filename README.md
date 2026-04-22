@@ -1020,6 +1020,30 @@ The following handlers still use `ps2x.ButtonReleased()` directly:
 
   > **History:** The original `handleAxisSpeedControl()` held pins `HIGH` continuously while the button was held — which *was* a real missed-event risk. During the debugging session in commit `bcea0b5` ("Fix speed button handling and tune diagnostic logging", Apr 12 2026), the function was rewritten to use `pulseSpeedStageUpPin()` — a blocking press-triggered pulse — which resolved the detection issue and made the `ButtonReleased()` LOW branch harmless residual code. The same session added `WILL_TEST_SPEED_BUILD` / `WILL_TEST_BYPASS_LOGS` diagnostic flags, `logShoulderSpeedButtonEdges()`, and `emitLoopBypassReason()` to observe what was happening on the hardware.
 
+## Headless Operation (No Display)
+
+> ⚠️ **This section is a placeholder.** A full headless operator quick-reference is tracked in [issue #11](https://github.com/micah-breitenstein/MOCO-jib/issues/11) and has not yet been written.
+
+The rig is fully operable without the ESP32-S3 display attached (e.g. Will's rig). All controller combos work identically; feedback comes from controller rumble patterns, the RGB matrix color state, and the Mega serial monitor.
+
+**What you lose without the display:**
+- Settings menu (timelapse interval, step distance, speed stages cannot be changed without reflashing or using serial)
+- Home/zero set/go/clear action rows (use the PS2 combos below instead)
+- Live flowlapse progress bar and ETA
+- Mode labels, error text, and stick position visualisation
+
+**Home / zero combos (Drone Mode only)**
+
+| Combo | Action | Blocked when | Feedback |
+|---|---|---|---|
+| `START + TRIANGLE` | Set home from current position | Flowlapse busy (preview/capture/undo/jog) | 2 short pulses (set) or deny rumble (blocked) |
+| `START + SQUARE` | Return to home | No home stored; flowlapse busy | Moving: short pulse. Reached: 3 pulses. Not set / blocked: deny rumble |
+| `START + CIRCLE` | Clear stored home | Flowlapse busy | 1 short pulse (cleared) or deny rumble (blocked) |
+
+Home return uses the same flowlapse motion system (smooth ramp toward target pose). Emergency stop (`L1+L2+R1+R2`) cancels an active home return.
+
+See [issue #11](https://github.com/micah-breitenstein/MOCO-jib/issues/11) for the full deliverable scope: complete control mapping table, pre-shot checklist, failure recovery, and a laminated one-page ops card.
+
 ## Project Details Sheet
 
 - Full project details are documented here: https://docs.google.com/spreadsheets/d/1BU9yWQd8groFjTa8OWagQ6Nst10-R33pP6oTYL_nhLQ/edit?usp=sharing

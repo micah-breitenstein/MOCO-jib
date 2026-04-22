@@ -162,8 +162,9 @@ constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
 constexpr int EEPROM_SETTINGS_ADDRESS = 0;
 constexpr uint16_t PERSISTED_SETTINGS_MAGIC = 0x4D52;
-constexpr uint8_t PERSISTED_SETTINGS_VERSION = 3;
+constexpr uint8_t PERSISTED_SETTINGS_VERSION = 4;
 constexpr uint8_t PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED = 0x01;
+constexpr uint8_t PERSISTED_SETTINGS_FLAG_HOME_VALID = 0x02;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
 constexpr unsigned long CONTROLLER_RETRY_INTERVAL_MS = 2000;
 constexpr unsigned long CONTROLLER_OK_BROADCAST_INTERVAL_MS = 1500;
@@ -320,6 +321,19 @@ struct PersistedSettingsV3 {
   uint8_t timelapseIntervalSeconds;
   int stepDist;
   uint8_t flags;
+  uint8_t checksum;
+};
+
+struct PersistedSettingsV4 {
+  uint16_t magic;
+  uint8_t version;
+  uint8_t timelapseIntervalSeconds;
+  int stepDist;
+  uint8_t flags;
+  float homeSwing;
+  float homeLift;
+  float homePan;
+  float homeTilt;
   uint8_t checksum;
 };
 
@@ -501,6 +515,9 @@ bool lastPadLeftButtonState = false;
 bool lastDroneSelectButtonState = false;
 bool lastDroneStartButtonState = false;
 bool lastR3ButtonState = false;
+bool lastHomeSetComboActive = false;
+bool lastHomeGoComboActive = false;
+bool lastHomeClearComboActive = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
@@ -549,6 +566,10 @@ uint16_t flowlapsePreviewFrameTarget = 0;
 uint16_t flowlapsePreviewFrameStopIndex = 0;
 uint16_t flowlapsePathTotalLengthStored = 0;
 uint16_t flowlapsePathSegmentCumulative[FLOWLAPSE_MAX_WAYPOINTS - 1];
+
+bool homePoseValid = false;
+bool homeReturnActive = false;
+FlowlapseWaypoint homePose = {0.0f, 0.0f, 0.0f, 0.0f, 0};
 
 float flowlapseCurrentSwingPos = 0.0f;
 float flowlapseCurrentLiftPos = 0.0f;
@@ -1726,6 +1747,7 @@ void enterDroneMode() {
 
 void exitDroneMode() {
   droneMode = false;
+  homeReturnActive = false;
   lastDronePrecisionModeActive = false;
   lastDroneBoostModeActive = false;
   droneAxisLastActiveFlags = 0;
@@ -1917,6 +1939,108 @@ void logDroneSpeedModifierStateIfChanged() {
     }
     lastDronePrecisionModeActive = precisionModeActive;
     lastDroneBoostModeActive = boostModeActive;
+  }
+}
+
+bool isFlowlapseBusyForHomeAction() {
+  return (flowlapseState == FLOWLAPSE_STATE_PREVIEW_RUNNING
+      || flowlapseState == FLOWLAPSE_STATE_CAPTURE_RUNNING
+      || flowlapseState == FLOWLAPSE_STATE_CAPTURE_PAUSED
+      || flowlapseState == FLOWLAPSE_STATE_UNDO_RUNNING
+      || flowlapseState == FLOWLAPSE_STATE_JOG_RUNNING);
+}
+
+void setHomePoseFromCurrentPose(bool persistToEeprom) {
+  homePose.swing = flowlapseCurrentSwingPos;
+  homePose.lift = flowlapseCurrentLiftPos;
+  homePose.pan = flowlapseCurrentPanPos;
+  homePose.tilt = flowlapseCurrentTiltPos;
+  homePose.dwellMs = 0;
+  homePoseValid = true;
+
+  if (persistToEeprom) {
+    savePersistedSettings();
+  }
+
+  Serial.print(F("Home pose set | swing="));
+  Serial.print(homePose.swing, 2);
+  Serial.print(F(" lift="));
+  Serial.print(homePose.lift, 2);
+  Serial.print(F(" pan="));
+  Serial.print(homePose.pan, 2);
+  Serial.print(F(" tilt="));
+  Serial.println(homePose.tilt, 2);
+  broadcastStatus("HOME:SET");
+}
+
+void clearHomePose(bool persistToEeprom) {
+  homePoseValid = false;
+  homeReturnActive = false;
+  homePose.swing = 0.0f;
+  homePose.lift = 0.0f;
+  homePose.pan = 0.0f;
+  homePose.tilt = 0.0f;
+  homePose.dwellMs = 0;
+
+  if (persistToEeprom) {
+    savePersistedSettings();
+  }
+
+  Serial.println(F("Home pose cleared."));
+  broadcastStatus("HOME:CLEARED");
+}
+
+bool startHomeReturn(unsigned long now) {
+  if (!homePoseValid) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.println(F("Home return denied: no home pose is set."));
+    broadcastStatus("HOME:NOT_SET");
+    return false;
+  }
+
+  if (isFlowlapseBusyForHomeAction()) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.println(F("Home return denied: flowlapse task is active."));
+    broadcastStatus("HOME:BLOCKED");
+    return false;
+  }
+
+  if (flowlapseState != FLOWLAPSE_STATE_RECORDING
+      && flowlapseState != FLOWLAPSE_STATE_READY_FOR_PREVIEW
+      && flowlapseState != FLOWLAPSE_STATE_READY_FOR_CAPTURE) {
+    startLockoutDeniedRumbleFeedback();
+    Serial.println(F("Home return denied: unsupported flowlapse state."));
+    broadcastStatus("HOME:BLOCKED");
+    return false;
+  }
+
+  stopAllMotors();
+  resetFlowlapseAxisTierState(now);
+  homeReturnActive = true;
+  broadcastStatus("HOME:MOVING");
+  Serial.println(F("Home return started."));
+  return true;
+}
+
+void handleHomeReturnStep(unsigned long now, float deltaSeconds) {
+  if (!homeReturnActive) {
+    return;
+  }
+
+  if (!homePoseValid) {
+    homeReturnActive = false;
+    stopAllMotors();
+    broadcastStatus("HOME:NOT_SET");
+    return;
+  }
+
+  applyFlowlapseMotionTowardWaypoint(homePose, now, deltaSeconds);
+  if (isFlowlapseTargetReached(homePose)) {
+    homeReturnActive = false;
+    stopAllMotors();
+    startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+    Serial.println(F("Home return complete."));
+    broadcastStatus("HOME:REACHED");
   }
 }
 
@@ -3011,6 +3135,45 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   lastDwellAdjustUpComboActive   = dwellAdjUpComboActive;
   lastDwellAdjustDownComboActive = dwellAdjDownComboActive;
 
+  bool homeSetComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_TRIANGLE);
+  if (homeSetComboActive && !lastHomeSetComboActive) {
+    if (isFlowlapseBusyForHomeAction()) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Home set denied: flowlapse task is active."));
+      broadcastStatus("HOME:BLOCKED");
+    } else {
+      setHomePoseFromCurrentPose(true);
+      suppressDroneNextStartRelease = true;
+      startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      droneLastActivityMs = now;
+    }
+  }
+  lastHomeSetComboActive = homeSetComboActive;
+
+  bool homeGoComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SQUARE);
+  if (homeGoComboActive && !lastHomeGoComboActive) {
+    suppressDroneNextStartRelease = true;
+    if (startHomeReturn(now)) {
+      droneLastActivityMs = now;
+    }
+  }
+  lastHomeGoComboActive = homeGoComboActive;
+
+  bool homeClearComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_CIRCLE);
+  if (homeClearComboActive && !lastHomeClearComboActive) {
+    if (isFlowlapseBusyForHomeAction()) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Home clear denied: flowlapse task is active."));
+      broadcastStatus("HOME:BLOCKED");
+    } else {
+      clearHomePose(true);
+      suppressDroneNextStartRelease = true;
+      startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      droneLastActivityMs = now;
+    }
+  }
+  lastHomeClearComboActive = homeClearComboActive;
+
   bool l3HoldEligible = (flowlapseState != FLOWLAPSE_STATE_PREVIEW_RUNNING
                       && flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING
                       && flowlapseState != FLOWLAPSE_STATE_UNDO_RUNNING
@@ -3229,6 +3392,12 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
 }
 
 void handleDroneFlowlapseWorkflow(unsigned long now, float deltaSeconds) {
+  if (homeReturnActive) {
+    handleHomeReturnStep(now, deltaSeconds);
+    droneLastActivityMs = now;
+    return;
+  }
+
   if (handleDroneFlowlapseButtons(now)) {
     return;
   }
@@ -3765,19 +3934,63 @@ uint8_t computePersistedSettingsChecksum(const PersistedSettingsV3& settings) {
       + settings.flags);
 }
 
-void writePersistedSettings(const PersistedSettingsV3& settings) {
+uint8_t computePersistedSettingsChecksum(const PersistedSettingsV4& settings) {
+  uint8_t sum = static_cast<uint8_t>((settings.magic & 0xFF)
+      + (settings.magic >> 8)
+      + settings.version
+      + settings.timelapseIntervalSeconds
+      + (settings.stepDist & 0xFF)
+      + ((settings.stepDist >> 8) & 0xFF)
+      + settings.flags);
+
+  const uint8_t* homeSwingBytes = reinterpret_cast<const uint8_t*>(&settings.homeSwing);
+  const uint8_t* homeLiftBytes = reinterpret_cast<const uint8_t*>(&settings.homeLift);
+  const uint8_t* homePanBytes = reinterpret_cast<const uint8_t*>(&settings.homePan);
+  const uint8_t* homeTiltBytes = reinterpret_cast<const uint8_t*>(&settings.homeTilt);
+  for (uint8_t i = 0; i < sizeof(float); ++i) {
+    sum = static_cast<uint8_t>(sum + homeSwingBytes[i] + homeLiftBytes[i] + homePanBytes[i] + homeTiltBytes[i]);
+  }
+  return sum;
+}
+
+void writePersistedSettings(const PersistedSettingsV4& settings) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
-  for (unsigned int i = 0; i < sizeof(PersistedSettingsV3); ++i) {
+  for (unsigned int i = 0; i < sizeof(PersistedSettingsV4); ++i) {
     EEPROM.update(EEPROM_SETTINGS_ADDRESS + static_cast<int>(i), bytes[i]);
   }
 }
 
 bool loadPersistedSettings() {
+  PersistedSettingsV4 settingsV4;
+  EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV4);
+
+  if (settingsV4.magic == PERSISTED_SETTINGS_MAGIC
+      && settingsV4.version == PERSISTED_SETTINGS_VERSION
+      && settingsV4.checksum == computePersistedSettingsChecksum(settingsV4)) {
+    timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
+        static_cast<int>(settingsV4.timelapseIntervalSeconds),
+        TIMELAPSE_INTERVAL_MIN_SECONDS,
+        TIMELAPSE_INTERVAL_MAX_SECONDS));
+    stepDist = constrain(settingsV4.stepDist,
+        TIMELAPSE_STEP_DIST_MIN_MS,
+        TIMELAPSE_STEP_DIST_MAX_MS);
+    rumbleMuted = ((settingsV4.flags & PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED) != 0);
+    homePoseValid = ((settingsV4.flags & PERSISTED_SETTINGS_FLAG_HOME_VALID) != 0);
+    if (homePoseValid) {
+      homePose.swing = settingsV4.homeSwing;
+      homePose.lift = settingsV4.homeLift;
+      homePose.pan = settingsV4.homePan;
+      homePose.tilt = settingsV4.homeTilt;
+      homePose.dwellMs = 0;
+    }
+    return true;
+  }
+
   PersistedSettingsV3 settingsV3;
   EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV3);
 
   if (settingsV3.magic == PERSISTED_SETTINGS_MAGIC
-      && settingsV3.version == PERSISTED_SETTINGS_VERSION
+      && settingsV3.version == 3
       && settingsV3.checksum == computePersistedSettingsChecksum(settingsV3)) {
     timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
         static_cast<int>(settingsV3.timelapseIntervalSeconds),
@@ -3787,6 +4000,7 @@ bool loadPersistedSettings() {
         TIMELAPSE_STEP_DIST_MIN_MS,
         TIMELAPSE_STEP_DIST_MAX_MS);
     rumbleMuted = ((settingsV3.flags & PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED) != 0);
+    homePoseValid = false;
     return true;
   }
 
@@ -3803,6 +4017,7 @@ bool loadPersistedSettings() {
     stepDist = constrain(settingsV2.stepDist,
         TIMELAPSE_STEP_DIST_MIN_MS,
         TIMELAPSE_STEP_DIST_MAX_MS);
+    homePoseValid = false;
     return true;
   }
 
@@ -3818,16 +4033,27 @@ bool loadPersistedSettings() {
       static_cast<int>(settingsV1.timelapseIntervalSeconds),
       TIMELAPSE_INTERVAL_MIN_SECONDS,
       TIMELAPSE_INTERVAL_MAX_SECONDS));
+  homePoseValid = false;
   return true;
 }
 
 void savePersistedSettings() {
-  PersistedSettingsV3 settings;
+  PersistedSettingsV4 settings = {};
   settings.magic = PERSISTED_SETTINGS_MAGIC;
   settings.version = PERSISTED_SETTINGS_VERSION;
   settings.timelapseIntervalSeconds = timelapseIntervalSeconds;
   settings.stepDist = stepDist;
-  settings.flags = rumbleMuted ? PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED : 0;
+  settings.flags = 0;
+  if (rumbleMuted) {
+    settings.flags |= PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED;
+  }
+  if (homePoseValid) {
+    settings.flags |= PERSISTED_SETTINGS_FLAG_HOME_VALID;
+    settings.homeSwing = homePose.swing;
+    settings.homeLift = homePose.lift;
+    settings.homePan = homePose.pan;
+    settings.homeTilt = homePose.tilt;
+  }
   settings.checksum = computePersistedSettingsChecksum(settings);
   writePersistedSettings(settings);
 }
@@ -3836,6 +4062,8 @@ void restorePersistedSettingDefaults() {
   timelapseIntervalSeconds = DEFAULT_TIMELAPSE_INTERVAL_SECONDS;
   stepDist = DEFAULT_TIMELAPSE_STEP_DIST_MS;
   rumbleMuted = false;
+  homePoseValid = false;
+  homeReturnActive = false;
   updateIntervalMs();
 }
 
@@ -4888,6 +5116,7 @@ void setup() {
   Serial.println(F("START + PAD_RIGHT/LEFT adjusts stepDist by 10 ms."));
   Serial.println(F("START + SELECT + SQUARE toggles controller rumble mute."));
   Serial.println(F("Drone Mode: START + SELECT + TRIANGLE toggles Flowlapse frame-count mode."));
+  Serial.println(F("Drone Mode: START+TRIANGLE=set home, START+SQUARE=go home, START+CIRCLE=clear home."));
   Serial.println(F("L1 + L2 + CIRCLE replays current settings as rumble patterns."));
   Serial.print(F("Boot settings: interval="));
   Serial.print(timelapseIntervalSeconds);
@@ -4895,6 +5124,8 @@ void setup() {
   Serial.print(stepDist);
   Serial.print(F("ms, rumbleMuted="));
   Serial.println(rumbleMuted ? F("YES") : F("NO"));
+  Serial.print(F("Boot home pose valid="));
+  Serial.println(homePoseValid ? F("YES") : F("NO"));
   Serial.println(persistedSettingsLoaded
       ? F("Persisted settings: timelapse interval restored from EEPROM.")
       : F("Persisted settings: defaults active."));
@@ -4963,6 +5194,35 @@ void processDisplayCommands() {
         sendToRGBESP(displayCmdBuf);
         Serial.print(F("Display "));
         Serial.println(displayCmdBuf);
+      } else if (strncmp(displayCmdBuf, "SET:HOME_SET:", 13) == 0) {
+        if (displayCmdBuf[13] == '1') {
+          if (droneMode && !isFlowlapseBusyForHomeAction()) {
+            setHomePoseFromCurrentPose(true);
+            startFeedbackRumble(1, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+          } else {
+            startLockoutDeniedRumbleFeedback();
+            broadcastStatus("HOME:BLOCKED");
+          }
+        }
+      } else if (strncmp(displayCmdBuf, "SET:HOME_GO:", 12) == 0) {
+        if (displayCmdBuf[12] == '1') {
+          if (droneMode) {
+            startHomeReturn(millis());
+          } else {
+            startLockoutDeniedRumbleFeedback();
+            broadcastStatus("HOME:BLOCKED");
+          }
+        }
+      } else if (strncmp(displayCmdBuf, "SET:HOME_CLEAR:", 15) == 0) {
+        if (displayCmdBuf[15] == '1') {
+          if (droneMode && !isFlowlapseBusyForHomeAction()) {
+            clearHomePose(true);
+            startFeedbackRumble(2, FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS, FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+          } else {
+            startLockoutDeniedRumbleFeedback();
+            broadcastStatus("HOME:BLOCKED");
+          }
+        }
       } else if (strncmp(displayCmdBuf, "SETTINGS_SAVED", 14) == 0) {
         if (!isRumbleFeedbackActive()) {
           startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
