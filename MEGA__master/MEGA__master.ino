@@ -11,6 +11,7 @@ constexpr uint8_t PS2_CLK = 11;
 constexpr bool PRESSURES = false;
 constexpr bool RUMBLE = true;
 constexpr bool DEBUG_EDGE_EVENTS = false;
+constexpr bool DEBUG_DRONE_TIERS = true; // Log speed tier transitions in real-time
 
 PS2X ps2x;
 int error = 0;
@@ -1016,12 +1017,23 @@ void stepDroneAxisTierTowardTarget(uint8_t& currentTier,
     return;
   }
 
+  uint8_t oldTier = currentTier;
   if (currentTier < clampedTargetTier) {
     pulseSpeedStageUpPin(speedUpPin);
     currentTier++;
   } else {
     pulseSpeedStageUpPin(speedDownPin);
     currentTier--;
+  }
+
+  if (DEBUG_DRONE_TIERS) {
+    Serial.print(F("DRONE TIER: "));
+    Serial.print(oldTier);
+    Serial.print(F(" -> "));
+    Serial.print(currentTier);
+    Serial.print(F(" (target "));
+    Serial.print(clampedTargetTier);
+    Serial.println(F(")"));
   }
 
   lastStepMs = now;
@@ -2649,6 +2661,16 @@ bool applyDroneAxisControl(int stickValue, bool isReversed,
     }
 
     targetTier = fixedTier;
+  }
+
+  if (DEBUG_DRONE_TIERS) {
+    int magnitude = getStickDeflectionMagnitude(stickValue);
+    Serial.print(F("  stick="));
+    Serial.print(magnitude);
+    Serial.print(F(" target="));
+    Serial.print(targetTier);
+    Serial.print(F(" current="));
+    Serial.println(currentTier);
   }
 
   stepDroneAxisTierTowardTarget(currentTier, targetTier, speedUpPin, speedDownPin, lastStepMs, now);
