@@ -80,7 +80,8 @@ enum TimelapsePhase : uint8_t {
   TIMELAPSE_PHASE_IDLE,
   TIMELAPSE_PHASE_TRIGGER_LOW,
   TIMELAPSE_PHASE_TRIGGER_HIGH,
-  TIMELAPSE_PHASE_MOVE_ACTIVE
+  TIMELAPSE_PHASE_MOVE_ACTIVE,
+  TIMELAPSE_PHASE_SETTLE
 };
 
 TimelapsePhase timelapsePhase = TIMELAPSE_PHASE_IDLE;
@@ -192,6 +193,7 @@ constexpr int TIMELAPSE_INTERVAL_MAX_SECONDS = 99;
 constexpr int TIMELAPSE_STEP_DIST_MIN_MS = 20;
 constexpr int TIMELAPSE_STEP_DIST_MAX_MS = 150;
 constexpr int TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS = 10;
+constexpr unsigned long TIMELAPSE_SETTLE_DWELL_MS = 500;
 constexpr unsigned long PERSISTED_SETTINGS_RESET_HOLD_MS = 1500;
 constexpr unsigned long SETTINGS_TOGGLE_HOLD_MS = 800;
 constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
@@ -5005,6 +5007,12 @@ void handleActiveTimelapseMode(unsigned long now) {
     case TIMELAPSE_PHASE_MOVE_ACTIVE:
       if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(stepDist)) {
         stopAllMotors();
+        timelapsePhase = TIMELAPSE_PHASE_SETTLE;
+        timelapsePhaseStartMs = now;
+      }
+      break;
+    case TIMELAPSE_PHASE_SETTLE:
+      if (now - timelapsePhaseStartMs >= TIMELAPSE_SETTLE_DWELL_MS) {
         timelapsePhase = TIMELAPSE_PHASE_IDLE;
         timelapsePhaseStartMs = now;
       }
