@@ -2578,9 +2578,9 @@ bool applyDroneAxisControl(int stickValue, bool isReversed,
 
   int signedOffsetFromCenter = stickValue - STICK_CENTER;
   if (abs(signedOffsetFromCenter) <= axisDeadband) {
-    // Explicitly command STOP when stick returns to center so drone mode does not
-    // inherit stale speed tiers from previous activity.
-    applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, speedUpPin, speedDownPin);
+    // Keep prior speed-tier command latched while stick is centered.
+    // Rapid direction flips through center can otherwise retrigger edge-based
+    // Nano tier transitions and unintentionally ratchet speed.
     return false;
   }
 
