@@ -747,10 +747,10 @@ Speed level is based on how far you push either stick from center (small deflect
 These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control Drone Mode feel:
 
 - Per-axis expo curves:
-	- `DRONE_SWING_EXPO_PERCENT` (currently `20`)
-	- `DRONE_LIFT_EXPO_PERCENT` (currently `20`)
-	- `DRONE_PAN_EXPO_PERCENT` (currently `20`)
-	- `DRONE_TILT_EXPO_PERCENT` (currently `20`)
+	- `DRONE_SWING_EXPO_PERCENT` (currently `45`)
+	- `DRONE_LIFT_EXPO_PERCENT` (currently `45`)
+	- `DRONE_PAN_EXPO_PERCENT` (currently `45`)
+	- `DRONE_TILT_EXPO_PERCENT` (currently `45`)
 	- Higher = softer response near center, more ramp near edge
 	- Lower = more linear response
 - Per-axis deadbands:
@@ -766,12 +766,12 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_TILT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
 	- Available tiers: `DRONE_SPEED_TIER_STOP`, `DRONE_SPEED_TIER_MED`, `DRONE_SPEED_TIER_HIGH`
 - Speed tier thresholds (expo-space):
-	- `DRONE_SPEED_TIER_MED_THRESHOLD` (currently `18`)
-	- `DRONE_SPEED_TIER_HIGH_THRESHOLD` (currently `44`)
+	- `DRONE_SPEED_TIER_MED_THRESHOLD` (currently `28`)
+	- `DRONE_SPEED_TIER_HIGH_THRESHOLD` (currently `92`)
 - Modifier toggles:
 	- `DRONE_ENABLE_PRECISION_MODIFIER` (currently `true`)
 	- `DRONE_ENABLE_BOOST_MODIFIER` (currently `true`)
-	- `DRONE_FIXED_STICK_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
+	- `DRONE_FIXED_STICK_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`) — default Drone Mode starts in fixed-speed mode
 	- `DRONE_L2_PRIORITY_OVER_BOOST` (currently `true`) — when both held, precision wins over boost
 - Logging:
 	- `DRONE_IDLE_TIMEOUT_MS` (disabled; idle auto-exit removed)
