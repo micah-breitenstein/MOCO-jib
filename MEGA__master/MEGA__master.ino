@@ -1026,6 +1026,9 @@ void stepDroneAxisTierTowardTarget(uint8_t& currentTier,
     currentTier--;
   }
 
+  // Apply level-driven state for the new tier
+  applySpeedPinsForTier(currentTier, speedUpPin, speedDownPin);
+
   if (DEBUG_DRONE_TIERS) {
     Serial.print(F("DRONE TIER: "));
     Serial.print(oldTier);
