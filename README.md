@@ -513,6 +513,7 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | R1 / R2 | Lift + tilt speed up / down | X |  |
 | **L1 + L2 + R1 + R2** | **Emergency stop: immediately stops all motors, cancels timelapse/bounce, and clears interval rumble. Normal controls resume after release.** | X | X |
 | **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** | X |  |
+| **START + SELECT + X** | **Toggle Drone stick speed mode: PROPORTIONAL ↔ FIXED (blocked while Flowlapse capture is running/paused).** |  | X |
 | **START + D-pad UP / DOWN** | **Adjust timelapse interval by ±1 second per press (only when auto modes are idle).** | X |  |
 | **START + D-pad RIGHT / LEFT** | **Adjust timelapse move time (`stepDist`) by ±10 ms per press (only when auto modes are idle).** | X |  |
 | **START + L2 / R2** | **Adjust timelapse max speed stage: L2 decreases (4 → 3 → 2 → 1), R2 increases (1 → 2 → 3 → 4). One stage per press. Allows real-time tuning of motion smoothness for different payloads (only when auto modes are idle).** | X |  |
@@ -736,6 +737,7 @@ Use this quick map while flying manually (assuming DIP reverse switches are OFF)
 | Circle | Focus speed up |
 | Hold L2 | Precision modifier (slower/finer control) |
 | Hold R2 | Boost modifier (faster response) |
+| Hold L2 + R2 | Precision has priority (L2 overrides boost) |
 
 Speed level is based on how far you push either stick from center (small deflection = slower, large deflection = faster).
 
@@ -757,10 +759,10 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_TILT_DEADBAND` (currently `10`)
 	- Inside deadband, both direction and speed are forced to stop for that axis
 - Per-axis max speed caps:
-	- `DRONE_SWING_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
-	- `DRONE_LIFT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
+	- `DRONE_SWING_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
+	- `DRONE_LIFT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
 	- `DRONE_PAN_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
-	- `DRONE_TILT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_MED`)
+	- `DRONE_TILT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
 	- Available tiers: `DRONE_SPEED_TIER_STOP`, `DRONE_SPEED_TIER_MED`, `DRONE_SPEED_TIER_HIGH`
 - Speed tier thresholds (expo-space):
 	- `DRONE_SPEED_TIER_MED_THRESHOLD` (currently `43`)
@@ -768,11 +770,11 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 - Modifier toggles:
 	- `DRONE_ENABLE_PRECISION_MODIFIER` (currently `true`)
 	- `DRONE_ENABLE_BOOST_MODIFIER` (currently `true`)
-	- `DRONE_L2_R2_NEUTRAL_MODE` (currently `true`)
+	- `DRONE_L2_PRIORITY_OVER_BOOST` (currently `true`) — when both held, precision wins over boost
 - Logging:
 	- `DRONE_IDLE_TIMEOUT_MS` (disabled; idle auto-exit removed)
 	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
-	- `DRONE_MICRO_MOTION_SPEED_RATIO` (currently `0.25`) — L2 micro-motion multiplier for ultra-smooth cinematic control
+	- `DRONE_MICRO_MOTION_SPEED_RATIO` (currently `0.25`) — L2 precision-mode duty-cycle scaler (`0.0` near stop, `1.0` full MED duty window)
 
 #### Timelapse tuning constants (firmware)
 

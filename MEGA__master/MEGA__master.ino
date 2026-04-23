@@ -265,14 +265,14 @@ constexpr int DRONE_LIFT_DEADBAND = 14;
 constexpr int DRONE_PAN_DEADBAND = 10;
 constexpr int DRONE_TILT_DEADBAND = 10;
 constexpr int DRONE_UI_DEADBAND = 4;
-constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
-constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
+constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
+constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
-constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
+constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 constexpr uint8_t DRONE_FIXED_STICK_SPEED_TIER = DRONE_SPEED_TIER_MED;
-constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
+constexpr bool DRONE_L2_PRIORITY_OVER_BOOST = true;
 constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.25f; // L2 micro-motion multiplier
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mode with R3
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
@@ -930,14 +930,16 @@ void applySpeedPinsForTier(uint8_t speedTier, uint8_t upPin, uint8_t downPin) {
 
 uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) {
   bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
-  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2) && !precisionModeActive;
+  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER
+      && ps2x.Button(PSB_R2)
+      && !(DRONE_L2_PRIORITY_OVER_BOOST && precisionModeActive);
 
-  // L2 alone activates micro-motion: clamp to near-stop tier with fractional speed
+  // Precision has priority over boost when configured.
   if (precisionModeActive && !boostModeActive) {
     return DRONE_SPEED_TIER_STOP;  // Return STOP; actual motion is gated by proportional magnitude (stick position)
   }
 
-  // R2 alone: boost mode
+  // Boost mode (when not suppressed by precision priority)
   if (boostModeActive && speedTier < maxAllowedTier) {
     speedTier++;
   }
@@ -955,11 +957,35 @@ void applyProportionalSpeedPins(int magnitude, uint8_t upPin, uint8_t downPin, u
     speedTier = clampedMaxTier;
   }
 
-  // In micro-motion mode (L2 alone), hold downPin to continuously decrement Nano stage toward ultra-slow
-  if (microMotionActive && speedTier > DRONE_SPEED_TIER_STOP) {
-    digitalWrite(downPin, HIGH);
-    digitalWrite(upPin, LOW);
-    return;  // Skip normal tier application
+  // Precision micro-motion: duty-cycle MED tier using stick deflection and configured ratio.
+  // This yields slower effective motion without relying on stale tier latching.
+  if (microMotionActive && magnitude > 0) {
+    constexpr unsigned long DRONE_MICRO_MOTION_CYCLE_MS = 120UL;
+
+    int expoMagnitude = getExpoDeflectionMagnitude(magnitude, expoPercent);
+    float normalizedDeflection = static_cast<float>(expoMagnitude) / static_cast<float>(DRONE_STICK_MAX_DEFLECTION);
+    if (normalizedDeflection < 0.0f) normalizedDeflection = 0.0f;
+    if (normalizedDeflection > 1.0f) normalizedDeflection = 1.0f;
+
+    float dutyRatio = DRONE_MICRO_MOTION_SPEED_RATIO * normalizedDeflection;
+    if (dutyRatio < 0.01f) {
+      applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, upPin, downPin);
+      return;
+    }
+    if (dutyRatio > 0.95f) dutyRatio = 0.95f;
+
+    unsigned long onWindowMs = static_cast<unsigned long>(DRONE_MICRO_MOTION_CYCLE_MS * dutyRatio);
+    if (onWindowMs == 0UL) {
+      onWindowMs = 1UL;
+    }
+
+    bool microPulseOn = (millis() % DRONE_MICRO_MOTION_CYCLE_MS) < onWindowMs;
+    if (microPulseOn) {
+      applySpeedPinsForTier(DRONE_SPEED_TIER_MED, upPin, downPin);
+    } else {
+      applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, upPin, downPin);
+    }
+    return;
   }
 
   speedTier = applyDroneSpeedTierModifiers(speedTier, clampedMaxTier);
@@ -1806,8 +1832,10 @@ void enterDroneMode() {
   resetTimelapseState();
   resetBounceState();
   stopIntervalRumbleFeedback();
+  normalizeMotionAxisSpeedStages(DEFAULT_AXIS_SPEED_STAGE);
   resetFlowlapseSession(true);
   droneMode = true;
+  droneProportionalStickSpeedEnabled = true;
   droneLastActivityMs = millis();
   Serial.println(F("DRONE MODE ACTIVATED - timelapse/bounce locked out"));
   broadcastStatus("MODE:DRONE");
@@ -1996,7 +2024,9 @@ void broadcastDroneUiStateIfDue(int8_t swingDirection, int8_t liftDirection, int
 
 void logDroneSpeedModifierStateIfChanged() {
   bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
-  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER && ps2x.Button(PSB_R2) && !precisionModeActive;
+  bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER
+      && ps2x.Button(PSB_R2)
+      && !(DRONE_L2_PRIORITY_OVER_BOOST && precisionModeActive);
 
   if (precisionModeActive != lastDronePrecisionModeActive || boostModeActive != lastDroneBoostModeActive) {
     char modifierLine[48];
@@ -2541,23 +2571,32 @@ bool applyDroneAxisControl(int stickValue, bool isReversed,
 
   int signedOffsetFromCenter = stickValue - STICK_CENTER;
   if (abs(signedOffsetFromCenter) <= axisDeadband) {
-    // Keep prior speed-tier command latched while idle.
-    // For Nano edge-based stage inputs, forcing STOP here causes repeated
-    // low->high transitions on the next stick movement, which ratchets speed.
+    // Explicitly command STOP when stick returns to center so drone mode does not
+    // inherit stale speed tiers from previous activity.
+    applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, speedUpPin, speedDownPin);
     return false;
   }
 
   if (droneProportionalStickSpeedEnabled) {
     int magnitude = getStickDeflectionMagnitude(stickValue);
-    if (magnitude < DRONE_SPEED_TIER_MED_THRESHOLD) {
-      magnitude = DRONE_SPEED_TIER_MED_THRESHOLD;
-    }
     applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin, clampedMaxTier, expoPercent);
   } else {
     uint8_t fixedTier = static_cast<uint8_t>(constrain(
         static_cast<int>(DRONE_FIXED_STICK_SPEED_TIER),
         static_cast<int>(DRONE_SPEED_TIER_STOP),
         static_cast<int>(clampedMaxTier)));
+
+    bool precisionModeActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
+    bool boostModeActive = DRONE_ENABLE_BOOST_MODIFIER
+      && ps2x.Button(PSB_R2)
+      && !(DRONE_L2_PRIORITY_OVER_BOOST && precisionModeActive);
+
+    if (precisionModeActive && fixedTier > DRONE_SPEED_TIER_STOP) {
+      fixedTier--;
+    } else if (boostModeActive && fixedTier < clampedMaxTier) {
+      fixedTier++;
+    }
+
     applySpeedPinsForTier(fixedTier, speedUpPin, speedDownPin);
   }
 
@@ -5606,8 +5645,8 @@ void printDroneTuningProfile() {
   Serial.print(F("/"));
   Serial.println(DRONE_ENABLE_BOOST_MODIFIER ? "Y" : "N");
 
-  Serial.print(F("Drone tuning | L2+R2 neutral mode="));
-  Serial.println(DRONE_L2_R2_NEUTRAL_MODE ? "Y" : "N");
+  Serial.print(F("Drone tuning | L2 priority over boost="));
+  Serial.println(DRONE_L2_PRIORITY_OVER_BOOST ? "Y" : "N");
 
   Serial.print(F("Drone tuning | tier thresholds med/high="));
   Serial.print(DRONE_SPEED_TIER_MED_THRESHOLD);
