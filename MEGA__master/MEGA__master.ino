@@ -821,6 +821,34 @@ void applyStartupDefaultSpeedStages() {
   applyDefaultAxisSpeedStage(tiltSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
 }
 
+void pulseAllMotionAxisSpeedPins(uint8_t swingPin, uint8_t panPin, uint8_t liftPin, uint8_t tiltPin) {
+  digitalWrite(swingPin, HIGH);
+  digitalWrite(panPin, HIGH);
+  digitalWrite(liftPin, HIGH);
+  digitalWrite(tiltPin, HIGH);
+  delay(SPEED_STAGE_PULSE_HIGH_MS);
+
+  digitalWrite(swingPin, LOW);
+  digitalWrite(panPin, LOW);
+  digitalWrite(liftPin, LOW);
+  digitalWrite(tiltPin, LOW);
+  delay(SPEED_STAGE_PULSE_LOW_MS);
+}
+
+void normalizeMotionAxisSpeedStages(uint8_t targetStage) {
+  constexpr uint8_t NANO_AXIS_MAX_STAGE = 4;
+  uint8_t clampedTargetStage = static_cast<uint8_t>(constrain(static_cast<int>(targetStage), 0, NANO_AXIS_MAX_STAGE));
+
+  // Drive all motion axes to stage 0 first, then move to the requested stage.
+  for (uint8_t i = 0; i < NANO_AXIS_MAX_STAGE; ++i) {
+    pulseAllMotionAxisSpeedPins(swingSpeedDown, panSpeedDown, liftSpeedDown, tiltSpeedDown);
+  }
+
+  for (uint8_t i = 0; i < clampedTargetStage; ++i) {
+    pulseAllMotionAxisSpeedPins(swingSpeedUp, panSpeedUp, liftSpeedUp, tiltSpeedUp);
+  }
+}
+
 void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t state) {
   if (!isReversed) {
     digitalWrite(normalPin, state);
@@ -4777,20 +4805,28 @@ void applyTimelapseModeOutputs(uint8_t mode) {
 }
 
 void resetTimelapseState() {
+  bool wasActive = (timelapseMode != 0);
   timelapseMode = 0;
   timelapsePhase = TIMELAPSE_PHASE_IDLE;
   timelapsePhaseStartMs = 0;
   timelapseCurrentSpeedStage = 0;
   digitalWrite(trigger, HIGH);
   stopAllMotors();
+  if (wasActive) {
+    normalizeMotionAxisSpeedStages(DEFAULT_AXIS_SPEED_STAGE);
+  }
 }
 
 void resetBounceState() {
+  bool wasActive = (bounce != 0);
   bounce = 0;
   stage = 0;
   bouncePhaseStartMs = 0;
   bounceMoveDurationMs = 0;
   stopAllMotors();
+  if (wasActive) {
+    normalizeMotionAxisSpeedStages(DEFAULT_AXIS_SPEED_STAGE);
+  }
 }
 
 // Returns 1-8 based on left-stick position, or 0 if no match.
