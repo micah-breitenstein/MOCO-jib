@@ -4263,6 +4263,15 @@ void handleSettingsModeToggle() {
   static bool settingsToggleLatched = false;
   static unsigned long settingsToggleHoldStartMs = 0;
 
+  // Settings navigation is manual/idle only. Do not allow entering settings
+  // while bounce or timelapse auto motion is running.
+  if (timelapseMode != 0 || bounce != 0) {
+    settingsToggleHoldActive = false;
+    settingsToggleLatched = false;
+    settingsToggleHoldStartMs = 0;
+    return;
+  }
+
   bool settingsToggleComboActive = ps2x.Button(PSB_START)
       && ps2x.Button(PSB_SELECT)
       && !ps2x.Button(PSB_TRIANGLE)
