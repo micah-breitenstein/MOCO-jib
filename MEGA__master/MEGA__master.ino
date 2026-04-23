@@ -72,15 +72,23 @@ uint8_t timelapseMode = 0;
 constexpr uint8_t DEFAULT_TIMELAPSE_INTERVAL_SECONDS = 15;
 uint8_t timelapseIntervalSeconds = DEFAULT_TIMELAPSE_INTERVAL_SECONDS;
 unsigned long timelapseIntervalMs;
-constexpr int DEFAULT_TIMELAPSE_STEP_DIST_MS = 100;
+constexpr int DEFAULT_TIMELAPSE_STEP_DIST_MS = 250;  // Increased from 100ms for smoother motion
 int stepDist = DEFAULT_TIMELAPSE_STEP_DIST_MS;
 const uint8_t trigger = 28;
+
+// Timelapse motion ramping parameters for smooth camera movement
+constexpr uint8_t TIMELAPSE_RAMP_UP_DURATION_MS = 40;      // Acceleration phase duration
+constexpr uint8_t TIMELAPSE_RAMP_DOWN_DURATION_MS = 40;    // Deceleration phase duration
+constexpr uint8_t TIMELAPSE_CRUISE_MIN_DURATION_MS = 100;  // Minimum cruise time at full speed
+uint8_t timelapseCurrentSpeedStage = 0;                    // Track current speed stage during motion
 
 enum TimelapsePhase : uint8_t {
   TIMELAPSE_PHASE_IDLE,
   TIMELAPSE_PHASE_TRIGGER_LOW,
   TIMELAPSE_PHASE_TRIGGER_HIGH,
-  TIMELAPSE_PHASE_MOVE_ACTIVE,
+  TIMELAPSE_PHASE_MOVE_RAMP_UP,
+  TIMELAPSE_PHASE_MOVE_CRUISE,
+  TIMELAPSE_PHASE_MOVE_RAMP_DOWN,
   TIMELAPSE_PHASE_SETTLE
 };
 
@@ -813,6 +821,34 @@ void applyStartupDefaultSpeedStages() {
   applyDefaultAxisSpeedStage(liftSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
   applyDefaultAxisSpeedStage(panSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
   applyDefaultAxisSpeedStage(tiltSpeedUp, DEFAULT_AXIS_SPEED_STAGE);
+}
+
+void pulseAllMotionAxisSpeedPins(uint8_t swingPin, uint8_t panPin, uint8_t liftPin, uint8_t tiltPin) {
+  digitalWrite(swingPin, HIGH);
+  digitalWrite(panPin, HIGH);
+  digitalWrite(liftPin, HIGH);
+  digitalWrite(tiltPin, HIGH);
+  delay(SPEED_STAGE_PULSE_HIGH_MS);
+
+  digitalWrite(swingPin, LOW);
+  digitalWrite(panPin, LOW);
+  digitalWrite(liftPin, LOW);
+  digitalWrite(tiltPin, LOW);
+  delay(SPEED_STAGE_PULSE_LOW_MS);
+}
+
+void normalizeMotionAxisSpeedStages(uint8_t targetStage) {
+  constexpr uint8_t NANO_AXIS_MAX_STAGE = 4;
+  uint8_t clampedTargetStage = static_cast<uint8_t>(constrain(static_cast<int>(targetStage), 0, NANO_AXIS_MAX_STAGE));
+
+  // Drive all motion axes to stage 0 first, then move to the requested stage.
+  for (uint8_t i = 0; i < NANO_AXIS_MAX_STAGE; ++i) {
+    pulseAllMotionAxisSpeedPins(swingSpeedDown, panSpeedDown, liftSpeedDown, tiltSpeedDown);
+  }
+
+  for (uint8_t i = 0; i < clampedTargetStage; ++i) {
+    pulseAllMotionAxisSpeedPins(swingSpeedUp, panSpeedUp, liftSpeedUp, tiltSpeedUp);
+  }
 }
 
 void setDirectionalOutput(bool isReversed, uint8_t normalPin, uint8_t reversedPin, uint8_t state) {
@@ -4568,6 +4604,155 @@ const char* getTimelapseModeLabel(uint8_t mode) {
   }
 }
 
+// Gradually increase speed by pulsing speed-up pins for all active axes in the timelapse mode
+void applyTimelapseSpeedIncrease(uint8_t mode) {
+  switch (mode) {
+    case 1:  // swing left, boom down
+    case 2:  // swing left, boom up
+    case 3:  // swing right, boom up
+    case 4:  // swing right, boom down
+      digitalWrite(swingSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedUp, LOW);
+      digitalWrite(panSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedUp, LOW);
+      digitalWrite(liftSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedUp, LOW);
+      digitalWrite(tiltSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedUp, LOW);
+      break;
+    case 5:  // swing left only
+      digitalWrite(swingSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedUp, LOW);
+      digitalWrite(panSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedUp, LOW);
+      break;
+    case 6:  // boom up only
+      digitalWrite(liftSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedUp, LOW);
+      digitalWrite(tiltSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedUp, LOW);
+      break;
+    case 7:  // swing right only
+      digitalWrite(swingSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedUp, LOW);
+      digitalWrite(panSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedUp, LOW);
+      break;
+    case 8:  // boom down only
+      digitalWrite(liftSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedUp, LOW);
+      digitalWrite(tiltSpeedUp, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedUp, LOW);
+      break;
+  }
+}
+
+// Gradually decrease speed by pulsing speed-down pins for all active axes in the timelapse mode
+void applyTimelapseSpeedDecrease(uint8_t mode) {
+  switch (mode) {
+    case 1:  // swing left, boom down
+      digitalWrite(swingSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedDown, LOW);
+      digitalWrite(panSpeedUpOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedUpOnly, LOW);
+      digitalWrite(liftSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedDown, LOW);
+      digitalWrite(tiltSpeedDownOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedDownOnly, LOW);
+      break;
+    case 2:  // swing left, boom up
+      digitalWrite(swingSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedDown, LOW);
+      digitalWrite(panSpeedUpOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedUpOnly, LOW);
+      digitalWrite(liftSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedDown, LOW);
+      digitalWrite(tiltSpeedDownOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedDownOnly, LOW);
+      break;
+    case 3:  // swing right, boom up
+      digitalWrite(swingSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedDown, LOW);
+      digitalWrite(panSpeedDownOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedDownOnly, LOW);
+      digitalWrite(liftSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedDown, LOW);
+      digitalWrite(tiltSpeedUpOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedUpOnly, LOW);
+      break;
+    case 4:  // swing right, boom down
+      digitalWrite(swingSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedDown, LOW);
+      digitalWrite(panSpeedDownOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedDownOnly, LOW);
+      digitalWrite(liftSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedDown, LOW);
+      digitalWrite(tiltSpeedUpOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedUpOnly, LOW);
+      break;
+    case 5:  // swing left only
+      digitalWrite(swingSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedDown, LOW);
+      digitalWrite(panSpeedUpOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedUpOnly, LOW);
+      break;
+    case 6:  // boom up only
+      digitalWrite(liftSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedDown, LOW);
+      digitalWrite(tiltSpeedUpOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedUpOnly, LOW);
+      break;
+    case 7:  // swing right only
+      digitalWrite(swingSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(swingSpeedDown, LOW);
+      digitalWrite(panSpeedDownOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(panSpeedDownOnly, LOW);
+      break;
+    case 8:  // boom down only
+      digitalWrite(liftSpeedDown, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(liftSpeedDown, LOW);
+      digitalWrite(tiltSpeedUpOnly, HIGH);
+      delayMicroseconds(SPEED_STAGE_PULSE_HIGH_MS * 1000);
+      digitalWrite(tiltSpeedUpOnly, LOW);
+      break;
+  }
+}
+
 void applyTimelapseModeOutputs(uint8_t mode) {
   switch (mode) {
     // Mode 1: swing left, boom down
@@ -4622,19 +4807,28 @@ void applyTimelapseModeOutputs(uint8_t mode) {
 }
 
 void resetTimelapseState() {
+  bool wasActive = (timelapseMode != 0);
   timelapseMode = 0;
   timelapsePhase = TIMELAPSE_PHASE_IDLE;
   timelapsePhaseStartMs = 0;
+  timelapseCurrentSpeedStage = 0;
   digitalWrite(trigger, HIGH);
   stopAllMotors();
+  if (wasActive) {
+    normalizeMotionAxisSpeedStages(DEFAULT_AXIS_SPEED_STAGE);
+  }
 }
 
 void resetBounceState() {
+  bool wasActive = (bounce != 0);
   bounce = 0;
   stage = 0;
   bouncePhaseStartMs = 0;
   bounceMoveDurationMs = 0;
   stopAllMotors();
+  if (wasActive) {
+    normalizeMotionAxisSpeedStages(DEFAULT_AXIS_SPEED_STAGE);
+  }
 }
 
 // Returns 1-8 based on left-stick position, or 0 if no match.
@@ -5000,15 +5194,60 @@ void handleActiveTimelapseMode(unsigned long now) {
     case TIMELAPSE_PHASE_TRIGGER_HIGH:
       if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
         applyTimelapseModeOutputs(timelapseMode);
-        timelapsePhase = TIMELAPSE_PHASE_MOVE_ACTIVE;
+        timelapsePhase = TIMELAPSE_PHASE_MOVE_RAMP_UP;
         timelapsePhaseStartMs = now;
+        timelapseCurrentSpeedStage = 0;
       }
       break;
-    case TIMELAPSE_PHASE_MOVE_ACTIVE:
-      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(stepDist)) {
-        stopAllMotors();
-        timelapsePhase = TIMELAPSE_PHASE_SETTLE;
-        timelapsePhaseStartMs = now;
+    case TIMELAPSE_PHASE_MOVE_RAMP_UP:
+      // Gradually increase speed stage from 0 to 4 over TIMELAPSE_RAMP_UP_DURATION_MS
+      {
+        unsigned long elapsedMs = now - timelapsePhaseStartMs;
+        uint8_t targetStage = (elapsedMs * 4) / TIMELAPSE_RAMP_UP_DURATION_MS;
+        if (targetStage > 4) targetStage = 4;
+        
+        if (targetStage > timelapseCurrentSpeedStage) {
+          applyTimelapseSpeedIncrease(timelapseMode);
+          timelapseCurrentSpeedStage = targetStage;
+        }
+        
+        if (elapsedMs >= TIMELAPSE_RAMP_UP_DURATION_MS) {
+          timelapsePhase = TIMELAPSE_PHASE_MOVE_CRUISE;
+          timelapsePhaseStartMs = now;
+          timelapseCurrentSpeedStage = 4;
+        }
+      }
+      break;
+    case TIMELAPSE_PHASE_MOVE_CRUISE:
+      // Maintain speed at stage 4 for cruise phase
+      {
+        unsigned long totalMoveDuration = TIMELAPSE_RAMP_UP_DURATION_MS + TIMELAPSE_RAMP_DOWN_DURATION_MS;
+        unsigned long cruiseMinDuration = stepDist > totalMoveDuration ? stepDist - totalMoveDuration : TIMELAPSE_CRUISE_MIN_DURATION_MS;
+        unsigned long elapsedMs = now - timelapsePhaseStartMs;
+        
+        if (elapsedMs >= cruiseMinDuration) {
+          timelapsePhase = TIMELAPSE_PHASE_MOVE_RAMP_DOWN;
+          timelapsePhaseStartMs = now;
+        }
+      }
+      break;
+    case TIMELAPSE_PHASE_MOVE_RAMP_DOWN:
+      // Gradually decrease speed stage from 4 to 0 over TIMELAPSE_RAMP_DOWN_DURATION_MS
+      {
+        unsigned long elapsedMs = now - timelapsePhaseStartMs;
+        uint8_t targetStage = (4 * (TIMELAPSE_RAMP_DOWN_DURATION_MS - elapsedMs)) / TIMELAPSE_RAMP_DOWN_DURATION_MS;
+        
+        if (targetStage < timelapseCurrentSpeedStage) {
+          applyTimelapseSpeedDecrease(timelapseMode);
+          timelapseCurrentSpeedStage = targetStage;
+        }
+        
+        if (elapsedMs >= TIMELAPSE_RAMP_DOWN_DURATION_MS) {
+          stopAllMotors();
+          timelapsePhase = TIMELAPSE_PHASE_SETTLE;
+          timelapsePhaseStartMs = now;
+          timelapseCurrentSpeedStage = 0;
+        }
       }
       break;
     case TIMELAPSE_PHASE_SETTLE:
