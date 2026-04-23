@@ -241,6 +241,9 @@ constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_LONG_TOTAL_MS = 1200;
 constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_ON_MS = 450;
 constexpr unsigned long FRAMECOUNT_COMPLETE_RUMBLE_SHORT_TOTAL_MS = 600;
 constexpr unsigned long BOUNCE_MIN_MOVE_DURATION_MS = 150;
+constexpr unsigned long BOUNCE_ENDPOINT_STOP_BAND_MS = 30;
+constexpr unsigned long BOUNCE_SPEED_RAMP_WINDOW_MIN_MS = 120;
+constexpr unsigned long BOUNCE_SPEED_RAMP_WINDOW_MAX_MS = 600;
 
 // Drone mode constants
 constexpr unsigned long DRONE_MODE_ENTER_RUMBLE_ON_MS = 200;
@@ -5404,6 +5407,58 @@ void setBounceModeOutputs(uint8_t mode, bool towardEndpoint, uint8_t state) {
   }
 }
 
+// Applies a speed tier to only the axes used by the given bounce mode.
+void setBounceModeSpeedTier(uint8_t mode, uint8_t speedTier) {
+  uint8_t clampedTier = static_cast<uint8_t>(constrain(static_cast<int>(speedTier),
+      static_cast<int>(DRONE_SPEED_TIER_STOP),
+      static_cast<int>(DRONE_SPEED_TIER_HIGH)));
+
+  switch (mode) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      applySpeedPinsForTier(clampedTier, swingSpeedUp, swingSpeedDown);
+      applySpeedPinsForTier(clampedTier, panSpeedUp, panSpeedDown);
+      applySpeedPinsForTier(clampedTier, liftSpeedUp, liftSpeedDown);
+      applySpeedPinsForTier(clampedTier, tiltSpeedUp, tiltSpeedDown);
+      break;
+    case 5:
+    case 7:
+      applySpeedPinsForTier(clampedTier, swingSpeedUp, swingSpeedDown);
+      applySpeedPinsForTier(clampedTier, panSpeedUp, panSpeedDown);
+      break;
+    case 6:
+    case 8:
+      applySpeedPinsForTier(clampedTier, liftSpeedUp, liftSpeedDown);
+      applySpeedPinsForTier(clampedTier, tiltSpeedUp, tiltSpeedDown);
+      break;
+  }
+}
+
+uint8_t getBounceSpeedTierForHalf(unsigned long halfElapsedMs, unsigned long halfDurationMs) {
+  if (halfDurationMs == 0) {
+    return DRONE_SPEED_TIER_STOP;
+  }
+
+  unsigned long rampWindowMs = constrain(
+      halfDurationMs / 4,
+      BOUNCE_SPEED_RAMP_WINDOW_MIN_MS,
+      BOUNCE_SPEED_RAMP_WINDOW_MAX_MS);
+
+  unsigned long distanceToEdgeMs = min(halfElapsedMs, halfDurationMs - halfElapsedMs);
+
+  if (distanceToEdgeMs <= BOUNCE_ENDPOINT_STOP_BAND_MS) {
+    return DRONE_SPEED_TIER_STOP;
+  }
+
+  if (distanceToEdgeMs < rampWindowMs) {
+    return DRONE_SPEED_TIER_MED;
+  }
+
+  return DRONE_SPEED_TIER_HIGH;
+}
+
 // Stops only the motors used by the given bounce mode.
 // Called at the turnaround point between stage 0 and stage 1,
 // and during direction switches inside stage 1.
@@ -5453,6 +5508,7 @@ void advanceBounceToStage1() {
   }
 
   stopBounceModeOutputs(bounce);
+  setBounceModeSpeedTier(bounce, DRONE_SPEED_TIER_STOP);
   bounceMoveDurationMs = measuredMoveDurationMs;
   bouncePhaseStartMs = now;
   stage = 1;
@@ -5472,6 +5528,7 @@ void handleBounceStage0(unsigned long now) {
     bouncePhaseStartMs = now;
   }
 
+  setBounceModeSpeedTier(bounce, DRONE_SPEED_TIER_HIGH);
   setBounceModeOutputs(bounce, true, HIGH);
 
   // Note: L3 state already tracked in lastL3ButtonState for drone mode
@@ -5493,8 +5550,13 @@ void handleBounceStage1(unsigned long now) {
   }
 
   unsigned long elapsed = (now - bouncePhaseStartMs) % (bounceMoveDurationMs * 2);
+  bool movingTowardEndpoint = elapsed >= bounceMoveDurationMs;
+  unsigned long halfElapsed = movingTowardEndpoint ? (elapsed - bounceMoveDurationMs) : elapsed;
 
-  if (elapsed < bounceMoveDurationMs) {
+  uint8_t targetSpeedTier = getBounceSpeedTierForHalf(halfElapsed, bounceMoveDurationMs);
+  setBounceModeSpeedTier(bounce, targetSpeedTier);
+
+  if (!movingTowardEndpoint) {
     // first half: traveling away from endpoint (back toward start)
     setBounceModeOutputs(bounce, true, LOW);
     setBounceModeOutputs(bounce, false, HIGH);
