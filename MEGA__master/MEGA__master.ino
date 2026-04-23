@@ -83,6 +83,9 @@ uint8_t timelapseMaxSpeedStage = DEFAULT_TIMELAPSE_MAX_SPEED_STAGE;
 const uint8_t trigger = 28;
 
 // Timelapse motion ramping parameters for smooth camera movement
+constexpr bool DEFAULT_TIMELAPSE_ANTI_BACKLASH_ENABLED = true;
+constexpr uint8_t TIMELAPSE_ANTI_BACKLASH_DURATION_MS = 60;
+bool timelapseAntiBacklashEnabled = DEFAULT_TIMELAPSE_ANTI_BACKLASH_ENABLED;
 constexpr uint8_t TIMELAPSE_RAMP_UP_DURATION_MS = 40;      // Acceleration phase duration
 constexpr uint8_t TIMELAPSE_RAMP_DOWN_DURATION_MS = 40;    // Deceleration phase duration
 constexpr uint8_t TIMELAPSE_CRUISE_MIN_DURATION_MS = 100;  // Minimum cruise time at full speed
@@ -92,6 +95,7 @@ enum TimelapsePhase : uint8_t {
   TIMELAPSE_PHASE_IDLE,
   TIMELAPSE_PHASE_TRIGGER_LOW,
   TIMELAPSE_PHASE_TRIGGER_HIGH,
+  TIMELAPSE_PHASE_MOVE_PRELOAD,
   TIMELAPSE_PHASE_MOVE_RAMP_UP,
   TIMELAPSE_PHASE_MOVE_CRUISE,
   TIMELAPSE_PHASE_MOVE_RAMP_DOWN,
@@ -556,6 +560,9 @@ bool lastHomeGoComboActive = false;
 bool lastHomeClearComboActive = false;
 bool lastTimelapseSettleAdjustUpComboActive = false;
 bool lastTimelapseSettleAdjustDownComboActive = false;
+bool lastTimelapseMaxSpeedStageAdjustUpComboActive = false;
+bool lastTimelapseMaxSpeedStageAdjustDownComboActive = false;
+bool lastTimelapseAntiBacklashToggleComboActive = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
@@ -4016,9 +4023,13 @@ void adjustIntervalSeconds(int delta) {
 
 unsigned long getTimelapseEffectiveMoveDurationMs() {
   unsigned long moveDurationMs = static_cast<unsigned long>(stepDist);
+  unsigned long antiBacklashMs = timelapseAntiBacklashEnabled
+      ? static_cast<unsigned long>(TIMELAPSE_ANTI_BACKLASH_DURATION_MS)
+      : 0UL;
   unsigned long rampEnvelopeMs = static_cast<unsigned long>(TIMELAPSE_RAMP_UP_DURATION_MS)
       + static_cast<unsigned long>(TIMELAPSE_RAMP_DOWN_DURATION_MS)
       + static_cast<unsigned long>(TIMELAPSE_CRUISE_MIN_DURATION_MS);
+  rampEnvelopeMs += antiBacklashMs;
   if (moveDurationMs < rampEnvelopeMs) {
     moveDurationMs = rampEnvelopeMs;
   }
@@ -4451,6 +4462,104 @@ bool handleTimelapseSettleDwellAdjustment() {
   }
 
   if (dwellAdjustComboHandled) {
+    stopAllMotors();
+    return true;
+  }
+
+  return false;
+}
+
+// START + L2 decreases max speed stage. START + R2 increases max speed stage.
+// Speed stage changes by 1 per press (1 is slowest, 4 is fastest).
+bool handleTimelapseMaxSpeedStageAdjustment() {
+  bool adjustmentAllowed = !isAutoModeActive();
+  bool stageAdjustUpComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_R2);
+  bool stageAdjustDownComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_L2);
+
+  if (stageAdjustUpComboRawActive && !lastTimelapseMaxSpeedStageAdjustUpComboActive) {
+    if (adjustmentAllowed) {
+      if (timelapseMaxSpeedStage < TIMELAPSE_MAX_SPEED_STAGE_MAX) {
+        timelapseMaxSpeedStage++;
+        Serial.print(F("Timelapse max speed stage += 1 -> "));
+        Serial.println(timelapseMaxSpeedStage);
+        startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+        char statusBuf[32];
+        snprintf(statusBuf, sizeof(statusBuf), "TL_MAX_STAGE:%u", timelapseMaxSpeedStage);
+        broadcastStatus(statusBuf);
+      } else {
+        startLimitReachedRumbleFeedback();
+        Serial.println(F("Timelapse max speed stage already at maximum (4)."));
+      }
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Timelapse max speed stage adjustment blocked: auto mode active."));
+    }
+  }
+
+  if (stageAdjustDownComboRawActive && !lastTimelapseMaxSpeedStageAdjustDownComboActive) {
+    if (adjustmentAllowed) {
+      if (timelapseMaxSpeedStage > TIMELAPSE_MAX_SPEED_STAGE_MIN) {
+        timelapseMaxSpeedStage--;
+        Serial.print(F("Timelapse max speed stage -= 1 -> "));
+        Serial.println(timelapseMaxSpeedStage);
+        startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+        char statusBuf[32];
+        snprintf(statusBuf, sizeof(statusBuf), "TL_MAX_STAGE:%u", timelapseMaxSpeedStage);
+        broadcastStatus(statusBuf);
+      } else {
+        startLimitReachedRumbleFeedback();
+        Serial.println(F("Timelapse max speed stage already at minimum (1)."));
+      }
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Timelapse max speed stage adjustment blocked: auto mode active."));
+    }
+  }
+
+  lastTimelapseMaxSpeedStageAdjustUpComboActive = stageAdjustUpComboRawActive;
+  lastTimelapseMaxSpeedStageAdjustDownComboActive = stageAdjustDownComboRawActive;
+
+  bool stageAdjustComboHandled = adjustmentAllowed && (stageAdjustUpComboRawActive || stageAdjustDownComboRawActive);
+
+  if (stageAdjustUpComboRawActive || stageAdjustDownComboRawActive) {
+    suppressNextStartRelease = true;
+  }
+
+  if (stageAdjustComboHandled) {
+    stopAllMotors();
+    return true;
+  }
+
+  return false;
+}
+
+// START + SELECT + R1 toggles anti-backlash preload on/off.
+bool handleTimelapseAntiBacklashToggle() {
+  bool adjustmentAllowed = !isAutoModeActive();
+  bool antiBacklashToggleComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_R1);
+
+  if (antiBacklashToggleComboRawActive && !lastTimelapseAntiBacklashToggleComboActive) {
+    if (adjustmentAllowed) {
+      timelapseAntiBacklashEnabled = !timelapseAntiBacklashEnabled;
+      Serial.print(F("Timelapse anti-backlash "));
+      Serial.println(timelapseAntiBacklashEnabled ? F("enabled.") : F("disabled."));
+      startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+      broadcastStatus(timelapseAntiBacklashEnabled ? "TL_BACKLASH:ON" : "TL_BACKLASH:OFF");
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Timelapse anti-backlash toggle blocked: auto mode active."));
+    }
+  }
+
+  lastTimelapseAntiBacklashToggleComboActive = antiBacklashToggleComboRawActive;
+
+  if (antiBacklashToggleComboRawActive) {
+    suppressNextStartRelease = true;
+    suppressNextSelectRelease = true;
+  }
+
+  bool antiBacklashToggleComboHandled = adjustmentAllowed && antiBacklashToggleComboRawActive;
+  if (antiBacklashToggleComboHandled) {
     stopAllMotors();
     return true;
   }
@@ -5384,13 +5493,25 @@ void handleActiveTimelapseMode(unsigned long now) {
     case TIMELAPSE_PHASE_TRIGGER_HIGH:
       if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
         applyTimelapseModeOutputs(timelapseMode);
-        timelapsePhase = TIMELAPSE_PHASE_MOVE_RAMP_UP;
+        timelapsePhase = timelapseAntiBacklashEnabled
+            ? TIMELAPSE_PHASE_MOVE_PRELOAD
+            : TIMELAPSE_PHASE_MOVE_RAMP_UP;
         timelapsePhaseStartMs = now;
         timelapseCurrentSpeedStage = 0;
+        if (timelapseAntiBacklashEnabled && timelapseMaxSpeedStage >= 1) {
+          applyTimelapseSpeedIncrease(timelapseMode);
+          timelapseCurrentSpeedStage = 1;
+        }
+      }
+      break;
+    case TIMELAPSE_PHASE_MOVE_PRELOAD:
+      if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(TIMELAPSE_ANTI_BACKLASH_DURATION_MS)) {
+        timelapsePhase = TIMELAPSE_PHASE_MOVE_RAMP_UP;
+        timelapsePhaseStartMs = now;
       }
       break;
     case TIMELAPSE_PHASE_MOVE_RAMP_UP:
-      // Gradually increase speed stage from 0 to timelapseMaxSpeedStage over TIMELAPSE_RAMP_UP_DURATION_MS
+      // Gradually increase speed stage toward timelapseMaxSpeedStage over TIMELAPSE_RAMP_UP_DURATION_MS
       {
         unsigned long elapsedMs = now - timelapsePhaseStartMs;
         uint8_t targetStage = (elapsedMs * timelapseMaxSpeedStage) / TIMELAPSE_RAMP_UP_DURATION_MS;
@@ -5758,6 +5879,15 @@ void processDisplayCommands() {
             broadcastStatus(statusBuf);
           }
         }
+      } else if (strncmp(displayCmdBuf, "SET:TL_BACKLASH:", 16) == 0) {
+        bool newEnabled = (displayCmdBuf[16] == '1');
+        if (newEnabled != timelapseAntiBacklashEnabled) {
+          timelapseAntiBacklashEnabled = newEnabled;
+          Serial.print(F("Display SET timelapse anti-backlash "));
+          Serial.println(timelapseAntiBacklashEnabled ? F("ON") : F("OFF"));
+          startFeedbackRumble(1, FEEDBACK_RUMBLE_ON_MS, FEEDBACK_RUMBLE_TOTAL_MS);
+          broadcastStatus(timelapseAntiBacklashEnabled ? "TL_BACKLASH:ON" : "TL_BACKLASH:OFF");
+        }
       } else if (strncmp(displayCmdBuf, "SET:RUMBLE_MUTE:", 16) == 0) {
         bool newMuted = (displayCmdBuf[16] == '1');
         if (newMuted != rumbleMuted) {
@@ -5923,6 +6053,16 @@ void loop() {
 
     if (handleTimelapseSettleDwellAdjustment()) {
       emitLoopBypassReason("TIMELAPSE_DWELL_ADJUST");
+      return;
+    }
+
+    if (handleTimelapseMaxSpeedStageAdjustment()) {
+      emitLoopBypassReason("TIMELAPSE_MAX_STAGE_ADJUST");
+      return;
+    }
+
+    if (handleTimelapseAntiBacklashToggle()) {
+      emitLoopBypassReason("TIMELAPSE_BACKLASH_TOGGLE");
       return;
     }
 

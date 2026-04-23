@@ -515,6 +515,8 @@ This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master 
 | **START + SELECT + SQUARE** | **Toggle controller rumble mute/unmute. Serial logs stay enabled.** | X |  |
 | **START + D-pad UP / DOWN** | **Adjust timelapse interval by ±1 second per press (only when auto modes are idle).** | X |  |
 | **START + D-pad RIGHT / LEFT** | **Adjust timelapse move time (`stepDist`) by ±10 ms per press (only when auto modes are idle).** | X |  |
+| **START + L2 / R2** | **Adjust timelapse max speed stage: L2 decreases (4 → 3 → 2 → 1), R2 increases (1 → 2 → 3 → 4). One stage per press. Allows real-time tuning of motion smoothness for different payloads (only when auto modes are idle).** | X |  |
+| **START + SELECT + R1** | **Toggle timelapse anti-backlash preload ON/OFF (only when auto modes are idle). Use ON for heavier payloads/gearing slack; OFF for fastest possible cycle timing.** | X |  |
 | SELECT release | Start timelapse mode (stick position selects mode 1–8) | X | X |
 | START release | Start bounce/moco mode (stick position selects mode 1–8) | X | X |
 | L3 (left stick click) | **Normal mode:** set bounce distance endpoint (ends stage 0, starts stage 1); double medium pulse confirms lock. **Drone Mode:** record current axis positions as a Flowlapse waypoint; short rumble confirms. | X |  |
@@ -777,10 +779,12 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control timelapse motion smoothness:
 
 - Motion ramping:
+	- `DEFAULT_TIMELAPSE_ANTI_BACKLASH_ENABLED` (currently `true`) — boot default for preload behavior
+	- `TIMELAPSE_ANTI_BACKLASH_DURATION_MS` (currently `60`) — preload pulse duration at stage 1
 	- `TIMELAPSE_RAMP_UP_DURATION_MS` (currently `40`) — acceleration phase duration during move
 	- `TIMELAPSE_RAMP_DOWN_DURATION_MS` (currently `40`) — deceleration phase duration during move
 	- `TIMELAPSE_CRUISE_MIN_DURATION_MS` (currently `100`) — minimum constant-speed duration at max stage
-	- **Note**: Total ramp envelope = 40ms + 100ms + 40ms = 180ms minimum motion duration
+	- **Note**: Total move envelope (with anti-backlash enabled) = 60ms + 40ms + 100ms + 40ms = 240ms minimum motion duration
 - Speed stages:
 	- `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE` (currently `4`) — runs timelapse at full speed (stages 1–4 supported)
 	- `TIMELAPSE_MAX_SPEED_STAGE_MIN` (currently `1`) — minimum allowable cap (stage 1 = slowest)
@@ -798,20 +802,24 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- Timelapse automatically clamps settle dwell if `move duration + dwell` would exceed `timelapse interval`
 	- Serial prints warning and broadcasts clamp event when budget is exceeded
 	- Prevents invalid configurations that could miss shutter triggers
-- Display command support:
-	- `SET:TL_MAX_STAGE:<1-4>` — change max speed stage via display (e.g., `SET:TL_MAX_STAGE:3` caps speed at stage 3)
+- Runtime speed stage adjustment (no reflash needed):
+	- **Controller buttons:** `START + L2` (decrease stage) / `START + R2` (increase stage) — one stage per press, instant feedback with rumble
+	- **Display command:** `SET:TL_MAX_STAGE:<1-4>` — change max speed stage via display (e.g., `SET:TL_MAX_STAGE:3` caps speed at stage 3)
+	- **Serial command:** `SET:TL_MAX_STAGE:2` sent via serial monitor or script
+- Runtime anti-backlash toggle (no reflash needed):
+	- **Controller buttons:** `START + SELECT + R1` — toggle anti-backlash preload ON/OFF
+	- **Display command:** `SET:TL_BACKLASH:<0|1>` — `1` enables preload, `0` disables preload
+	- **Serial command:** `SET:TL_BACKLASH:1` sent via serial monitor or script
+- Other display commands:
 	- `SET:TL_DWELL:<ms>` — change settle dwell time (e.g., `SET:TL_DWELL:750` sets 750ms dwell)
 	- `SET:TL_INT:<sec>` — change interval seconds (e.g., `SET:TL_INT:10` sets 10-second interval)
 	- `SET:TL_STEP:<ms>` — change step distance (e.g., `SET:TL_STEP:300` sets 300ms move time)
 
 Quick tuning guide for different payloads:
 
-- **Light rig** (< 5 lbs): `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE = 4`, `DEFAULT_TIMELAPSE_STEP_DIST_MS = 200-300`
-	- Use faster speeds and shorter moves for dynamic, energetic motion
-- **Medium rig** (5–15 lbs): `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE = 3`, `DEFAULT_TIMELAPSE_STEP_DIST_MS = 300-400`
-	- Balance between smooth motion and reasonable move duration
-- **Heavy rig** (> 15 lbs): `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE = 2`, `DEFAULT_TIMELAPSE_STEP_DIST_MS = 400-500`
-	- Reduce speed and lengthen moves for controlled, stable camera work; reduces sway and mechanical resonance
+- **Light rig** (< 5 lbs): Start with `START + R2` to increase to stage 4, use shorter moves (200-300ms) for dynamic motion
+- **Medium rig** (5–15 lbs): Default stage 4, try decreasing to stage 3 with `START + L2` if jerky; use 300-400ms moves
+- **Heavy rig** (> 15 lbs): Press `START + L2` twice to reach stage 2, use longer moves (400-500ms) for controlled, stable motion; reduces sway and mechanical resonance
 
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
