@@ -248,12 +248,14 @@ constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
+constexpr uint8_t DRONE_FIXED_STICK_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr bool DRONE_L2_R2_NEUTRAL_MODE = true;
 constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.25f; // L2 micro-motion multiplier
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mode with R3
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 constexpr unsigned long DRONE_UI_BROADCAST_INTERVAL_MS = 10;
 constexpr unsigned long DRONE_MODE_EXIT_HOLD_MS = 450;
+constexpr unsigned long DRONE_MANUAL_SHUTTER_PULSE_MS = 120;
 
 constexpr uint8_t FLOWLAPSE_MAX_WAYPOINTS = 8;
 constexpr bool FLOWLAPSE_LOOP_CAPTURE = false; // if true, capture auto-restarts after completing
@@ -534,6 +536,7 @@ bool lastHomeClearComboActive = false;
 unsigned long flowlapseL3HoldStartMs = 0;
 unsigned long flowlapseDwellMs = FLOWLAPSE_WAYPOINT_DWELL_MS;
 bool flowlapsePingPongLoopEnabled = FLOWLAPSE_PING_PONG_LOOP;
+bool droneProportionalStickSpeedEnabled = true;
 FlowlapseAccelerationProfile flowlapseAccelerationProfile =
   FLOWLAPSE_EASE_IN_OUT_ENABLED ? FLOWLAPSE_ACCEL_EASE_IN_OUT : FLOWLAPSE_ACCEL_LINEAR;
 unsigned long droneLastActivityMs = 0;
@@ -2463,14 +2466,30 @@ bool applyDroneAxisControl(int stickValue, bool isReversed,
   digitalWrite(negativeDirectionPin, LOW);
   digitalWrite(positiveDirectionPin, LOW);
 
+  uint8_t clampedMaxTier = static_cast<uint8_t>(
+      constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH));
+
   int signedOffsetFromCenter = stickValue - STICK_CENTER;
   if (abs(signedOffsetFromCenter) <= axisDeadband) {
-    applySpeedPinsForTier(DRONE_SPEED_TIER_STOP, speedUpPin, speedDownPin);
+    // Keep prior speed-tier command latched while idle.
+    // For Nano edge-based stage inputs, forcing STOP here causes repeated
+    // low->high transitions on the next stick movement, which ratchets speed.
     return false;
   }
 
-  int magnitude = getStickDeflectionMagnitude(stickValue);
-  applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin, maxSpeedTier, expoPercent);
+  if (droneProportionalStickSpeedEnabled) {
+    int magnitude = getStickDeflectionMagnitude(stickValue);
+    if (magnitude < DRONE_SPEED_TIER_MED_THRESHOLD) {
+      magnitude = DRONE_SPEED_TIER_MED_THRESHOLD;
+    }
+    applyProportionalSpeedPins(magnitude, speedUpPin, speedDownPin, clampedMaxTier, expoPercent);
+  } else {
+    uint8_t fixedTier = static_cast<uint8_t>(constrain(
+        static_cast<int>(DRONE_FIXED_STICK_SPEED_TIER),
+        static_cast<int>(DRONE_SPEED_TIER_STOP),
+        static_cast<int>(clampedMaxTier)));
+    applySpeedPinsForTier(fixedTier, speedUpPin, speedDownPin);
+  }
 
   if (stickValue < STICK_CENTER - axisDeadband) {
     setDirectionalOutput(isReversed, negativeDirectionPin, positiveDirectionPin, HIGH);
@@ -2962,6 +2981,32 @@ void adjustFlowlapseWaypointDwell(uint8_t waypointIndex, long delta) {
 }
 
 bool handleDroneFlowlapseButtons(unsigned long now) {
+  static bool lastDroneManualShutterR1State = false;
+  static bool lastDroneStickSpeedToggleComboActive = false;
+
+  bool currentDroneManualShutterR1State = ps2x.Button(PSB_R1);
+  bool r1Pressed = !lastDroneManualShutterR1State && currentDroneManualShutterR1State;
+  lastDroneManualShutterR1State = currentDroneManualShutterR1State;
+
+  bool manualShutterAllowed = flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING
+      && flowlapseState != FLOWLAPSE_STATE_CAPTURE_PAUSED;
+
+  bool manualShutterComboClear = !ps2x.Button(PSB_L1)
+      && !ps2x.Button(PSB_L2)
+      && !ps2x.Button(PSB_R2)
+      && !ps2x.Button(PSB_START)
+      && !ps2x.Button(PSB_SELECT);
+
+  if (r1Pressed && manualShutterAllowed && manualShutterComboClear) {
+    digitalWrite(trigger, LOW);
+    delay(DRONE_MANUAL_SHUTTER_PULSE_MS);
+    digitalWrite(trigger, HIGH);
+    emitControlIndicator("DRONE_MANUAL_SHUTTER");
+    broadcastStatus("TRIGGER:MANUAL_DRONE");
+    droneLastActivityMs = now;
+    return true;
+  }
+
   bool loopModeToggleComboActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_CIRCLE);
   if (loopModeToggleComboActive && !lastFlowlapseLoopToggleComboActive) {
     bool toggleAllowed = (flowlapseState != FLOWLAPSE_STATE_PREVIEW_RUNNING)
@@ -3025,6 +3070,38 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
   }
   lastFlowlapseFrameModeToggleComboActive = frameModeToggleComboActive;
   if (frameModeToggleComboActive) {
+    stopAllMotors();
+    return true;
+  }
+
+  bool stickSpeedToggleComboActive = ps2x.Button(PSB_START)
+      && ps2x.Button(PSB_SELECT)
+      && ps2x.Button(PSB_CROSS);
+  if (stickSpeedToggleComboActive && !lastDroneStickSpeedToggleComboActive) {
+    bool toggleAllowed = (flowlapseState != FLOWLAPSE_STATE_CAPTURE_RUNNING)
+                      && (flowlapseState != FLOWLAPSE_STATE_CAPTURE_PAUSED);
+    suppressDroneNextSelectRelease = true;
+    suppressDroneNextStartRelease = true;
+
+    if (!toggleAllowed) {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Drone: stick speed mode toggle blocked while capture is running/paused."));
+    } else {
+      droneProportionalStickSpeedEnabled = !droneProportionalStickSpeedEnabled;
+      startFeedbackRumble(droneProportionalStickSpeedEnabled ? 2 : 1,
+                          FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS,
+                          FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      broadcastStatus(droneProportionalStickSpeedEnabled
+          ? "DRONE_STICK_SPEED:PROPORTIONAL"
+          : "DRONE_STICK_SPEED:FIXED");
+      Serial.print(F("Drone: stick speed mode "));
+      Serial.println(droneProportionalStickSpeedEnabled ? F("PROPORTIONAL") : F("FIXED"));
+    }
+
+    droneLastActivityMs = now;
+  }
+  lastDroneStickSpeedToggleComboActive = stickSpeedToggleComboActive;
+  if (stickSpeedToggleComboActive) {
     stopAllMotors();
     return true;
   }
