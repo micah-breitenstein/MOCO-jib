@@ -74,6 +74,8 @@ uint8_t timelapseIntervalSeconds = DEFAULT_TIMELAPSE_INTERVAL_SECONDS;
 unsigned long timelapseIntervalMs;
 constexpr int DEFAULT_TIMELAPSE_STEP_DIST_MS = 250;  // Increased from 100ms for smoother motion
 int stepDist = DEFAULT_TIMELAPSE_STEP_DIST_MS;
+constexpr unsigned long DEFAULT_TIMELAPSE_SETTLE_DWELL_MS = 500;
+unsigned long timelapseSettleDwellMs = DEFAULT_TIMELAPSE_SETTLE_DWELL_MS;
 const uint8_t trigger = 28;
 
 // Timelapse motion ramping parameters for smooth camera movement
@@ -171,7 +173,7 @@ constexpr uint8_t DIP_SWITCH_4 = 39;
 constexpr uint8_t DIP_SWITCH_5 = 41;
 constexpr int EEPROM_SETTINGS_ADDRESS = 0;
 constexpr uint16_t PERSISTED_SETTINGS_MAGIC = 0x4D52;
-constexpr uint8_t PERSISTED_SETTINGS_VERSION = 4;
+constexpr uint8_t PERSISTED_SETTINGS_VERSION = 5;
 constexpr uint8_t PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED = 0x01;
 constexpr uint8_t PERSISTED_SETTINGS_FLAG_HOME_VALID = 0x02;
 constexpr unsigned long CONTROLLER_STARTUP_DELAY_MS = 300;
@@ -201,6 +203,9 @@ constexpr int TIMELAPSE_INTERVAL_MAX_SECONDS = 99;
 constexpr int TIMELAPSE_STEP_DIST_MIN_MS = 20;
 constexpr int TIMELAPSE_STEP_DIST_MAX_MS = 150;
 constexpr int TIMELAPSE_STEP_DIST_ADJUST_INCREMENT_MS = 10;
+constexpr unsigned long TIMELAPSE_SETTLE_DWELL_MIN_MS = 0;
+constexpr unsigned long TIMELAPSE_SETTLE_DWELL_MAX_MS = 3000;
+constexpr unsigned long TIMELAPSE_SETTLE_DWELL_ADJUST_INCREMENT_MS = 100;
 constexpr unsigned long TIMELAPSE_SETTLE_DWELL_MS = 500;
 constexpr unsigned long PERSISTED_SETTINGS_RESET_HOLD_MS = 1500;
 constexpr unsigned long SETTINGS_TOGGLE_HOLD_MS = 800;
@@ -342,6 +347,20 @@ struct PersistedSettingsV4 {
   uint8_t version;
   uint8_t timelapseIntervalSeconds;
   int stepDist;
+  uint8_t flags;
+  float homeSwing;
+  float homeLift;
+  float homePan;
+  float homeTilt;
+  uint8_t checksum;
+};
+
+struct PersistedSettingsV5 {
+  uint16_t magic;
+  uint8_t version;
+  uint8_t timelapseIntervalSeconds;
+  int stepDist;
+  uint16_t timelapseSettleDwellMs;
   uint8_t flags;
   float homeSwing;
   float homeLift;
@@ -531,6 +550,8 @@ bool lastR3ButtonState = false;
 bool lastHomeSetComboActive = false;
 bool lastHomeGoComboActive = false;
 bool lastHomeClearComboActive = false;
+bool lastTimelapseSettleAdjustUpComboActive = false;
+bool lastTimelapseSettleAdjustDownComboActive = false;
 #define lastFlowlapseClearComboActive packedFlags.lastFlowlapseClearComboActive
 #define lastFlowlapseDeleteLastComboActive packedFlags.lastFlowlapseDeleteLastComboActive
 #define lastFlowlapseFrameModeToggleComboActive packedFlags.lastFlowlapseFrameModeToggleComboActive
@@ -3978,6 +3999,7 @@ void adjustIntervalSeconds(int delta) {
 
   timelapseIntervalSeconds = newIntervalSeconds;
   updateIntervalMs();
+  enforceTimelapseTimingBudget(true);
   savePersistedSettings();
   Serial.print(F("Timelapse interval (seconds) = "));
   Serial.println(timelapseIntervalSeconds);
@@ -3986,6 +4008,41 @@ void adjustIntervalSeconds(int delta) {
            static_cast<unsigned int>(timelapseIntervalSeconds));
   broadcastStatus(intervalLine);
   startIntervalRumbleFeedback();
+}
+
+unsigned long getTimelapseEffectiveMoveDurationMs() {
+  unsigned long moveDurationMs = static_cast<unsigned long>(stepDist);
+  unsigned long rampEnvelopeMs = static_cast<unsigned long>(TIMELAPSE_RAMP_UP_DURATION_MS)
+      + static_cast<unsigned long>(TIMELAPSE_RAMP_DOWN_DURATION_MS)
+      + static_cast<unsigned long>(TIMELAPSE_CRUISE_MIN_DURATION_MS);
+  if (moveDurationMs < rampEnvelopeMs) {
+    moveDurationMs = rampEnvelopeMs;
+  }
+  return moveDurationMs;
+}
+
+void enforceTimelapseTimingBudget(bool announceClamps) {
+  unsigned long effectiveMoveMs = getTimelapseEffectiveMoveDurationMs();
+  unsigned long maxDwellByGuard = (timelapseIntervalMs > effectiveMoveMs)
+      ? (timelapseIntervalMs - effectiveMoveMs)
+      : 0UL;
+
+  unsigned long clampedMaxDwell = constrain(maxDwellByGuard,
+      TIMELAPSE_SETTLE_DWELL_MIN_MS,
+      TIMELAPSE_SETTLE_DWELL_MAX_MS);
+
+  if (timelapseSettleDwellMs > clampedMaxDwell) {
+    timelapseSettleDwellMs = clampedMaxDwell;
+    if (announceClamps) {
+      startLimitReachedRumbleFeedback();
+      Serial.print(F("Timelapse dwell clamped by timing budget to "));
+      Serial.print(timelapseSettleDwellMs);
+      Serial.println(F(" ms."));
+      char dwellClampLine[48];
+      snprintf(dwellClampLine, sizeof(dwellClampLine), "TIMELAPSE_DWELL:%lu", timelapseSettleDwellMs);
+      broadcastStatus(dwellClampLine);
+    }
+  }
 }
 
 void adjustStepDist(int delta) {
@@ -4003,12 +4060,39 @@ void adjustStepDist(int delta) {
   }
 
   stepDist = newStepDist;
+  enforceTimelapseTimingBudget(true);
   savePersistedSettings();
   Serial.print(F("Timelapse stepDist (ms) = "));
   Serial.println(stepDist);
   char stepDistLine[40];
   snprintf(stepDistLine, sizeof(stepDistLine), "TIMELAPSE_STEPDIST:%d", stepDist);
   broadcastStatus(stepDistLine);
+  startStepDistRumbleFeedback();
+}
+
+void adjustTimelapseSettleDwell(int deltaMs) {
+  long newDwellMs = static_cast<long>(timelapseSettleDwellMs) + deltaMs;
+  if (newDwellMs < static_cast<long>(TIMELAPSE_SETTLE_DWELL_MIN_MS)) {
+    newDwellMs = static_cast<long>(TIMELAPSE_SETTLE_DWELL_MIN_MS);
+  }
+  if (newDwellMs > static_cast<long>(TIMELAPSE_SETTLE_DWELL_MAX_MS)) {
+    newDwellMs = static_cast<long>(TIMELAPSE_SETTLE_DWELL_MAX_MS);
+  }
+  if (static_cast<unsigned long>(newDwellMs) == timelapseSettleDwellMs) {
+    startLimitReachedRumbleFeedback();
+    Serial.println(F("Timelapse dwell limit reached."));
+    return;
+  }
+
+  timelapseSettleDwellMs = static_cast<unsigned long>(newDwellMs);
+  enforceTimelapseTimingBudget(true);
+  savePersistedSettings();
+
+  Serial.print(F("Timelapse settle dwell (ms) = "));
+  Serial.println(timelapseSettleDwellMs);
+  char dwellLine[48];
+  snprintf(dwellLine, sizeof(dwellLine), "TIMELAPSE_DWELL:%lu", timelapseSettleDwellMs);
+  broadcastStatus(dwellLine);
   startStepDistRumbleFeedback();
 }
 
@@ -4069,14 +4153,63 @@ uint8_t computePersistedSettingsChecksum(const PersistedSettingsV4& settings) {
   return sum;
 }
 
-void writePersistedSettings(const PersistedSettingsV4& settings) {
+uint8_t computePersistedSettingsChecksum(const PersistedSettingsV5& settings) {
+  uint8_t sum = static_cast<uint8_t>((settings.magic & 0xFF)
+      + (settings.magic >> 8)
+      + settings.version
+      + settings.timelapseIntervalSeconds
+      + (settings.stepDist & 0xFF)
+      + ((settings.stepDist >> 8) & 0xFF)
+      + (settings.timelapseSettleDwellMs & 0xFF)
+      + ((settings.timelapseSettleDwellMs >> 8) & 0xFF)
+      + settings.flags);
+
+  const uint8_t* homeSwingBytes = reinterpret_cast<const uint8_t*>(&settings.homeSwing);
+  const uint8_t* homeLiftBytes = reinterpret_cast<const uint8_t*>(&settings.homeLift);
+  const uint8_t* homePanBytes = reinterpret_cast<const uint8_t*>(&settings.homePan);
+  const uint8_t* homeTiltBytes = reinterpret_cast<const uint8_t*>(&settings.homeTilt);
+  for (uint8_t i = 0; i < sizeof(float); ++i) {
+    sum = static_cast<uint8_t>(sum + homeSwingBytes[i] + homeLiftBytes[i] + homePanBytes[i] + homeTiltBytes[i]);
+  }
+  return sum;
+}
+
+void writePersistedSettings(const PersistedSettingsV5& settings) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
-  for (unsigned int i = 0; i < sizeof(PersistedSettingsV4); ++i) {
+  for (unsigned int i = 0; i < sizeof(PersistedSettingsV5); ++i) {
     EEPROM.update(EEPROM_SETTINGS_ADDRESS + static_cast<int>(i), bytes[i]);
   }
 }
 
 bool loadPersistedSettings() {
+  PersistedSettingsV5 settingsV5;
+  EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV5);
+
+  if (settingsV5.magic == PERSISTED_SETTINGS_MAGIC
+      && settingsV5.version == PERSISTED_SETTINGS_VERSION
+      && settingsV5.checksum == computePersistedSettingsChecksum(settingsV5)) {
+    timelapseIntervalSeconds = static_cast<uint8_t>(constrain(
+        static_cast<int>(settingsV5.timelapseIntervalSeconds),
+        TIMELAPSE_INTERVAL_MIN_SECONDS,
+        TIMELAPSE_INTERVAL_MAX_SECONDS));
+    stepDist = constrain(settingsV5.stepDist,
+        TIMELAPSE_STEP_DIST_MIN_MS,
+        TIMELAPSE_STEP_DIST_MAX_MS);
+    timelapseSettleDwellMs = constrain(static_cast<unsigned long>(settingsV5.timelapseSettleDwellMs),
+        TIMELAPSE_SETTLE_DWELL_MIN_MS,
+        TIMELAPSE_SETTLE_DWELL_MAX_MS);
+    rumbleMuted = ((settingsV5.flags & PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED) != 0);
+    homePoseValid = ((settingsV5.flags & PERSISTED_SETTINGS_FLAG_HOME_VALID) != 0);
+    if (homePoseValid) {
+      homePose.swing = settingsV5.homeSwing;
+      homePose.lift = settingsV5.homeLift;
+      homePose.pan = settingsV5.homePan;
+      homePose.tilt = settingsV5.homeTilt;
+      homePose.dwellMs = 0;
+    }
+    return true;
+  }
+
   PersistedSettingsV4 settingsV4;
   EEPROM.get(EEPROM_SETTINGS_ADDRESS, settingsV4);
 
@@ -4090,6 +4223,7 @@ bool loadPersistedSettings() {
     stepDist = constrain(settingsV4.stepDist,
         TIMELAPSE_STEP_DIST_MIN_MS,
         TIMELAPSE_STEP_DIST_MAX_MS);
+    timelapseSettleDwellMs = DEFAULT_TIMELAPSE_SETTLE_DWELL_MS;
     rumbleMuted = ((settingsV4.flags & PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED) != 0);
     homePoseValid = ((settingsV4.flags & PERSISTED_SETTINGS_FLAG_HOME_VALID) != 0);
     if (homePoseValid) {
@@ -4115,6 +4249,7 @@ bool loadPersistedSettings() {
     stepDist = constrain(settingsV3.stepDist,
         TIMELAPSE_STEP_DIST_MIN_MS,
         TIMELAPSE_STEP_DIST_MAX_MS);
+    timelapseSettleDwellMs = DEFAULT_TIMELAPSE_SETTLE_DWELL_MS;
     rumbleMuted = ((settingsV3.flags & PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED) != 0);
     homePoseValid = false;
     return true;
@@ -4133,6 +4268,7 @@ bool loadPersistedSettings() {
     stepDist = constrain(settingsV2.stepDist,
         TIMELAPSE_STEP_DIST_MIN_MS,
         TIMELAPSE_STEP_DIST_MAX_MS);
+    timelapseSettleDwellMs = DEFAULT_TIMELAPSE_SETTLE_DWELL_MS;
     homePoseValid = false;
     return true;
   }
@@ -4149,16 +4285,20 @@ bool loadPersistedSettings() {
       static_cast<int>(settingsV1.timelapseIntervalSeconds),
       TIMELAPSE_INTERVAL_MIN_SECONDS,
       TIMELAPSE_INTERVAL_MAX_SECONDS));
+  timelapseSettleDwellMs = DEFAULT_TIMELAPSE_SETTLE_DWELL_MS;
   homePoseValid = false;
   return true;
 }
 
 void savePersistedSettings() {
-  PersistedSettingsV4 settings = {};
+  PersistedSettingsV5 settings = {};
   settings.magic = PERSISTED_SETTINGS_MAGIC;
   settings.version = PERSISTED_SETTINGS_VERSION;
   settings.timelapseIntervalSeconds = timelapseIntervalSeconds;
   settings.stepDist = stepDist;
+  settings.timelapseSettleDwellMs = static_cast<uint16_t>(constrain(timelapseSettleDwellMs,
+      TIMELAPSE_SETTLE_DWELL_MIN_MS,
+      TIMELAPSE_SETTLE_DWELL_MAX_MS));
   settings.flags = 0;
   if (rumbleMuted) {
     settings.flags |= PERSISTED_SETTINGS_FLAG_RUMBLE_MUTED;
@@ -4177,10 +4317,12 @@ void savePersistedSettings() {
 void restorePersistedSettingDefaults() {
   timelapseIntervalSeconds = DEFAULT_TIMELAPSE_INTERVAL_SECONDS;
   stepDist = DEFAULT_TIMELAPSE_STEP_DIST_MS;
+  timelapseSettleDwellMs = DEFAULT_TIMELAPSE_SETTLE_DWELL_MS;
   rumbleMuted = false;
   homePoseValid = false;
   homeReturnActive = false;
   updateIntervalMs();
+  enforceTimelapseTimingBudget(false);
 }
 
 // START + PAD_UP increases timelapseIntervalSeconds.
@@ -4261,6 +4403,50 @@ bool handleTimelapseStepDistAdjustment() {
   }
 
   if (stepDistAdjustComboHandled) {
+    stopAllMotors();
+    return true;
+  }
+
+  return false;
+}
+
+// START + SELECT + PAD_RIGHT increases settle dwell.
+// START + SELECT + PAD_LEFT decreases settle dwell.
+// Dwell changes by 100 ms per press.
+bool handleTimelapseSettleDwellAdjustment() {
+  bool adjustmentAllowed = !isAutoModeActive();
+  bool dwellAdjustUpComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_RIGHT);
+  bool dwellAdjustDownComboRawActive = ps2x.Button(PSB_START) && ps2x.Button(PSB_SELECT) && ps2x.Button(PSB_PAD_LEFT);
+
+  if (dwellAdjustUpComboRawActive && !lastTimelapseSettleAdjustUpComboActive) {
+    if (adjustmentAllowed) {
+      adjustTimelapseSettleDwell(static_cast<int>(TIMELAPSE_SETTLE_DWELL_ADJUST_INCREMENT_MS));
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Timelapse dwell adjustment blocked: auto mode active."));
+    }
+  }
+
+  if (dwellAdjustDownComboRawActive && !lastTimelapseSettleAdjustDownComboActive) {
+    if (adjustmentAllowed) {
+      adjustTimelapseSettleDwell(-static_cast<int>(TIMELAPSE_SETTLE_DWELL_ADJUST_INCREMENT_MS));
+    } else {
+      startLockoutDeniedRumbleFeedback();
+      Serial.println(F("Timelapse dwell adjustment blocked: auto mode active."));
+    }
+  }
+
+  lastTimelapseSettleAdjustUpComboActive = dwellAdjustUpComboRawActive;
+  lastTimelapseSettleAdjustDownComboActive = dwellAdjustDownComboRawActive;
+
+  bool dwellAdjustComboHandled = adjustmentAllowed && (dwellAdjustUpComboRawActive || dwellAdjustDownComboRawActive);
+
+  if (dwellAdjustUpComboRawActive || dwellAdjustDownComboRawActive) {
+    suppressNextStartRelease = true;
+    suppressNextSelectRelease = true;
+  }
+
+  if (dwellAdjustComboHandled) {
     stopAllMotors();
     return true;
   }
@@ -5251,7 +5437,7 @@ void handleActiveTimelapseMode(unsigned long now) {
       }
       break;
     case TIMELAPSE_PHASE_SETTLE:
-      if (now - timelapsePhaseStartMs >= TIMELAPSE_SETTLE_DWELL_MS) {
+      if (now - timelapsePhaseStartMs >= timelapseSettleDwellMs) {
         timelapsePhase = TIMELAPSE_PHASE_IDLE;
         timelapsePhaseStartMs = now;
       }
@@ -5410,6 +5596,7 @@ void setup() {
   Serial.println(F("BUILD: SPEED_LOG_V2 (WILL_TEST_SPEED_BUILD)"));
   bool persistedSettingsLoaded = loadPersistedSettings();
   updateIntervalMs();
+  enforceTimelapseTimingBudget(false);
 
   const uint8_t outputPins[] = {
     LED_BUILTIN,
@@ -5474,6 +5661,7 @@ void setup() {
   }
   Serial.println(F("START + PAD_UP/DOWN adjusts timelapseIntervalSeconds."));
   Serial.println(F("START + PAD_RIGHT/LEFT adjusts stepDist by 10 ms."));
+  Serial.println(F("START + SELECT + PAD_RIGHT/LEFT adjusts settle dwell by 100 ms."));
   Serial.println(F("START + SELECT + SQUARE toggles controller rumble mute."));
   Serial.println(F("Drone Mode: START + SELECT + TRIANGLE toggles Flowlapse frame-count mode."));
   Serial.println(F("Drone Mode: START+TRIANGLE=set home, START+SQUARE=go home, START+CIRCLE=clear home."));
@@ -5482,6 +5670,12 @@ void setup() {
   Serial.print(timelapseIntervalSeconds);
   Serial.print(F("s, stepDist="));
   Serial.print(stepDist);
+  Serial.print(F("ms, dwell="));
+  Serial.print(timelapseSettleDwellMs);
+  Serial.print(F("ms, effectiveCycle="));
+  Serial.print(timelapseIntervalMs + getTimelapseEffectiveMoveDurationMs() + timelapseSettleDwellMs);
+  Serial.print(F("ms, budget="));
+  Serial.print(timelapseIntervalMs);
   Serial.print(F("ms, rumbleMuted="));
   Serial.println(rumbleMuted ? F("YES") : F("NO"));
   Serial.print(F("Boot home pose valid="));
@@ -5534,6 +5728,17 @@ void processDisplayCommands() {
           if (delta != 0) {
             adjustStepDist(delta);
             Serial.print(F("Display SET timelapse stepDist = "));
+            Serial.println(val);
+          }
+        }
+      } else if (strncmp(displayCmdBuf, "SET:TL_DWELL:", 13) == 0) {
+        long val = atol(displayCmdBuf + 13);
+        if (val >= static_cast<long>(TIMELAPSE_SETTLE_DWELL_MIN_MS)
+            && val <= static_cast<long>(TIMELAPSE_SETTLE_DWELL_MAX_MS)) {
+          int delta = static_cast<int>(val - static_cast<long>(timelapseSettleDwellMs));
+          if (delta != 0) {
+            adjustTimelapseSettleDwell(delta);
+            Serial.print(F("Display SET timelapse dwell = "));
             Serial.println(val);
           }
         }
@@ -5697,6 +5902,11 @@ void loop() {
 
     if (handleTimelapseStepDistAdjustment()) {
       emitLoopBypassReason("TIMELAPSE_STEPDIST_ADJUST");
+      return;
+    }
+
+    if (handleTimelapseSettleDwellAdjustment()) {
+      emitLoopBypassReason("TIMELAPSE_DWELL_ADJUST");
       return;
     }
 
