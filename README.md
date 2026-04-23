@@ -771,6 +771,48 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_IDLE_TIMEOUT_MS` (disabled; idle auto-exit removed)
 	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
 	- `DRONE_MICRO_MOTION_SPEED_RATIO` (currently `0.25`) — L2 micro-motion multiplier for ultra-smooth cinematic control
+
+#### Timelapse tuning constants (firmware)
+
+These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control timelapse motion smoothness:
+
+- Motion ramping:
+	- `TIMELAPSE_RAMP_UP_DURATION_MS` (currently `40`) — acceleration phase duration during move
+	- `TIMELAPSE_RAMP_DOWN_DURATION_MS` (currently `40`) — deceleration phase duration during move
+	- `TIMELAPSE_CRUISE_MIN_DURATION_MS` (currently `100`) — minimum constant-speed duration at max stage
+	- **Note**: Total ramp envelope = 40ms + 100ms + 40ms = 180ms minimum motion duration
+- Speed stages:
+	- `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE` (currently `4`) — runs timelapse at full speed (stages 1–4 supported)
+	- `TIMELAPSE_MAX_SPEED_STAGE_MIN` (currently `1`) — minimum allowable cap (stage 1 = slowest)
+	- `TIMELAPSE_MAX_SPEED_STAGE_MAX` (currently `4`) — maximum allowable cap (stage 4 = fastest)
+	- Set to lower values (e.g., `2` or `3`) for heavier payloads to reduce sway and oscillation
+- Timing:
+	- `DEFAULT_TIMELAPSE_INTERVAL_SECONDS` (currently `15`) — default interval between captures
+	- `DEFAULT_TIMELAPSE_STEP_DIST_MS` (currently `250`) — default motion duration per move
+	- `DEFAULT_TIMELAPSE_SETTLE_DWELL_MS` (currently `500`) — default settle/dwell time after motion stops and before next trigger
+- User adjustment bounds:
+	- `TIMELAPSE_SETTLE_DWELL_MIN_MS` (currently `0`) — allow zero dwell if needed (fast shooting)
+	- `TIMELAPSE_SETTLE_DWELL_MAX_MS` (currently `3000`) — cap dwell at 3 seconds
+	- `TIMELAPSE_SETTLE_DWELL_ADJUST_INCREMENT_MS` (currently `100`) — step size for display command adjustments
+- Timing budget enforcement:
+	- Timelapse automatically clamps settle dwell if `move duration + dwell` would exceed `timelapse interval`
+	- Serial prints warning and broadcasts clamp event when budget is exceeded
+	- Prevents invalid configurations that could miss shutter triggers
+- Display command support:
+	- `SET:TL_MAX_STAGE:<1-4>` — change max speed stage via display (e.g., `SET:TL_MAX_STAGE:3` caps speed at stage 3)
+	- `SET:TL_DWELL:<ms>` — change settle dwell time (e.g., `SET:TL_DWELL:750` sets 750ms dwell)
+	- `SET:TL_INT:<sec>` — change interval seconds (e.g., `SET:TL_INT:10` sets 10-second interval)
+	- `SET:TL_STEP:<ms>` — change step distance (e.g., `SET:TL_STEP:300` sets 300ms move time)
+
+Quick tuning guide for different payloads:
+
+- **Light rig** (< 5 lbs): `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE = 4`, `DEFAULT_TIMELAPSE_STEP_DIST_MS = 200-300`
+	- Use faster speeds and shorter moves for dynamic, energetic motion
+- **Medium rig** (5–15 lbs): `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE = 3`, `DEFAULT_TIMELAPSE_STEP_DIST_MS = 300-400`
+	- Balance between smooth motion and reasonable move duration
+- **Heavy rig** (> 15 lbs): `DEFAULT_TIMELAPSE_MAX_SPEED_STAGE = 2`, `DEFAULT_TIMELAPSE_STEP_DIST_MS = 400-500`
+	- Reduce speed and lengthen moves for controlled, stable camera work; reduces sway and mechanical resonance
+
 - Flowlapse safety constants:
 	- `FLOWLAPSE_MAX_WAYPOINTS` (currently `8`)
 	- `FLOWLAPSE_LOOP_CAPTURE` (currently `false`) — set `true` to loop capture continuously from start after each pass

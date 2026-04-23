@@ -76,6 +76,10 @@ constexpr int DEFAULT_TIMELAPSE_STEP_DIST_MS = 250;  // Increased from 100ms for
 int stepDist = DEFAULT_TIMELAPSE_STEP_DIST_MS;
 constexpr unsigned long DEFAULT_TIMELAPSE_SETTLE_DWELL_MS = 500;
 unsigned long timelapseSettleDwellMs = DEFAULT_TIMELAPSE_SETTLE_DWELL_MS;
+constexpr uint8_t DEFAULT_TIMELAPSE_MAX_SPEED_STAGE = 4;  // 1-4; limits max velocity during ramp
+constexpr uint8_t TIMELAPSE_MAX_SPEED_STAGE_MIN = 1;
+constexpr uint8_t TIMELAPSE_MAX_SPEED_STAGE_MAX = 4;
+uint8_t timelapseMaxSpeedStage = DEFAULT_TIMELAPSE_MAX_SPEED_STAGE;
 const uint8_t trigger = 28;
 
 // Timelapse motion ramping parameters for smooth camera movement
@@ -5386,11 +5390,11 @@ void handleActiveTimelapseMode(unsigned long now) {
       }
       break;
     case TIMELAPSE_PHASE_MOVE_RAMP_UP:
-      // Gradually increase speed stage from 0 to 4 over TIMELAPSE_RAMP_UP_DURATION_MS
+      // Gradually increase speed stage from 0 to timelapseMaxSpeedStage over TIMELAPSE_RAMP_UP_DURATION_MS
       {
         unsigned long elapsedMs = now - timelapsePhaseStartMs;
-        uint8_t targetStage = (elapsedMs * 4) / TIMELAPSE_RAMP_UP_DURATION_MS;
-        if (targetStage > 4) targetStage = 4;
+        uint8_t targetStage = (elapsedMs * timelapseMaxSpeedStage) / TIMELAPSE_RAMP_UP_DURATION_MS;
+        if (targetStage > timelapseMaxSpeedStage) targetStage = timelapseMaxSpeedStage;
         
         if (targetStage > timelapseCurrentSpeedStage) {
           applyTimelapseSpeedIncrease(timelapseMode);
@@ -5400,12 +5404,12 @@ void handleActiveTimelapseMode(unsigned long now) {
         if (elapsedMs >= TIMELAPSE_RAMP_UP_DURATION_MS) {
           timelapsePhase = TIMELAPSE_PHASE_MOVE_CRUISE;
           timelapsePhaseStartMs = now;
-          timelapseCurrentSpeedStage = 4;
+          timelapseCurrentSpeedStage = timelapseMaxSpeedStage;
         }
       }
       break;
     case TIMELAPSE_PHASE_MOVE_CRUISE:
-      // Maintain speed at stage 4 for cruise phase
+      // Maintain speed at timelapseMaxSpeedStage for cruise phase
       {
         unsigned long totalMoveDuration = TIMELAPSE_RAMP_UP_DURATION_MS + TIMELAPSE_RAMP_DOWN_DURATION_MS;
         unsigned long cruiseMinDuration = stepDist > totalMoveDuration ? stepDist - totalMoveDuration : TIMELAPSE_CRUISE_MIN_DURATION_MS;
@@ -5418,10 +5422,10 @@ void handleActiveTimelapseMode(unsigned long now) {
       }
       break;
     case TIMELAPSE_PHASE_MOVE_RAMP_DOWN:
-      // Gradually decrease speed stage from 4 to 0 over TIMELAPSE_RAMP_DOWN_DURATION_MS
+      // Gradually decrease speed stage from timelapseMaxSpeedStage to 0 over TIMELAPSE_RAMP_DOWN_DURATION_MS
       {
         unsigned long elapsedMs = now - timelapsePhaseStartMs;
-        uint8_t targetStage = (4 * (TIMELAPSE_RAMP_DOWN_DURATION_MS - elapsedMs)) / TIMELAPSE_RAMP_DOWN_DURATION_MS;
+        uint8_t targetStage = (timelapseMaxSpeedStage * (TIMELAPSE_RAMP_DOWN_DURATION_MS - elapsedMs)) / TIMELAPSE_RAMP_DOWN_DURATION_MS;
         
         if (targetStage < timelapseCurrentSpeedStage) {
           applyTimelapseSpeedDecrease(timelapseMode);
@@ -5740,6 +5744,18 @@ void processDisplayCommands() {
             adjustTimelapseSettleDwell(delta);
             Serial.print(F("Display SET timelapse dwell = "));
             Serial.println(val);
+          }
+        }
+      } else if (strncmp(displayCmdBuf, "SET:TL_MAX_STAGE:", 17) == 0) {
+        int val = atoi(displayCmdBuf + 17);
+        if (val >= TIMELAPSE_MAX_SPEED_STAGE_MIN && val <= TIMELAPSE_MAX_SPEED_STAGE_MAX) {
+          if (val != static_cast<int>(timelapseMaxSpeedStage)) {
+            timelapseMaxSpeedStage = static_cast<uint8_t>(val);
+            Serial.print(F("Display SET timelapse max speed stage = "));
+            Serial.println(val);
+            char statusBuf[32];
+            snprintf(statusBuf, sizeof(statusBuf), "TL_MAX_STAGE:%d", val);
+            broadcastStatus(statusBuf);
           }
         }
       } else if (strncmp(displayCmdBuf, "SET:RUMBLE_MUTE:", 16) == 0) {
