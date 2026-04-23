@@ -598,9 +598,10 @@ Use this for dual-stick flying-drone style control.
 - Focus stays on Triangle/Cross with Square/Circle speed control
 - In Drone Mode, **SELECT/START are remapped to Flowlapse controls** (timelapse/bounce mode selection is ignored while Drone Mode is active)
 - Drone speed modifiers while in Drone Mode:
-	- Hold `L2` for **micro-motion mode**: ultra-smooth cinematic movement at 0.25x speed (macro shots, interview push-ins, product framing)
+	- Hold `L2` for **micro-motion mode**: ultra-smooth cinematic movement at strongly reduced duty speed (macro shots, interview push-ins, product framing)
 	- Hold `R2` for temporary boost mode (one speed tier faster, never above per-axis cap)
 	- If both `L2` and `R2` are held together, L2 takes priority (micro-motion)
+	- `START + SELECT + X` toggles PROPORTIONAL/FIXED with strong rumble feedback (2 pulses = PROPORTIONAL, 1 pulse = FIXED)
 - Exit Drone Mode by pressing **R3** again (toggle off)
 
 ### Flowlapse pause/resume (Drone Mode only)
@@ -746,17 +747,17 @@ Speed level is based on how far you push either stick from center (small deflect
 These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control Drone Mode feel:
 
 - Per-axis expo curves:
-	- `DRONE_SWING_EXPO_PERCENT` (currently `65`)
-	- `DRONE_LIFT_EXPO_PERCENT` (currently `65`)
-	- `DRONE_PAN_EXPO_PERCENT` (currently `65`)
-	- `DRONE_TILT_EXPO_PERCENT` (currently `65`)
+	- `DRONE_SWING_EXPO_PERCENT` (currently `20`)
+	- `DRONE_LIFT_EXPO_PERCENT` (currently `20`)
+	- `DRONE_PAN_EXPO_PERCENT` (currently `20`)
+	- `DRONE_TILT_EXPO_PERCENT` (currently `20`)
 	- Higher = softer response near center, more ramp near edge
 	- Lower = more linear response
 - Per-axis deadbands:
-	- `DRONE_SWING_DEADBAND` (currently `12`)
-	- `DRONE_LIFT_DEADBAND` (currently `14`)
-	- `DRONE_PAN_DEADBAND` (currently `10`)
-	- `DRONE_TILT_DEADBAND` (currently `10`)
+	- `DRONE_SWING_DEADBAND` (currently `8`)
+	- `DRONE_LIFT_DEADBAND` (currently `10`)
+	- `DRONE_PAN_DEADBAND` (currently `8`)
+	- `DRONE_TILT_DEADBAND` (currently `8`)
 	- Inside deadband, both direction and speed are forced to stop for that axis
 - Per-axis max speed caps:
 	- `DRONE_SWING_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
@@ -765,16 +766,17 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 	- `DRONE_TILT_MAX_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
 	- Available tiers: `DRONE_SPEED_TIER_STOP`, `DRONE_SPEED_TIER_MED`, `DRONE_SPEED_TIER_HIGH`
 - Speed tier thresholds (expo-space):
-	- `DRONE_SPEED_TIER_MED_THRESHOLD` (currently `43`)
-	- `DRONE_SPEED_TIER_HIGH_THRESHOLD` (currently `86`)
+	- `DRONE_SPEED_TIER_MED_THRESHOLD` (currently `18`)
+	- `DRONE_SPEED_TIER_HIGH_THRESHOLD` (currently `44`)
 - Modifier toggles:
 	- `DRONE_ENABLE_PRECISION_MODIFIER` (currently `true`)
 	- `DRONE_ENABLE_BOOST_MODIFIER` (currently `true`)
+	- `DRONE_FIXED_STICK_SPEED_TIER` (currently `DRONE_SPEED_TIER_HIGH`)
 	- `DRONE_L2_PRIORITY_OVER_BOOST` (currently `true`) — when both held, precision wins over boost
 - Logging:
 	- `DRONE_IDLE_TIMEOUT_MS` (disabled; idle auto-exit removed)
 	- `DRONE_SERIAL_LOG_ENABLED` (currently `true`) — set `false` to silence runtime drone logs (axis movement and modifier state). Boot tuning profile always prints regardless.
-	- `DRONE_MICRO_MOTION_SPEED_RATIO` (currently `0.25`) — L2 precision-mode duty-cycle scaler (`0.0` near stop, `1.0` full MED duty window)
+	- `DRONE_MICRO_MOTION_SPEED_RATIO` (currently `0.12`) — L2 precision-mode duty-cycle scaler (`0.0` near stop, `1.0` full MED duty window)
 
 #### Timelapse tuning constants (firmware)
 

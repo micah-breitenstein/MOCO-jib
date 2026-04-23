@@ -255,18 +255,18 @@ constexpr uint8_t DRONE_MODE_EXIT_RUMBLE_PULSES = 2;
 constexpr uint8_t DRONE_SPEED_TIER_STOP = 0;
 constexpr uint8_t DRONE_SPEED_TIER_MED = 1;
 constexpr uint8_t DRONE_SPEED_TIER_HIGH = 2;
-constexpr int DRONE_SPEED_TIER_MED_THRESHOLD = 43;
-constexpr int DRONE_SPEED_TIER_HIGH_THRESHOLD = 86;
+constexpr int DRONE_SPEED_TIER_MED_THRESHOLD = 18;
+constexpr int DRONE_SPEED_TIER_HIGH_THRESHOLD = 44;
 constexpr int DRONE_STICK_MAX_DEFLECTION = 127;
-constexpr uint8_t DRONE_EXPO_PERCENT = 65;
+constexpr uint8_t DRONE_EXPO_PERCENT = 20;
 constexpr uint8_t DRONE_SWING_EXPO_PERCENT = DRONE_EXPO_PERCENT;
 constexpr uint8_t DRONE_LIFT_EXPO_PERCENT = DRONE_EXPO_PERCENT;
 constexpr uint8_t DRONE_PAN_EXPO_PERCENT = DRONE_EXPO_PERCENT;
 constexpr uint8_t DRONE_TILT_EXPO_PERCENT = DRONE_EXPO_PERCENT;
-constexpr int DRONE_SWING_DEADBAND = 12;
-constexpr int DRONE_LIFT_DEADBAND = 14;
-constexpr int DRONE_PAN_DEADBAND = 10;
-constexpr int DRONE_TILT_DEADBAND = 10;
+constexpr int DRONE_SWING_DEADBAND = 8;
+constexpr int DRONE_LIFT_DEADBAND = 10;
+constexpr int DRONE_PAN_DEADBAND = 8;
+constexpr int DRONE_TILT_DEADBAND = 8;
 constexpr int DRONE_UI_DEADBAND = 4;
 constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
@@ -274,9 +274,13 @@ constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
-constexpr uint8_t DRONE_FIXED_STICK_SPEED_TIER = DRONE_SPEED_TIER_MED;
+constexpr uint8_t DRONE_FIXED_STICK_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
 constexpr bool DRONE_L2_PRIORITY_OVER_BOOST = true;
-constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.25f; // L2 micro-motion multiplier
+constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.12f; // L2 precision-mode duty scale
+constexpr unsigned long DRONE_STICK_SPEED_TOGGLE_RUMBLE_ON_MS = 170;
+constexpr unsigned long DRONE_STICK_SPEED_TOGGLE_RUMBLE_TOTAL_MS = 320;
+constexpr uint8_t DRONE_STICK_SPEED_TOGGLE_PROPORTIONAL_PULSES = 2;
+constexpr uint8_t DRONE_STICK_SPEED_TOGGLE_FIXED_PULSES = 1;
 constexpr unsigned long DRONE_IDLE_TIMEOUT_MS = 0UL; // disabled; exit drone mode with R3
 constexpr bool DRONE_SERIAL_LOG_ENABLED = true; // set false to silence runtime drone logs
 constexpr unsigned long DRONE_UI_BROADCAST_INTERVAL_MS = 10;
@@ -3200,9 +3204,12 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       Serial.println(F("Drone: stick speed mode toggle blocked while capture is running/paused."));
     } else {
       droneProportionalStickSpeedEnabled = !droneProportionalStickSpeedEnabled;
-      startFeedbackRumble(droneProportionalStickSpeedEnabled ? 2 : 1,
-                          FLOWLAPSE_WAYPOINT_RUMBLE_ON_MS,
-                          FLOWLAPSE_WAYPOINT_RUMBLE_TOTAL_MS);
+      startFeedbackRumble(
+          droneProportionalStickSpeedEnabled
+              ? DRONE_STICK_SPEED_TOGGLE_PROPORTIONAL_PULSES
+              : DRONE_STICK_SPEED_TOGGLE_FIXED_PULSES,
+          DRONE_STICK_SPEED_TOGGLE_RUMBLE_ON_MS,
+          DRONE_STICK_SPEED_TOGGLE_RUMBLE_TOTAL_MS);
       broadcastStatus(droneProportionalStickSpeedEnabled
           ? "DRONE_STICK_SPEED:PROPORTIONAL"
           : "DRONE_STICK_SPEED:FIXED");
