@@ -280,7 +280,9 @@ constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 constexpr uint8_t DRONE_FIXED_STICK_SPEED_TIER = DRONE_SPEED_TIER_MED;
 constexpr bool DRONE_L2_PRIORITY_OVER_BOOST = true;
 constexpr float DRONE_MICRO_MOTION_SPEED_RATIO = 0.12f; // L2 precision-mode duty scale
-constexpr unsigned long DRONE_MANUAL_TIER_STEP_INTERVAL_MS = 200;
+constexpr unsigned long DRONE_MANUAL_TIER_STEP_INTERVAL_MS = 60;
+constexpr unsigned long DRONE_SPEED_STAGE_PULSE_HIGH_MS = 8;
+constexpr unsigned long DRONE_SPEED_STAGE_PULSE_LOW_MS = 8;
 constexpr unsigned long DRONE_STICK_SPEED_TOGGLE_RUMBLE_ON_MS = 170;
 constexpr unsigned long DRONE_STICK_SPEED_TOGGLE_RUMBLE_TOTAL_MS = 320;
 constexpr uint8_t DRONE_STICK_SPEED_TOGGLE_PROPORTIONAL_PULSES = 2;
@@ -860,6 +862,13 @@ void pulseSpeedStageUpPin(uint8_t speedUpPin) {
   delay(SPEED_STAGE_PULSE_LOW_MS);
 }
 
+void pulseDroneSpeedStagePin(uint8_t speedPin) {
+  digitalWrite(speedPin, HIGH);
+  delay(DRONE_SPEED_STAGE_PULSE_HIGH_MS);
+  digitalWrite(speedPin, LOW);
+  delay(DRONE_SPEED_STAGE_PULSE_LOW_MS);
+}
+
 void applyDefaultAxisSpeedStage(uint8_t speedUpPin, uint8_t targetStage) {
   uint8_t clampedStage = static_cast<uint8_t>(constrain(static_cast<int>(targetStage), 0, 4));
   for (uint8_t i = 0; i < clampedStage; ++i) {
@@ -1023,10 +1032,10 @@ void stepDroneAxisTierTowardTarget(uint8_t& currentTier,
 
   uint8_t oldTier = currentTier;
   if (currentTier < clampedTargetTier) {
-    pulseSpeedStageUpPin(speedUpPin);
+    pulseDroneSpeedStagePin(speedUpPin);
     currentTier++;
   } else {
-    pulseSpeedStageUpPin(speedDownPin);
+    pulseDroneSpeedStagePin(speedDownPin);
     currentTier--;
   }
 
