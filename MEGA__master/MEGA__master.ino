@@ -5693,13 +5693,13 @@ void handleActiveTimelapseMode(unsigned long now) {
 
   switch (timelapsePhase) {
     case TIMELAPSE_PHASE_IDLE:
-      digitalWrite(trigger, LOW);
+      digitalWrite(trigger, HIGH);
       timelapsePhase = TIMELAPSE_PHASE_TRIGGER_LOW;
       timelapsePhaseStartMs = now;
       break;
     case TIMELAPSE_PHASE_TRIGGER_LOW:
       if (now - timelapsePhaseStartMs >= static_cast<unsigned long>(timelapseIntervalMs / 2)) {
-        digitalWrite(trigger, HIGH);
+        digitalWrite(trigger, LOW);
         timelapsePhase = TIMELAPSE_PHASE_TRIGGER_HIGH;
         timelapsePhaseStartMs = now;
       }
@@ -6303,6 +6303,14 @@ void loop() {
   handleAxisSpeedControl(PSB_L1, panSpeedUp, swingSpeedUp, "L1_PAN_SWING_UP");
   handleAxisSpeedControl(PSB_L2, panSpeedDown, swingSpeedDown, "L2_PAN_SWING_DOWN");
   logShoulderSpeedButtonEdges();
+
+  if (bounce != 0) {
+    updateBounceModeSelection();
+    handleBounceStage0(now);
+    handleBounceStage1(now);
+    broadcastModeStatusIfChanged();
+    return;
+  }
 
   handleSwingMotionGroup();
 
