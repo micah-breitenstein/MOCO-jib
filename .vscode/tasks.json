@@ -53,7 +53,7 @@
 				"upload",
 				"-v",
 				"-p",
-				"/dev/cu.usbmodem11401",
+				"/dev/cu.usbmodem1101",
 				"--fqbn",
 				"esp32:esp32:esp32s3",
 				"${workspaceFolder}/ESP32-S3-Matrix/ESP32_S3_Matrix_Status"
