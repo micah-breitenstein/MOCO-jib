@@ -27,6 +27,7 @@ const int MAX_DELAY        = 6000; // ceiling for fine adjustment (2x slowest st
 ///// RAMPING SETTINGS
 constexpr int RAMP_INCREMENT = 150;
 constexpr int RAMP_START_DELAY = 6000;
+constexpr int RAMP_STOP_DELAY  = 6000;
 
 ///// STATE
 int stage = 0;
@@ -39,9 +40,14 @@ unsigned long speedIndicatorUntilMs = 0;
 int targetDelay = STAGE_DELAYS[0];
 int currentDelay = STAGE_DELAYS[0];
 bool motionActive = false;
-bool rampingDown = false;
+bool pendingStop = false;
 unsigned long lastStepMicros = 0;
 unsigned long rampUpdateMicros = 0;
+
+// Direction state: avoid instant reverse while moving.
+bool currentDirection = true;
+bool requestedDirection = true;
+bool directionChangePending = false;
 
 void debugLog(const char* message) {
   if (PAN_SERIAL_DEBUG) {
@@ -73,7 +79,7 @@ bool stepMotorNonBlocking(bool dirHigh, unsigned long nowMicros) {
   if (nowMicros - lastStepMicros >= currentDelay) {
     digitalWrite(driverDIR, dirHigh ? HIGH : LOW);
     digitalWrite(driverPUL, LOW);
-    delayMicroseconds(1);
+    delayMicroseconds(2);
     digitalWrite(driverPUL, HIGH);
     lastStepMicros = nowMicros;
     return true;
@@ -98,18 +104,18 @@ void startMotion() {
   if (!motionActive) {
     motionActive = true;
     currentDelay = RAMP_START_DELAY;
-    rampingDown = false;
+    pendingStop = false;
     lastStepMicros = 0;
     rampUpdateMicros = 0;
-    digitalWrite(LED_BUILTIN, HIGH);
+    targetDelay = STAGE_DELAYS[stage];
     debugLog("MOTION START");
   }
 }
 
 void stopMotion() {
-  if (motionActive && !rampingDown) {
-    rampingDown = true;
-    targetDelay = RAMP_START_DELAY;
+  if (motionActive && !pendingStop) {
+    pendingStop = true;
+    targetDelay = RAMP_STOP_DELAY;
     debugLog("MOTION STOP");
   }
 }
@@ -175,11 +181,8 @@ void setup() {
 }
 
 void loop() {
-  if (millis() < speedIndicatorUntilMs) {
-    digitalWrite(LED_BUILTIN, HIGH);
-  } else if (!motionActive) {
-    digitalWrite(LED_BUILTIN, LOW);
-  }
+  bool ledOn = motionActive || (millis() < speedIndicatorUntilMs);
+  digitalWrite(LED_BUILTIN, ledOn ? HIGH : LOW);
 
   unsigned long nowMicros = micros();
 
@@ -210,28 +213,41 @@ void loop() {
 
   ///// MOTION LOGIC
   bool commandActive = (upRead == HIGH || downRead == HIGH);
-  
+
   if (!commandActive) {
     stopMotion();
-  } else if (!motionActive) {
-    startMotion();
+  } else {
+    requestedDirection = (upRead == HIGH);
+
+    if (!motionActive) {
+      currentDirection = requestedDirection;
+      startMotion();
+    } else if (!pendingStop && requestedDirection != currentDirection) {
+      directionChangePending = true;
+      stopMotion();
+    }
   }
 
   if (motionActive) {
     updateRamping(nowMicros);
 
-    if (rampingDown && currentDelay >= RAMP_START_DELAY) {
+    if (pendingStop && currentDelay >= RAMP_STOP_DELAY) {
       motionActive = false;
-      rampingDown = false;
-      digitalWrite(LED_BUILTIN, LOW);
+      pendingStop = false;
       debugLog("MOTION STOPPED");
+
+      if (directionChangePending && commandActive) {
+        currentDirection = requestedDirection;
+        directionChangePending = false;
+        startMotion();
+      } else {
+        directionChangePending = false;
+      }
       return;
     }
 
-    if (upRead == HIGH) {
-      stepMotorNonBlocking(true, nowMicros);
-    } else if (downRead == HIGH) {
-      stepMotorNonBlocking(false, nowMicros);
+    if (!pendingStop && commandActive) {
+      stepMotorNonBlocking(currentDirection, nowMicros);
     }
   }
 }

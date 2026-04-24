@@ -21,13 +21,14 @@ const int speedAdjDown = 12;  // fine-tune: increase pulse delay (slower)
 // Lower value = shorter delay between pulses = faster motor.
 const int STAGE_COUNT      = 5;
 const int STAGE_DELAYS[STAGE_COUNT] = {9000, 4200, 1900, 1075, 400};
-const int HIGH_SPEED_DELAY = 100;  // used when both adj pins are HIGH (solo axis trim)
-const int MIN_DELAY        = 100;  // floor for fine adjustment
-const int MAX_DELAY        = 16000; // ceiling for fine adjustment (below 16383µs AVR delayMicroseconds limit)
+const int HIGH_SPEED_DELAY = 100;    // used when both adj pins are HIGH (solo axis trim)
+const int MIN_DELAY        = 100;    // floor for fine adjustment
+const int MAX_DELAY        = 16000;  // ceiling for fine adjustment
 
 ///// RAMPING SETTINGS
 constexpr int RAMP_INCREMENT = 200;
 constexpr int RAMP_START_DELAY = 12000;
+constexpr int RAMP_STOP_DELAY  = 12000;
 
 ///// STATE
 int stage = 0;
@@ -40,9 +41,14 @@ unsigned long speedIndicatorUntilMs = 0;
 int targetDelay = STAGE_DELAYS[0];
 int currentDelay = STAGE_DELAYS[0];
 bool motionActive = false;
-bool rampingDown = false;
+bool pendingStop = false;
 unsigned long lastStepMicros = 0;
 unsigned long rampUpdateMicros = 0;
+
+// Direction state: avoid instant reverse while moving.
+bool currentDirection = true;
+bool requestedDirection = true;
+bool directionChangePending = false;
 
 void debugLog(const char* message) {
   if (TILT_SERIAL_DEBUG) {
@@ -74,7 +80,7 @@ bool stepMotorNonBlocking(bool dirHigh, unsigned long nowMicros) {
   if (nowMicros - lastStepMicros >= currentDelay) {
     digitalWrite(driverDIR, dirHigh ? HIGH : LOW);
     digitalWrite(driverPUL, LOW);
-    delayMicroseconds(1);
+    delayMicroseconds(2);
     digitalWrite(driverPUL, HIGH);
     lastStepMicros = nowMicros;
     return true;
@@ -99,31 +105,31 @@ void startMotion() {
   if (!motionActive) {
     motionActive = true;
     currentDelay = RAMP_START_DELAY;
-    rampingDown = false;
+    pendingStop = false;
     lastStepMicros = 0;
     rampUpdateMicros = 0;
-    digitalWrite(LED_BUILTIN, HIGH);
+    targetDelay = STAGE_DELAYS[stage];
     debugLog("MOTION START");
   }
 }
 
 void stopMotion() {
-  if (motionActive && !rampingDown) {
-    rampingDown = true;
-    targetDelay = RAMP_START_DELAY;
+  if (motionActive && !pendingStop) {
+    pendingStop = true;
+    targetDelay = RAMP_STOP_DELAY;
     debugLog("MOTION STOP");
   }
 }
 
 // Handle speed stage transitions.
-// Note: stage 0 → 1 fires continuously while held; all other transitions
+// Note: stage 0 -> 1 fires continuously while held; all other transitions
 // require a rising edge to prevent multiple increments per press.
 void updateSpeedStage(int speedUpRead, int speedDownRead) {
   if (lastSpeedDown == 0 && speedDownRead == 1 && stage > 0) {
     stage--;
     targetDelay = STAGE_DELAYS[stage];
     debugLogStage(stage);
-      debugLogDelay(targetDelay);
+    debugLogDelay(targetDelay);
     triggerSpeedIndicatorPulse();
   }
 
@@ -131,13 +137,13 @@ void updateSpeedStage(int speedUpRead, int speedDownRead) {
     stage = 1;
     targetDelay = STAGE_DELAYS[1];
     debugLog("STAGE1");
-      debugLogDelay(targetDelay);
+    debugLogDelay(targetDelay);
     triggerSpeedIndicatorPulse();
   } else if (lastSpeedUp == 0 && speedUpRead == 1 && stage < STAGE_COUNT - 1) {
     stage++;
     targetDelay = STAGE_DELAYS[stage];
-      debugLogDelay(targetDelay);
     debugLogStage(stage);
+    debugLogDelay(targetDelay);
     triggerSpeedIndicatorPulse();
   }
 
@@ -146,9 +152,6 @@ void updateSpeedStage(int speedUpRead, int speedDownRead) {
 }
 
 // Handle fine speed adjustment and high-speed bypass mode.
-// Both adj pins HIGH → override pd with HIGH_SPEED_DELAY (used for solo axis trim).
-// Only adjUp HIGH → decrease delay (faster). Only adjDown HIGH → increase delay (slower).
-// Returns the pulse delay to use this tick.
 // Updates targetDelay which ramping then moves toward.
 void applySpeedAdjust(int adjUpRead, int adjDownRead) {
   if (adjUpRead == 1 && adjDownRead == 1) {
@@ -182,13 +185,10 @@ void setup() {
 }
 
 void loop() {
-  if (millis() < speedIndicatorUntilMs) {
-    digitalWrite(LED_BUILTIN, HIGH);
-  } else if (!motionActive) {
-      unsigned long nowMicros = micros();
+  bool ledOn = motionActive || (millis() < speedIndicatorUntilMs);
+  digitalWrite(LED_BUILTIN, ledOn ? HIGH : LOW);
 
-    digitalWrite(LED_BUILTIN, LOW);
-  }
+  unsigned long nowMicros = micros();
 
   int upRead    = digitalRead(upButton);
   int downRead  = digitalRead(downButton);
@@ -202,45 +202,56 @@ void loop() {
 
   ///// SPEED ADJUSTMENTS + HIGH SPEED MODE
   applySpeedAdjust(adjUp, adjDown);
-  ///// DIRECTION CONFLICT CHECK
 
+  ///// DIRECTION CONFLICT CHECK
   bool directionConflict = (upRead == HIGH && downRead == HIGH);
   if (directionConflict) {
     if (!lastDirectionConflict) {
       debugLog("TILT CONFLICT: up + down command active; movement skipped");
     }
     lastDirectionConflict = true;
-      stopMotion();
+    stopMotion();
     return;
   }
   lastDirectionConflict = false;
 
   ///// MOTION LOGIC
   bool commandActive = (upRead == HIGH || downRead == HIGH);
-  
+
   if (!commandActive) {
     stopMotion();
-  } else if (!motionActive) {
-    startMotion();
+  } else {
+    requestedDirection = (upRead == HIGH);
+
+    if (!motionActive) {
+      currentDirection = requestedDirection;
+      startMotion();
+    } else if (!pendingStop && requestedDirection != currentDirection) {
+      directionChangePending = true;
+      stopMotion();
+    }
   }
 
   if (motionActive) {
     updateRamping(nowMicros);
 
-    if (rampingDown && currentDelay >= RAMP_START_DELAY) {
+    if (pendingStop && currentDelay >= RAMP_STOP_DELAY) {
       motionActive = false;
-      rampingDown = false;
-      digitalWrite(LED_BUILTIN, LOW);
+      pendingStop = false;
       debugLog("MOTION STOPPED");
+
+      if (directionChangePending && commandActive) {
+        currentDirection = requestedDirection;
+        directionChangePending = false;
+        startMotion();
+      } else {
+        directionChangePending = false;
+      }
       return;
     }
 
-  if (upRead == HIGH) {
-    stepMotorNonBlocking(true, nowMicros);
-  }
-
-  if (downRead == HIGH) {
-    stepMotorNonBlocking(false, nowMicros);
+    if (!pendingStop && commandActive) {
+      stepMotorNonBlocking(currentDirection, nowMicros);
     }
   }
 }

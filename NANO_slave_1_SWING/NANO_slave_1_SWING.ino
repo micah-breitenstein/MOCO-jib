@@ -24,6 +24,7 @@ const int STAGE_DELAYS[STAGE_COUNT] = {5000, 2500, 1000, 500, 250};
 // Higher = slower ramp, lower = faster ramp to target speed
 constexpr int RAMP_INCREMENT = 150;  // reduce delay by this amount per ramp step
 constexpr int RAMP_START_DELAY = 8000;  // start acceleration from this delay
+constexpr int RAMP_STOP_DELAY  = 8000;  // decelerate toward this delay before stop
 
 ///// STATE
 int stage = 0;
@@ -36,9 +37,14 @@ unsigned long speedIndicatorUntilMs = 0;
 int targetDelay = STAGE_DELAYS[0];
 int currentDelay = STAGE_DELAYS[0];
 bool motionActive = false;
-bool rampingDown = false;
+bool pendingStop = false;
 unsigned long lastStepMicros = 0;
 unsigned long rampUpdateMicros = 0;
+
+// Direction state: avoid instant reverse while moving.
+bool currentDirection = true;
+bool requestedDirection = true;
+bool directionChangePending = false;
 
 void debugLog(const char* message) {
   if (SWING_SERIAL_DEBUG) {
@@ -72,7 +78,7 @@ bool stepMotorNonBlocking(bool dirHigh, unsigned long nowMicros) {
   if (nowMicros - lastStepMicros >= currentDelay) {
     digitalWrite(driverDIR, dirHigh ? HIGH : LOW);
     digitalWrite(driverPUL, LOW);
-    delayMicroseconds(1);  // very brief pulse
+    delayMicroseconds(2);  // safer pulse width for common stepper drivers
     digitalWrite(driverPUL, HIGH);
     lastStepMicros = nowMicros;
     return true;
@@ -101,19 +107,19 @@ void startMotion() {
   if (!motionActive) {
     motionActive = true;
     currentDelay = RAMP_START_DELAY;  // start from slow ramp speed
-    rampingDown = false;
+    pendingStop = false;
     lastStepMicros = 0;
     rampUpdateMicros = 0;
-    digitalWrite(LED_BUILTIN, HIGH);
+    targetDelay = STAGE_DELAYS[stage];
     debugLog("MOTION START");
   }
 }
 
 // Trigger deceleration and eventual stop.
 void stopMotion() {
-  if (motionActive && !rampingDown) {
-    rampingDown = true;
-    targetDelay = RAMP_START_DELAY;  // ramp back to slow speed
+  if (motionActive && !pendingStop) {
+    pendingStop = true;
+    targetDelay = RAMP_STOP_DELAY;  // ramp back to slow speed before stopping
     debugLog("MOTION STOP");
   }
 }
@@ -162,13 +168,9 @@ void setup() {
 }
 
 void loop() {
-  // Speed indicator LED for stage changes
-  if (millis() < speedIndicatorUntilMs) {
-    digitalWrite(LED_BUILTIN, HIGH);
-  } else if (!motionActive) {
-    digitalWrite(LED_BUILTIN, LOW);
-  }
-  // LED stays HIGH while motionActive (set in startMotion/updateRamping)
+  // Unified LED policy: on while moving or during speed-change pulse.
+  bool ledOn = motionActive || (millis() < speedIndicatorUntilMs);
+  digitalWrite(LED_BUILTIN, ledOn ? HIGH : LOW);
 
   unsigned long nowMicros = micros();
 
@@ -194,13 +196,23 @@ void loop() {
 
   ///// MOTION LOGIC
   bool commandActive = (upRead == HIGH || downRead == HIGH);
-  
+
   if (!commandActive) {
-    // No motion command
+    // No motion command -> clean ramp-down stop.
     stopMotion();
-  } else if (!motionActive) {
-    // Command is active and motion not yet started
-    startMotion();
+  } else {
+    requestedDirection = (upRead == HIGH);
+
+    if (!motionActive) {
+      // Start movement in requested direction.
+      currentDirection = requestedDirection;
+      startMotion();
+    } else if (!pendingStop && requestedDirection != currentDirection) {
+      // Direction change flow:
+      // 1) decelerate to stop, 2) flip direction, 3) ramp up again.
+      directionChangePending = true;
+      stopMotion();
+    }
   }
 
   // Update ramping if motion is active
@@ -208,19 +220,23 @@ void loop() {
     updateRamping(nowMicros);
 
     // Finish deceleration and stop
-    if (rampingDown && currentDelay >= RAMP_START_DELAY) {
+    if (pendingStop && currentDelay >= RAMP_STOP_DELAY) {
       motionActive = false;
-      rampingDown = false;
-      digitalWrite(LED_BUILTIN, LOW);
+      pendingStop = false;
       debugLog("MOTION STOPPED");
+
+      // After a safe stop, apply deferred direction change and restart smoothly.
+      if (directionChangePending) {
+        currentDirection = requestedDirection;
+        directionChangePending = false;
+        startMotion();
+      }
       return;
     }
 
     // Send step pulse if enough time has elapsed
-    if (upRead == HIGH) {
-      stepMotorNonBlocking(true, nowMicros);  // true = left
-    } else if (downRead == HIGH) {
-      stepMotorNonBlocking(false, nowMicros);  // false = right
+    if (!pendingStop && commandActive) {
+      stepMotorNonBlocking(currentDirection, nowMicros);
     }
   }
 }
