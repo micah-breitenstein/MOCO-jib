@@ -163,6 +163,10 @@ uint8_t bounce = 0;
 uint8_t stage = 0;
 unsigned long bouncePhaseStartMs = 0;
 unsigned long bounceMoveDurationMs = 0;
+uint8_t bounceSwingTier = 1;
+uint8_t bouncePanTier = 1;
+uint8_t bounceLiftTier = 1;
+uint8_t bounceTiltTier = 1;
 
 enum StatusModeKind : uint8_t {
   STATUS_MODE_MANUAL = 0,
@@ -867,6 +871,16 @@ void pulseDroneSpeedStagePin(uint8_t speedPin) {
   delay(DRONE_SPEED_STAGE_PULSE_HIGH_MS);
   digitalWrite(speedPin, LOW);
   delay(DRONE_SPEED_STAGE_PULSE_LOW_MS);
+}
+
+void pulseAxisTierToward(uint8_t& currentTier, uint8_t targetTier, uint8_t speedUpPin, uint8_t speedDownPin) {
+  if (currentTier < targetTier) {
+    pulseSpeedStageUpPin(speedUpPin);
+    currentTier++;
+  } else if (currentTier > targetTier) {
+    pulseSpeedStageUpPin(speedDownPin);
+    currentTier--;
+  }
 }
 
 void applyDefaultAxisSpeedStage(uint8_t speedUpPin, uint8_t targetStage) {
@@ -5256,6 +5270,10 @@ void resetBounceState() {
   stage = 0;
   bouncePhaseStartMs = 0;
   bounceMoveDurationMs = 0;
+  bounceSwingTier = DEFAULT_AXIS_SPEED_STAGE;
+  bouncePanTier = DEFAULT_AXIS_SPEED_STAGE;
+  bounceLiftTier = DEFAULT_AXIS_SPEED_STAGE;
+  bounceTiltTier = DEFAULT_AXIS_SPEED_STAGE;
   stopAllMotors();
   if (wasActive) {
     normalizeMotionAxisSpeedStages(DEFAULT_AXIS_SPEED_STAGE);
@@ -5508,20 +5526,20 @@ void setBounceModeSpeedTier(uint8_t mode, uint8_t speedTier) {
     case 2:
     case 3:
     case 4:
-      applySpeedPinsForTier(clampedTier, swingSpeedUp, swingSpeedDown);
-      applySpeedPinsForTier(clampedTier, panSpeedUp, panSpeedDown);
-      applySpeedPinsForTier(clampedTier, liftSpeedUp, liftSpeedDown);
-      applySpeedPinsForTier(clampedTier, tiltSpeedUp, tiltSpeedDown);
+      pulseAxisTierToward(bounceSwingTier, clampedTier, swingSpeedUp, swingSpeedDown);
+      pulseAxisTierToward(bouncePanTier, clampedTier, panSpeedUp, panSpeedDown);
+      pulseAxisTierToward(bounceLiftTier, clampedTier, liftSpeedUp, liftSpeedDown);
+      pulseAxisTierToward(bounceTiltTier, clampedTier, tiltSpeedUp, tiltSpeedDown);
       break;
     case 5:
     case 7:
-      applySpeedPinsForTier(clampedTier, swingSpeedUp, swingSpeedDown);
-      applySpeedPinsForTier(clampedTier, panSpeedUp, panSpeedDown);
+      pulseAxisTierToward(bounceSwingTier, clampedTier, swingSpeedUp, swingSpeedDown);
+      pulseAxisTierToward(bouncePanTier, clampedTier, panSpeedUp, panSpeedDown);
       break;
     case 6:
     case 8:
-      applySpeedPinsForTier(clampedTier, liftSpeedUp, liftSpeedDown);
-      applySpeedPinsForTier(clampedTier, tiltSpeedUp, tiltSpeedDown);
+      pulseAxisTierToward(bounceLiftTier, clampedTier, liftSpeedUp, liftSpeedDown);
+      pulseAxisTierToward(bounceTiltTier, clampedTier, tiltSpeedUp, tiltSpeedDown);
       break;
   }
 }
@@ -5615,6 +5633,11 @@ void handleBounceStage0(unsigned long now) {
   }
 
   if (bouncePhaseStartMs == 0) {
+    normalizeMotionAxisSpeedStages(DEFAULT_AXIS_SPEED_STAGE);
+    bounceSwingTier = DEFAULT_AXIS_SPEED_STAGE;
+    bouncePanTier = DEFAULT_AXIS_SPEED_STAGE;
+    bounceLiftTier = DEFAULT_AXIS_SPEED_STAGE;
+    bounceTiltTier = DEFAULT_AXIS_SPEED_STAGE;
     bouncePhaseStartMs = now;
   }
 
