@@ -5189,50 +5189,50 @@ void applyTimelapseModeOutputs(uint8_t mode) {
     // Mode 1: swing left, boom down
     case 1:
       setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
       setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
       break;
     // Mode 2: swing left, boom up
     case 2:
       setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
       setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
       break;
     // Mode 3: swing right, boom up
     case 3:
       setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
       setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
       break;
     // Mode 4: swing right, boom down
     case 4:
       setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
       setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
       break;
     // Mode 5: swing left
     case 5:
       setDirectionalOutput(isSwingReversed, swingLeft, swingRight, HIGH);
-      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
+      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
       break;
     // Mode 6: boom up
     case 6:
       setDirectionalOutput(isLiftReversed, liftUp, liftDown, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
       break;
     // Mode 7: swing right
     case 7:
       setDirectionalOutput(isSwingReversed, swingRight, swingLeft, HIGH);
-      setDirectionalOutput(isPanReversed, panRight, panLeft, HIGH);
+      setDirectionalOutput(isPanReversed, panLeft, panRight, HIGH);
       break;
     // Mode 8: boom down
     case 8:
       setDirectionalOutput(isLiftReversed, liftDown, liftUp, HIGH);
-      setDirectionalOutput(isTiltReversed, tiltDown, tiltUp, HIGH);
+      setDirectionalOutput(isTiltReversed, tiltUp, tiltDown, HIGH);
       break;
   }
 }
@@ -5409,89 +5409,89 @@ void setBounceModeOutputs(uint8_t mode, bool towardEndpoint, uint8_t state) {
     case 1: // swing left + boom down
       if (towardEndpoint) {
         setDirectionalOutput(isSwingReversed, swingLeft,  swingRight, state);
-        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
+        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
         setDirectionalOutput(isLiftReversed,  liftDown,   liftUp,     state);
-        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
+        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
       } else {
         setDirectionalOutput(isSwingReversed, swingRight, swingLeft,  state);
-        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
+        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
         setDirectionalOutput(isLiftReversed,  liftUp,     liftDown,   state);
-        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
+        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
       }
       break;
     case 2: // swing left + boom up
       if (towardEndpoint) {
         setDirectionalOutput(isSwingReversed, swingLeft,  swingRight, state);
-        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
+        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
         setDirectionalOutput(isLiftReversed,  liftUp,     liftDown,   state);
-        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
+        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
       } else {
         setDirectionalOutput(isSwingReversed, swingRight, swingLeft,  state);
-        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
+        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
         setDirectionalOutput(isLiftReversed,  liftDown,   liftUp,     state);
-        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
+        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
       }
       break;
     case 3: // swing right + boom up
       if (towardEndpoint) {
         setDirectionalOutput(isSwingReversed, swingRight, swingLeft,  state);
-        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
+        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
         setDirectionalOutput(isLiftReversed,  liftUp,     liftDown,   state);
-        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
+        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
       } else {
         setDirectionalOutput(isSwingReversed, swingLeft,  swingRight, state);
-        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
+        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
         setDirectionalOutput(isLiftReversed,  liftDown,   liftUp,     state);
-        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
+        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
       }
       break;
     case 4: // swing right + boom down
       if (towardEndpoint) {
         setDirectionalOutput(isSwingReversed, swingRight, swingLeft,  state);
-        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
+        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
         setDirectionalOutput(isLiftReversed,  liftDown,   liftUp,     state);
-        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
+        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
       } else {
         setDirectionalOutput(isSwingReversed, swingLeft,  swingRight, state);
-        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
+        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
         setDirectionalOutput(isLiftReversed,  liftUp,     liftDown,   state);
-        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
+        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
       }
       break;
     case 5: // swing left only
       if (towardEndpoint) {
         setDirectionalOutput(isSwingReversed, swingLeft,  swingRight, state);
-        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
+        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
       } else {
         setDirectionalOutput(isSwingReversed, swingRight, swingLeft,  state);
-        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
+        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
       }
       break;
     case 6: // boom up only
       if (towardEndpoint) {
         setDirectionalOutput(isLiftReversed,  liftUp,     liftDown,   state);
-        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
+        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
       } else {
         setDirectionalOutput(isLiftReversed,  liftDown,   liftUp,     state);
-        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
+        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
       }
       break;
     case 7: // swing right only
       if (towardEndpoint) {
         setDirectionalOutput(isSwingReversed, swingRight, swingLeft,  state);
-        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
+        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
       } else {
         setDirectionalOutput(isSwingReversed, swingLeft,  swingRight, state);
-        setDirectionalOutput(isPanReversed,   panLeft,    panRight,   state);
+        setDirectionalOutput(isPanReversed,   panRight,   panLeft,    state);
       }
       break;
     case 8: // boom down only
       if (towardEndpoint) {
         setDirectionalOutput(isLiftReversed,  liftDown,   liftUp,     state);
-        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
+        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
       } else {
         setDirectionalOutput(isLiftReversed,  liftUp,     liftDown,   state);
-        setDirectionalOutput(isTiltReversed,  tiltUp,     tiltDown,   state);
+        setDirectionalOutput(isTiltReversed,  tiltDown,   tiltUp,     state);
       }
       break;
   }
