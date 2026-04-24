@@ -256,6 +256,8 @@ constexpr uint8_t DRONE_MODE_EXIT_RUMBLE_PULSES = 2;
 constexpr uint8_t DRONE_SPEED_TIER_STOP = 0;
 constexpr uint8_t DRONE_SPEED_TIER_MED = 1;
 constexpr uint8_t DRONE_SPEED_TIER_HIGH = 2;
+constexpr uint8_t DRONE_SPEED_TIER_MAX = 4;
+constexpr uint8_t DRONE_BOOST_TIER_DELTA = 2;
 constexpr int DRONE_SPEED_TIER_MED_THRESHOLD = 35;
 constexpr int DRONE_SPEED_TIER_HIGH_THRESHOLD = 55;
 constexpr int DRONE_STICK_MAX_DEFLECTION = 127;
@@ -269,10 +271,10 @@ constexpr int DRONE_LIFT_DEADBAND = 6;
 constexpr int DRONE_PAN_DEADBAND = 6;
 constexpr int DRONE_TILT_DEADBAND = 6;
 constexpr int DRONE_UI_DEADBAND = 4;
-constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
-constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
-constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
-constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_HIGH;
+constexpr uint8_t DRONE_SWING_MAX_SPEED_TIER = DRONE_SPEED_TIER_MAX;
+constexpr uint8_t DRONE_LIFT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MAX;
+constexpr uint8_t DRONE_PAN_MAX_SPEED_TIER = DRONE_SPEED_TIER_MAX;
+constexpr uint8_t DRONE_TILT_MAX_SPEED_TIER = DRONE_SPEED_TIER_MAX;
 constexpr bool DRONE_ENABLE_PRECISION_MODIFIER = true;
 constexpr bool DRONE_ENABLE_BOOST_MODIFIER = true;
 constexpr uint8_t DRONE_FIXED_STICK_SPEED_TIER = DRONE_SPEED_TIER_MED;
@@ -958,7 +960,9 @@ uint8_t applyDroneSpeedTierModifiers(uint8_t speedTier, uint8_t maxAllowedTier) 
 
   // Boost mode (when not suppressed by precision priority)
   if (boostModeActive && speedTier < maxAllowedTier) {
-    speedTier++;
+    speedTier = static_cast<uint8_t>(min(
+        static_cast<int>(maxAllowedTier),
+        static_cast<int>(speedTier) + static_cast<int>(DRONE_BOOST_TIER_DELTA)));
   }
 
   return speedTier;
@@ -968,7 +972,7 @@ uint8_t getProportionalTargetSpeedTier(int magnitude, uint8_t maxSpeedTier, uint
   bool microMotionActive = DRONE_ENABLE_PRECISION_MODIFIER && ps2x.Button(PSB_L2);
 
   uint8_t speedTier = getProportionalSpeedTier(magnitude, expoPercent);
-  uint8_t clampedMaxTier = static_cast<uint8_t>(constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH));
+  uint8_t clampedMaxTier = static_cast<uint8_t>(constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_MAX));
 
   if (speedTier > clampedMaxTier) {
     speedTier = clampedMaxTier;
@@ -1007,7 +1011,7 @@ void stepDroneAxisTierTowardTarget(uint8_t& currentTier,
                                    uint8_t speedDownPin,
                                    unsigned long& lastStepMs,
                                    unsigned long now) {
-  uint8_t clampedTargetTier = static_cast<uint8_t>(constrain(static_cast<int>(targetTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH));
+  uint8_t clampedTargetTier = static_cast<uint8_t>(constrain(static_cast<int>(targetTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_MAX));
 
   if (currentTier == clampedTargetTier) {
     return;
@@ -1025,9 +1029,6 @@ void stepDroneAxisTierTowardTarget(uint8_t& currentTier,
     pulseSpeedStageUpPin(speedDownPin);
     currentTier--;
   }
-
-  // Apply level-driven state for the new tier
-  applySpeedPinsForTier(currentTier, speedUpPin, speedDownPin);
 
   if (DEBUG_DRONE_TIERS) {
     Serial.print(F("DRONE TIER: "));
@@ -2635,7 +2636,7 @@ bool applyDroneAxisControl(int stickValue, bool isReversed,
   digitalWrite(positiveDirectionPin, LOW);
 
   uint8_t clampedMaxTier = static_cast<uint8_t>(
-      constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_HIGH));
+      constrain(static_cast<int>(maxSpeedTier), DRONE_SPEED_TIER_STOP, DRONE_SPEED_TIER_MAX));
 
   int signedOffsetFromCenter = stickValue - STICK_CENTER;
   if (abs(signedOffsetFromCenter) <= axisDeadband) {
@@ -2660,7 +2661,9 @@ bool applyDroneAxisControl(int stickValue, bool isReversed,
     if (precisionModeActive && fixedTier > DRONE_SPEED_TIER_STOP) {
       fixedTier--;
     } else if (boostModeActive && fixedTier < clampedMaxTier) {
-      fixedTier++;
+      fixedTier = static_cast<uint8_t>(min(
+          static_cast<int>(clampedMaxTier),
+          static_cast<int>(fixedTier) + static_cast<int>(DRONE_BOOST_TIER_DELTA)));
     }
 
     targetTier = fixedTier;
