@@ -1,6 +1,7 @@
 // NANO Slave 1 — Boom Swing axis
 // Receives direction and speed commands from the Mega via digital pins.
 // Controls a stepper motor driver (DIR + PUL) for boom swing movement.
+// Features: non-blocking motion, acceleration/deceleration ramping.
 
 constexpr bool SWING_SERIAL_DEBUG = false;
 
@@ -18,14 +19,26 @@ const int speedDownPin = 9;  // HIGH = decrease speed stage
 const int STAGE_COUNT = 5;
 const int STAGE_DELAYS[STAGE_COUNT] = {5000, 2500, 1000, 500, 250};
 
+///// RAMPING SETTINGS
+// Ramp acceleration: microseconds per update step
+// Higher = slower ramp, lower = faster ramp to target speed
+constexpr int RAMP_INCREMENT = 150;  // reduce delay by this amount per ramp step
+constexpr int RAMP_START_DELAY = 8000;  // start acceleration from this delay
+
 ///// STATE
 int stage = 0;
-int count = STAGE_DELAYS[0];
-int pd;
 int lastSpeedUp   = 0;
 int lastSpeedDown = 0;
 bool lastDirectionConflict = false;
 unsigned long speedIndicatorUntilMs = 0;
+
+// Motion ramping state
+int targetDelay = STAGE_DELAYS[0];
+int currentDelay = STAGE_DELAYS[0];
+bool motionActive = false;
+bool rampingDown = false;
+unsigned long lastStepMicros = 0;
+unsigned long rampUpdateMicros = 0;
 
 void debugLog(const char* message) {
   if (SWING_SERIAL_DEBUG) {
@@ -44,18 +57,65 @@ void triggerSpeedIndicatorPulse() {
   speedIndicatorUntilMs = millis() + 120;
 }
 
+void debugLogDelay(int delayValue) {
+  if (SWING_SERIAL_DEBUG) {
+    Serial.print("DELAY");
+    Serial.println(delayValue);
+  }
+}
+
 ///// HELPERS
 
-// Send one step pulse to the stepper driver in the given direction.
-// dirHigh=true moves one way; dirHigh=false moves the other.
-void stepMotor(bool dirHigh) {
-  digitalWrite(driverDIR, dirHigh ? HIGH : LOW);
-  digitalWrite(driverPUL, LOW);
-  digitalWrite(LED_BUILTIN, HIGH);
-  delayMicroseconds(pd);
-  digitalWrite(driverPUL, HIGH);
-  delayMicroseconds(pd);
-  digitalWrite(LED_BUILTIN, LOW);
+// Non-blocking stepper pulse using micros() timing.
+// Returns true if a pulse was sent, false if still in delay period.
+bool stepMotorNonBlocking(bool dirHigh, unsigned long nowMicros) {
+  if (nowMicros - lastStepMicros >= currentDelay) {
+    digitalWrite(driverDIR, dirHigh ? HIGH : LOW);
+    digitalWrite(driverPUL, LOW);
+    delayMicroseconds(1);  // very brief pulse
+    digitalWrite(driverPUL, HIGH);
+    lastStepMicros = nowMicros;
+    return true;
+  }
+  return false;
+}
+
+// Update ramping progression: gradually move currentDelay toward targetDelay.
+void updateRamping(unsigned long nowMicros) {
+  if (nowMicros - rampUpdateMicros < 1000) {
+    return;  // ramp updates every ~1ms
+  }
+  rampUpdateMicros = nowMicros;
+
+  if (currentDelay < targetDelay) {
+    // Ramping up (slowing down)
+    currentDelay = min(currentDelay + RAMP_INCREMENT, targetDelay);
+  } else if (currentDelay > targetDelay) {
+    // Ramping down (speeding up)
+    currentDelay = max(currentDelay - RAMP_INCREMENT, targetDelay);
+  }
+}
+
+// Begin motion with acceleration from a slower start speed.
+void startMotion() {
+  if (!motionActive) {
+    motionActive = true;
+    currentDelay = RAMP_START_DELAY;  // start from slow ramp speed
+    rampingDown = false;
+    lastStepMicros = 0;
+    rampUpdateMicros = 0;
+    digitalWrite(LED_BUILTIN, HIGH);
+    debugLog("MOTION START");
+  }
+}
+
+// Trigger deceleration and eventual stop.
+void stopMotion() {
+  if (motionActive && !rampingDown) {
+    rampingDown = true;
+    targetDelay = RAMP_START_DELAY;  // ramp back to slow speed
+    debugLog("MOTION STOP");
+  }
 }
 
 // Handle speed stage transitions.
@@ -64,20 +124,23 @@ void stepMotor(bool dirHigh) {
 void updateSpeedStage(int speedUpRead, int speedDownRead) {
   if (lastSpeedDown == 0 && speedDownRead == 1 && stage > 0) {
     stage--;
-    count = STAGE_DELAYS[stage];
+    targetDelay = STAGE_DELAYS[stage];
     debugLogStage(stage);
+    debugLogDelay(targetDelay);
     triggerSpeedIndicatorPulse();
   }
 
   if (stage == 0 && speedUpRead == 1) {
     stage = 1;
-    count = STAGE_DELAYS[1];
+    targetDelay = STAGE_DELAYS[1];
     debugLog("STAGE1");
+    debugLogDelay(targetDelay);
     triggerSpeedIndicatorPulse();
   } else if (lastSpeedUp == 0 && speedUpRead == 1 && stage < STAGE_COUNT - 1) {
     stage++;
-    count = STAGE_DELAYS[stage];
+    targetDelay = STAGE_DELAYS[stage];
     debugLogStage(stage);
+    debugLogDelay(targetDelay);
     triggerSpeedIndicatorPulse();
   }
 
@@ -99,11 +162,15 @@ void setup() {
 }
 
 void loop() {
+  // Speed indicator LED for stage changes
   if (millis() < speedIndicatorUntilMs) {
     digitalWrite(LED_BUILTIN, HIGH);
-  } else {
+  } else if (!motionActive) {
     digitalWrite(LED_BUILTIN, LOW);
   }
+  // LED stays HIGH while motionActive (set in startMotion/updateRamping)
+
+  unsigned long nowMicros = micros();
 
   int upRead    = digitalRead(upButton);
   int downRead  = digitalRead(downButton);
@@ -113,26 +180,47 @@ void loop() {
   ///// SPEED STAGE CHANGES
   updateSpeedStage(speedUp, speedDown);
 
-  pd = count;
-
+  ///// DIRECTION CONFLICT CHECK
   bool directionConflict = (upRead == HIGH && downRead == HIGH);
   if (directionConflict) {
     if (!lastDirectionConflict) {
       debugLog("SWING CONFLICT: left + right command active; movement skipped");
     }
     lastDirectionConflict = true;
+    stopMotion();
     return;
   }
   lastDirectionConflict = false;
 
-  ///// MOTOR MOVEMENTS
-  if (upRead == HIGH) {
-    debugLog("SWING LEFT");
-    stepMotor(true);
+  ///// MOTION LOGIC
+  bool commandActive = (upRead == HIGH || downRead == HIGH);
+  
+  if (!commandActive) {
+    // No motion command
+    stopMotion();
+  } else if (!motionActive) {
+    // Command is active and motion not yet started
+    startMotion();
   }
 
-  if (downRead == HIGH) {
-    debugLog("SWING RIGHT");
-    stepMotor(false);
+  // Update ramping if motion is active
+  if (motionActive) {
+    updateRamping(nowMicros);
+
+    // Finish deceleration and stop
+    if (rampingDown && currentDelay >= RAMP_START_DELAY) {
+      motionActive = false;
+      rampingDown = false;
+      digitalWrite(LED_BUILTIN, LOW);
+      debugLog("MOTION STOPPED");
+      return;
+    }
+
+    // Send step pulse if enough time has elapsed
+    if (upRead == HIGH) {
+      stepMotorNonBlocking(true, nowMicros);  // true = left
+    } else if (downRead == HIGH) {
+      stepMotorNonBlocking(false, nowMicros);  // false = right
+    }
   }
 }
