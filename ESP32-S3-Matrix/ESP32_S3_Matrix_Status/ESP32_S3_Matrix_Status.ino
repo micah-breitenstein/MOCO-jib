@@ -744,9 +744,7 @@ void renderCurrentState(const SystemState& state) {
   }
 
   if (state.uiMode == UiMode::SETTINGS) {
-    float phase = (sinf(now * 0.005f) + 1.0f) * 0.5f;
-    uint8_t glow = static_cast<uint8_t>(40.0f + phase * 30.0f);
-    fillMatrix(255, glow, 0);
+    fillMatrix(255, 50, 0);
     return;
   }
 
