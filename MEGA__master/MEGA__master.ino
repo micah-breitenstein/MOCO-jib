@@ -3181,8 +3181,6 @@ bool handleDroneFlowlapseButtons(unsigned long now) {
       && flowlapseState != FLOWLAPSE_STATE_CAPTURE_PAUSED;
 
   bool manualShutterComboClear = !ps2x.Button(PSB_L1)
-      && !ps2x.Button(PSB_L2)
-      && !ps2x.Button(PSB_R2)
       && !ps2x.Button(PSB_START)
       && !ps2x.Button(PSB_SELECT);
 
