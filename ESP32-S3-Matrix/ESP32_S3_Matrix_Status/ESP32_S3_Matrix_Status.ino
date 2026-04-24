@@ -36,6 +36,7 @@ constexpr unsigned long TWINKLE_CYCLE_FAST_MS = 360;
 constexpr unsigned long TWINKLE_CYCLE_SLOW_MS = 620;
 constexpr unsigned long HOME_FLASH_DURATION_MS = 350;
 constexpr unsigned long HOME_RETURN_PULSE_CYCLE_MS = 1800;
+constexpr unsigned long IDLE_BREATHING_CYCLE_MS = 3600;
 
 constexpr uint8_t RANDOM_TWINKLE_CHANCE_PERCENT = 12;
 constexpr unsigned long RANDOM_TWINKLE_MIN_MS = 90;
@@ -776,9 +777,13 @@ void renderCurrentState(const SystemState& state) {
       break;
   }
 
-  uint8_t idleLevel = OK_IDLE_WHITE_LEVEL;
-  uint8_t idleBlue = static_cast<uint8_t>((static_cast<uint16_t>(idleLevel) * pulseProfile.blueScale) / 255U);
-  fillMatrix(idleLevel, idleLevel, idleBlue);
+  // IDLE breathing effect: sinusoidal pulse on white
+  // Use full 0-255 range to preserve smoothness at low brightness settings
+  float breathePhase = static_cast<float>(now % IDLE_BREATHING_CYCLE_MS) / static_cast<float>(IDLE_BREATHING_CYCLE_MS);
+  float breatheWave = (sinf(breathePhase * 2.0f * PI) + 1.0f) * 0.5f;
+  uint8_t breatheLevel = static_cast<uint8_t>(100.0f + breatheWave * 155.0f);  // 100-255 range
+  uint8_t idleBlue = static_cast<uint8_t>((static_cast<uint16_t>(breatheLevel) * pulseProfile.blueScale) / 255U);
+  fillMatrix(breatheLevel, breatheLevel, idleBlue);
 }
 
 void setup() {
