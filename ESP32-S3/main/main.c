@@ -810,35 +810,25 @@ static int get_setting_acceleration_multiplier(void)
 
 static int get_editor_step_delta(const SettingDef *s, bool increasing)
 {
-    /* For any fine-grained INT_RANGE setting (step == 1), snap to boundaries
-       when turbo is active.  Works for both "%" sliders and "s" intervals. */
+    /* For any fine-grained INT_RANGE setting (step == 1), snap to multiples of 10
+       when turbo is active.  Fine control preserved near the endpoints. */
     if (s->type == STYPE_INT_RANGE && s->step == 1) {
         int accel = get_setting_acceleration_multiplier();
         if (accel == 1) {
             return 1;
         }
 
-        /* Calculate one "coarse unit" as 10% of the total range, clamped 2-10. */
-        int range = s->max_val - s->min_val;
-        int unit = range / 10;
-        if (unit < 2) unit = 2;
-        if (unit > 10) unit = 10;
-
         if (increasing) {
-            /* Stay fine until at least one unit from the bottom. */
-            if (s->value < s->min_val + unit) return 1;
-            /* Snap to next unit boundary. */
-            int rel = s->value - s->min_val;
-            int rem = rel % unit;
-            return (rem == 0) ? unit : (unit - rem);
+            /* Fine until value reaches 10, then snap to next multiple of 10. */
+            if (s->value < 10) return 1;
+            int rem = s->value % 10;
+            return (rem == 0) ? 10 : (10 - rem);
         }
 
-        /* Stay fine within one unit of the bottom or top. */
-        if (s->value > s->max_val - unit || s->value <= s->min_val + unit) return 1;
-        /* Snap to previous unit boundary. */
-        int rel = s->value - s->min_val;
-        int rem = rel % unit;
-        return (rem == 0) ? unit : rem;
+        /* Fine at or below 10, fine at or above 90, coarse in between. */
+        if (s->value <= 10 || s->value > 90) return 1;
+        int rem = s->value % 10;
+        return (rem == 0) ? 10 : rem;
     }
 
     return s->step * get_setting_acceleration_multiplier();
