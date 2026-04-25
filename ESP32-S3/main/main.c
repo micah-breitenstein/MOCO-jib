@@ -173,6 +173,9 @@ static uint16_t touch_start_y = 0;
 static bool    touch_moved = false;
 #define TOUCH_MOVE_THRESHOLD 20  /* pixels of movement to cancel long-press */
 
+/* Track if long press occurred for editor buttons (prevent double action on release) */
+static bool    editor_long_press_fired = false;
+
 /* Controller hold state (for dpad acceleration) */
 static int64_t controller_hold_start_us = 0;
 static char    controller_hold_cmd[16] = {0};  /* Current dpad command being held */
@@ -1298,16 +1301,22 @@ static void confirm_touch_cb(lv_event_t *e)
     } else if (code == LV_EVENT_RELEASED) {
         highlight_btn(pair->hl_a, false);
         highlight_btn(pair->hl_b, false);
-        touch_press_start_us = 0;  /* Reset timer on release — no acceleration on first tap */
-        if (on_a) pair->act_a(e);
-        else if (on_b) pair->act_b(e);
+        /* Only call action on release if no long press occurred (prevent double increment) */
+        if (!editor_long_press_fired) {
+            touch_press_start_us = 0;  /* Reset timer on quick release */
+            if (on_a) pair->act_a(e);
+            else if (on_b) pair->act_b(e);
+        }
+        editor_long_press_fired = false;  /* Reset flag for next press */
     } else if (code == LV_EVENT_LONG_PRESSED_REPEAT) {
+        editor_long_press_fired = true;  /* Mark that long press is happening */
         if (on_a) pair->act_a(e);
         else if (on_b) pair->act_b(e);
     } else if (code == LV_EVENT_PRESS_LOST) {
         highlight_btn(pair->hl_a, false);
         highlight_btn(pair->hl_b, false);
         touch_press_start_us = 0;  /* Reset on press lost */
+        editor_long_press_fired = false;
     }
 }
 
