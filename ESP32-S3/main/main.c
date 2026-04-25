@@ -173,6 +173,10 @@ static uint16_t touch_start_y = 0;
 static bool    touch_moved = false;
 #define TOUCH_MOVE_THRESHOLD 20  /* pixels of movement to cancel long-press */
 
+/* Controller hold state (for dpad acceleration) */
+static int64_t controller_hold_start_us = 0;
+static char    controller_hold_cmd[16] = {0};  /* Current dpad command being held */
+
 typedef enum {
     DISPLAY_MODE_MANUAL = 0,
     DISPLAY_MODE_DRONE,
@@ -621,6 +625,8 @@ static void handle_settings_nav(const char *nav_cmd)
     }
     if (strcmp(nav_cmd, "CLOSE") == 0) {
         if (settings_visible || editor_visible) {
+            controller_hold_start_us = 0;  /* Reset dpad hold on close */
+            controller_hold_cmd[0] = 0;
             close_settings_menu();
             controller_nav_index = -1;
         }
@@ -640,10 +646,22 @@ static void handle_settings_nav(const char *nav_cmd)
     /* Editor is open */
     if (editor_visible) {
         if (strcmp(nav_cmd, "UP") == 0 || strcmp(nav_cmd, "RIGHT") == 0) {
+            /* Track dpad hold for acceleration */
+            if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+                controller_hold_start_us = esp_timer_get_time();
+                strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
+            }
             editor_inc_cb(NULL);
         } else if (strcmp(nav_cmd, "DOWN") == 0 || strcmp(nav_cmd, "LEFT") == 0) {
+            /* Track dpad hold for acceleration */
+            if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+                controller_hold_start_us = esp_timer_get_time();
+                strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
+            }
             editor_dec_cb(NULL);
         } else if (strcmp(nav_cmd, "SELECT") == 0) {
+            controller_hold_start_us = 0;  /* Reset on SELECT */
+            controller_hold_cmd[0] = 0;
             /* Save and return to list (skip confirm dialog for controller) */
             SettingDef *s = &settings[editor_setting_id];
             if (setting_is_persisted(editor_setting_id)) {
@@ -657,6 +675,8 @@ static void handle_settings_nav(const char *nav_cmd)
             uart_write_bytes(STATUS_UART_PORT, saved_cmd, strlen(saved_cmd));
             close_editor();
         } else if (strcmp(nav_cmd, "BACK") == 0) {
+            controller_hold_start_us = 0;  /* Reset on BACK */
+            controller_hold_cmd[0] = 0;
             /* Cancel — use shared exit path so all live previews are reverted. */
             editor_exit_cb(NULL);
         }
@@ -735,17 +755,24 @@ static void update_editor_value_label(void)
     lv_label_set_text(editor_value_label, buf);
 }
 
-/* Calculate acceleration multiplier based on hold duration */
+/* Calculate acceleration multiplier based on hold duration (touch or controller) */
 static int get_setting_acceleration_multiplier(void)
 {
-    if (touch_press_start_us == 0) {
+    int64_t hold_start_us = touch_press_start_us;
+    
+    /* Check if controller dpad is being held longer */
+    if (controller_hold_start_us > 0 && (hold_start_us == 0 || controller_hold_start_us < hold_start_us)) {
+        hold_start_us = controller_hold_start_us;
+    }
+    
+    if (hold_start_us == 0) {
         return 1;  /* No acceleration if not tracking hold time */
     }
     
-    int64_t elapsed_ms = (esp_timer_get_time() - touch_press_start_us) / 1000;
+    int64_t elapsed_ms = (esp_timer_get_time() - hold_start_us) / 1000;
     
     if (elapsed_ms >= 1000) {
-        return 50;  /* Turbo speed after 1 second (50x multiplier) */
+        return 10;  /* Turbo speed after 1 second (10x multiplier) */
     }
     
     return 1;       /* Normal speed initially (0-1 second) */
