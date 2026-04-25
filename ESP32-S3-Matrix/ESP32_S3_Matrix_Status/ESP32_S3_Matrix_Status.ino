@@ -30,6 +30,7 @@ constexpr unsigned long TWINKLE_SLOW_PHASE_MS = 1200;
 constexpr unsigned long STRUCTURED_STRIDE_MIN_INTERVAL_MS = 700;
 constexpr unsigned long STRUCTURED_STRIDE_MAX_INTERVAL_MS = 2200;
 constexpr unsigned long STATUS_SIGNAL_TIMEOUT_MS = 3500;
+constexpr unsigned long EMERGENCY_RELEASE_HOLD_MS = 30;
 constexpr unsigned long TWINKLE_UPDATE_FAST_MS = 14;
 constexpr unsigned long TWINKLE_UPDATE_SLOW_MS = 28;
 constexpr unsigned long TWINKLE_CYCLE_FAST_MS = 360;
@@ -102,6 +103,7 @@ struct SystemState {
 
   // Additional state used by update/render flow.
   unsigned long lastStatusRxMs;
+  unsigned long errorHoldUntilMs;
   FlashCue flashCue;
   unsigned long flashCueUntilMs;
 };
@@ -121,6 +123,7 @@ SystemState systemState = {
   5,
   false,
   false,
+  0,
   0,
   FlashCue::NONE,
   0
@@ -422,6 +425,20 @@ Mode parseModeFromPayload(const char* payload) {
 
 void handleEvent(EventType type, const char* payload) {
   const unsigned long now = millis();
+  bool errorHoldActive = now < systemState.errorHoldUntilMs;
+
+  // Emergency stop must override every UI state, including settings overlays.
+  if (type == EventType::EMERGENCY_STOP_ACTIVE) {
+    systemState.emergencyStopActive = true;
+    systemState.errorActive = true;
+    systemState.lastStatusRxMs = now;
+    systemState.errorHoldUntilMs = now + EMERGENCY_RELEASE_HOLD_MS;
+    systemState.uiMode = UiMode::NORMAL;
+    resetRandomTwinkleSchedule(now, 70, 170);
+    renderContext.lastTwinkleMs = now;
+    Serial.println("Matrix status: EMERGENCY STOP -> FLASH RED");
+    return;
+  }
 
   if (type != EventType::EMERGENCY_STOP_RELEASED && systemState.emergencyStopActive) {
     Serial.println("Matrix status: emergency latched, ignoring non-release event");
@@ -456,6 +473,10 @@ void handleEvent(EventType type, const char* payload) {
       break;
 
     case EventType::CONTROLLER_OK:
+      if (errorHoldActive) {
+        Serial.println("Matrix status: ignoring OK during emergency error hold");
+        break;
+      }
       systemState.errorActive = false;
       systemState.emergencyStopActive = false;
       systemState.lastStatusRxMs = now;
@@ -463,7 +484,9 @@ void handleEvent(EventType type, const char* payload) {
       break;
 
     case EventType::MODE_CHANGE:
-      systemState.errorActive = false;
+      if (!errorHoldActive) {
+        systemState.errorActive = false;
+      }
       systemState.currentMode = parseModeFromPayload(payload);
       if (systemState.currentMode == Mode::DRONE) {
         Serial.println("Matrix mode: DRONE");
@@ -477,19 +500,25 @@ void handleEvent(EventType type, const char* payload) {
       break;
 
     case EventType::EMERGENCY_STOP_ACTIVE:
-      systemState.emergencyStopActive = true;
-      systemState.errorActive = false;
-      resetRandomTwinkleSchedule(now, 70, 170);
-      renderContext.lastTwinkleMs = now;
-      Serial.println("Matrix status: EMERGENCY STOP -> FLASH RED");
+      // Handled in the early override path above.
       break;
 
     case EventType::EMERGENCY_STOP_RELEASED:
       systemState.emergencyStopActive = false;
-      Serial.println("Matrix status: EMERGENCY STOP RELEASED");
+      systemState.errorActive = true;
+      // Keep error style only briefly after release so exit feels immediate.
+      systemState.lastStatusRxMs = now - (STATUS_SIGNAL_TIMEOUT_MS - EMERGENCY_RELEASE_HOLD_MS);
+      systemState.errorHoldUntilMs = now + EMERGENCY_RELEASE_HOLD_MS;
+      resetRandomTwinkleSchedule(now, 70, 170);
+      renderContext.lastTwinkleMs = now;
+      Serial.println("Matrix status: EMERGENCY STOP RELEASED -> HOLD RED");
       break;
 
     case EventType::SETTINGS_OPEN:
+      if (errorHoldActive) {
+        Serial.println("Matrix status: ignoring SETTINGS OPEN during emergency error hold");
+        break;
+      }
       settingsSnapshot.errorActive = systemState.errorActive;
       settingsSnapshot.currentMode = systemState.currentMode;
       settingsSnapshot.homeSet = systemState.homeSet;
@@ -502,6 +531,10 @@ void handleEvent(EventType type, const char* payload) {
       break;
 
     case EventType::SETTINGS_CLOSE:
+      if (errorHoldActive) {
+        Serial.println("Matrix status: ignoring SETTINGS CLOSE during emergency error hold");
+        break;
+      }
       systemState.uiMode = UiMode::NORMAL;
       systemState.errorActive = settingsSnapshot.errorActive;
       systemState.currentMode = settingsSnapshot.currentMode;
@@ -794,12 +827,18 @@ void setup() {
   uint8_t savedBrightness = prefs.getUChar(PREF_KEY_BRIGHT, systemState.brightness);
   if (savedBrightness <= 100U) {
     systemState.brightness = savedBrightness;
+  } else {
+    systemState.brightness = 5;
+    prefs.putUChar(PREF_KEY_BRIGHT, systemState.brightness);
   }
 
   randomSeed(static_cast<uint32_t>(micros() ^ millis()));
 
   matrixStrip.begin();
-  matrixStrip.setBrightness(1);
+  matrixStrip.setBrightness(255);
+  matrixStrip.fill(matrixStrip.Color(255, 255, 255));
+  matrixStrip.show();
+  delay(600);
   matrixStrip.clear();
   matrixStrip.show();
 
