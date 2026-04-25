@@ -619,6 +619,18 @@ static void controller_highlight_row(int idx)
 
 static void handle_settings_nav(const char *nav_cmd)
 {
+    /* Check if enough time has passed since last command — if so, reset hold timer (button was released) */
+    static int64_t last_dpad_cmd_us = 0;
+    int64_t now_us = esp_timer_get_time();
+    
+    if (controller_hold_start_us > 0 && last_dpad_cmd_us > 0) {
+        int64_t gap_ms = (now_us - last_dpad_cmd_us) / 1000;
+        if (gap_ms > 150) {  /* More than 150ms gap = button was released */
+            controller_hold_start_us = 0;
+            controller_hold_cmd[0] = 0;
+        }
+    }
+    last_dpad_cmd_us = now_us;
     if (strcmp(nav_cmd, "OPEN") == 0) {
         if (!settings_visible && !editor_visible) {
             open_settings_menu();
@@ -650,17 +662,23 @@ static void handle_settings_nav(const char *nav_cmd)
     if (editor_visible) {
         if (strcmp(nav_cmd, "UP") == 0 || strcmp(nav_cmd, "RIGHT") == 0) {
             /* Track dpad hold for acceleration */
-            if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+            /* Reset timer if switching from DOWN/LEFT to UP/RIGHT */
+            if (strcmp(controller_hold_cmd, "DOWN") == 0 || strcmp(controller_hold_cmd, "LEFT") == 0) {
                 controller_hold_start_us = esp_timer_get_time();
-                strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
+            } else if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+                controller_hold_start_us = esp_timer_get_time();
             }
+            strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
             editor_inc_cb(NULL);
         } else if (strcmp(nav_cmd, "DOWN") == 0 || strcmp(nav_cmd, "LEFT") == 0) {
             /* Track dpad hold for acceleration */
-            if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+            /* Reset timer if switching from UP/RIGHT to DOWN/LEFT */
+            if (strcmp(controller_hold_cmd, "UP") == 0 || strcmp(controller_hold_cmd, "RIGHT") == 0) {
                 controller_hold_start_us = esp_timer_get_time();
-                strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
+            } else if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+                controller_hold_start_us = esp_timer_get_time();
             }
+            strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
             editor_dec_cb(NULL);
         } else if (strcmp(nav_cmd, "SELECT") == 0) {
             controller_hold_start_us = 0;  /* Reset on SELECT */
