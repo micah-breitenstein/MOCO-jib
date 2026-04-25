@@ -818,10 +818,20 @@ static int get_editor_step_delta(const SettingDef *s, bool increasing)
         }
 
         if (increasing) {
-            return (s->value >= 10) ? 10 : 1;
+            if (s->value < 10) {
+                return 1;
+            }
+            /* Snap to next 10s boundary, then continue in 10s. */
+            int rem = s->value % 10;
+            return (rem == 0) ? 10 : (10 - rem);
         }
-        /* Keep fine control near 0 so 5 -> 4 (not 0). */
-        return (s->value <= 90 && s->value > 10) ? 10 : 1;
+        /* Keep fine control near 0 and near 100. */
+        if (s->value > 90 || s->value <= 10) {
+            return 1;
+        }
+        /* Snap to previous 10s boundary, then continue in 10s. */
+        int rem = s->value % 10;
+        return (rem == 0) ? 10 : rem;
     }
 
     return s->step * get_setting_acceleration_multiplier();
