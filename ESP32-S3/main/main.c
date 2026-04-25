@@ -800,7 +800,7 @@ static int get_setting_acceleration_multiplier(void)
     int64_t elapsed_ms = (esp_timer_get_time() - hold_start_us) / 1000;
 
     /* Make dpad turbo kick in sooner than touch. */
-    int threshold_ms = is_dpad ? 700 : 1000;
+    int threshold_ms = is_dpad ? 800 : 1000;
     if (elapsed_ms >= threshold_ms) {
         return 10;  /* Turbo speed (10x multiplier) */
     }
