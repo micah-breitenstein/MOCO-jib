@@ -781,8 +781,8 @@ static int get_setting_acceleration_multiplier(void)
 {
     int64_t hold_start_us = touch_press_start_us;
     
-    /* Check if controller dpad is being held longer */
-    if (controller_hold_start_us > 0 && (hold_start_us == 0 || controller_hold_start_us < hold_start_us)) {
+    /* Check if controller dpad has the more recent hold (larger timestamp = more recent) */
+    if (controller_hold_start_us > 0 && (hold_start_us == 0 || controller_hold_start_us > hold_start_us)) {
         hold_start_us = controller_hold_start_us;
     }
     
