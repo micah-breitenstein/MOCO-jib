@@ -815,7 +815,8 @@ static int get_editor_step_delta(const SettingDef *s, bool increasing)
         if (increasing) {
             return (s->value >= 10) ? 10 : 1;
         }
-        return (s->value <= 90) ? 10 : 1;
+        /* Keep fine control near 0 so 5 -> 4 (not 0). */
+        return (s->value <= 90 && s->value > 10) ? 10 : 1;
     }
 
     return s->step * get_setting_acceleration_multiplier();
