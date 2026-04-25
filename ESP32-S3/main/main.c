@@ -504,6 +504,9 @@ static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
         if (!touch_pressed) {
             touch_pressed = true;
             touch_press_start_us = esp_timer_get_time();
+            /* Clear dpad hold timer when switching to touch input */
+            controller_hold_start_us = 0;
+            controller_hold_cmd[0] = 0;
             long_press_fired = false;
             touch_start_x = tx;
             touch_start_y = ty;
@@ -631,6 +634,8 @@ static void handle_settings_nav(const char *nav_cmd)
         }
     }
     last_dpad_cmd_us = now_us;
+    /* Clear touch hold timer when switching to dpad input */
+    touch_press_start_us = 0;
     if (strcmp(nav_cmd, "OPEN") == 0) {
         if (!settings_visible && !editor_visible) {
             open_settings_menu();
