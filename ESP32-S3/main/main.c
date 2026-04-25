@@ -2969,11 +2969,9 @@ void app_main(void)
     }
     load_settings_from_nvs();
 
-    /* Keep UI in sync with matrix boot behavior: always start at 5%. */
-    if (settings[SETTING_MTX_BRIGHTNESS].value != 5) {
-        settings[SETTING_MTX_BRIGHTNESS].value = 5;
-        save_setting_to_nvs(SETTING_MTX_BRIGHTNESS);
-    }
+    /* Always reset matrix brightness to 5% on boot (UI and hardware stay in sync). */
+    settings[SETTING_MTX_BRIGHTNESS].value = 5;
+    save_setting_to_nvs(SETTING_MTX_BRIGHTNESS);
 
     static lv_disp_drv_t disp_drv;
 
@@ -3055,6 +3053,10 @@ void app_main(void)
     ESP_ERROR_CHECK(uart_param_config(STATUS_UART_PORT, &uart_cfg));
     ESP_ERROR_CHECK(uart_set_pin(STATUS_UART_PORT, STATUS_UART_TX_PIN, STATUS_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     xTaskCreatePinnedToCore(status_uart_task, "status_uart", 4096, NULL, 3, NULL, 1);
+
+    /* Push boot-time matrix brightness to hardware now that UART is ready. */
+    vTaskDelay(pdMS_TO_TICKS(200));
+    send_set_command(SETTING_MTX_BRIGHTNESS);
 
     /* I2C for touch */
     const i2c_config_t i2c_conf = {
