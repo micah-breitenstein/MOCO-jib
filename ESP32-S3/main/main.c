@@ -1298,6 +1298,7 @@ static void confirm_touch_cb(lv_event_t *e)
     } else if (code == LV_EVENT_RELEASED) {
         highlight_btn(pair->hl_a, false);
         highlight_btn(pair->hl_b, false);
+        touch_press_start_us = 0;  /* Reset timer on release — no acceleration on first tap */
         if (on_a) pair->act_a(e);
         else if (on_b) pair->act_b(e);
     } else if (code == LV_EVENT_LONG_PRESSED_REPEAT) {
@@ -1306,6 +1307,7 @@ static void confirm_touch_cb(lv_event_t *e)
     } else if (code == LV_EVENT_PRESS_LOST) {
         highlight_btn(pair->hl_a, false);
         highlight_btn(pair->hl_b, false);
+        touch_press_start_us = 0;  /* Reset on press lost */
     }
 }
 
