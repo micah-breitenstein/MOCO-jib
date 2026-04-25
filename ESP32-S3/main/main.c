@@ -744,11 +744,11 @@ static int get_setting_acceleration_multiplier(void)
     
     int64_t elapsed_ms = (esp_timer_get_time() - touch_press_start_us) / 1000;
     
-    if (elapsed_ms >= 2000) {
-        return 10;  /* Turbo speed after 2 seconds */
+    if (elapsed_ms >= 1000) {
+        return 50;  /* Turbo speed after 1 second (50x multiplier) */
     }
     
-    return 1;       /* Normal speed initially (0-2 seconds) */
+    return 1;       /* Normal speed initially (0-1 second) */
 }
 
 static void editor_dec_cb(lv_event_t *e)
