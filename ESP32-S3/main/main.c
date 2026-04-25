@@ -810,28 +810,35 @@ static int get_setting_acceleration_multiplier(void)
 
 static int get_editor_step_delta(const SettingDef *s, bool increasing)
 {
-    /* For percentage sliders, use coarse 10-step once past edge band. */
-    if (s->type == STYPE_INT_RANGE && s->step == 1 && strcmp(s->unit, "%") == 0) {
+    /* For any fine-grained INT_RANGE setting (step == 1), snap to boundaries
+       when turbo is active.  Works for both "%" sliders and "s" intervals. */
+    if (s->type == STYPE_INT_RANGE && s->step == 1) {
         int accel = get_setting_acceleration_multiplier();
         if (accel == 1) {
             return 1;
         }
 
+        /* Calculate one "coarse unit" as 10% of the total range, clamped 2-10. */
+        int range = s->max_val - s->min_val;
+        int unit = range / 10;
+        if (unit < 2) unit = 2;
+        if (unit > 10) unit = 10;
+
         if (increasing) {
-            if (s->value < 10) {
-                return 1;
-            }
-            /* Snap to next 10s boundary, then continue in 10s. */
-            int rem = s->value % 10;
-            return (rem == 0) ? 10 : (10 - rem);
+            /* Stay fine until at least one unit from the bottom. */
+            if (s->value < s->min_val + unit) return 1;
+            /* Snap to next unit boundary. */
+            int rel = s->value - s->min_val;
+            int rem = rel % unit;
+            return (rem == 0) ? unit : (unit - rem);
         }
-        /* Keep fine control near 0 and near 100. */
-        if (s->value > 90 || s->value <= 10) {
-            return 1;
-        }
-        /* Snap to previous 10s boundary, then continue in 10s. */
-        int rem = s->value % 10;
-        return (rem == 0) ? 10 : rem;
+
+        /* Stay fine within one unit of the bottom or top. */
+        if (s->value > s->max_val - unit || s->value <= s->min_val + unit) return 1;
+        /* Snap to previous unit boundary. */
+        int rel = s->value - s->min_val;
+        int rem = rel % unit;
+        return (rem == 0) ? unit : rem;
     }
 
     return s->step * get_setting_acceleration_multiplier();
