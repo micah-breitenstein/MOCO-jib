@@ -511,6 +511,7 @@ static void touch_read_cb(lv_indev_drv_t *drv, lv_indev_data_t *data)
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
         touch_pressed = false;
+        touch_press_start_us = 0;  /* Reset timing for next press */
         long_press_fired = false;
         touch_moved = false;
         touch_guard = false;
@@ -734,6 +735,22 @@ static void update_editor_value_label(void)
     lv_label_set_text(editor_value_label, buf);
 }
 
+/* Calculate acceleration multiplier based on hold duration */
+static int get_setting_acceleration_multiplier(void)
+{
+    if (touch_press_start_us == 0) {
+        return 1;  /* No acceleration if not tracking hold time */
+    }
+    
+    int64_t elapsed_ms = (esp_timer_get_time() - touch_press_start_us) / 1000;
+    
+    if (elapsed_ms >= 2000) {
+        return 10;  /* Turbo speed after 2 seconds */
+    }
+    
+    return 1;       /* Normal speed initially (0-2 seconds) */
+}
+
 static void editor_dec_cb(lv_event_t *e)
 {
     (void)e;
@@ -741,7 +758,9 @@ static void editor_dec_cb(lv_event_t *e)
     if (s->type == STYPE_ACTION) {
         return;
     }
-    s->value -= s->step;
+    
+    int multiplier = get_setting_acceleration_multiplier();
+    s->value -= (s->step * multiplier);
     if (s->value < s->min_val) s->value = s->min_val;
     update_editor_value_label();
     editor_value_pop();
@@ -762,7 +781,9 @@ static void editor_inc_cb(lv_event_t *e)
     if (s->type == STYPE_ACTION) {
         return;
     }
-    s->value += s->step;
+    
+    int multiplier = get_setting_acceleration_multiplier();
+    s->value += (s->step * multiplier);
     if (s->value > s->max_val) s->value = s->max_val;
     update_editor_value_label();
     editor_value_pop();
