@@ -785,10 +785,12 @@ static void update_editor_value_label(void)
 static int get_setting_acceleration_multiplier(void)
 {
     int64_t hold_start_us = touch_press_start_us;
+    bool is_dpad = false;
     
     /* Check if controller dpad has the more recent hold (larger timestamp = more recent) */
     if (controller_hold_start_us > 0 && (hold_start_us == 0 || controller_hold_start_us > hold_start_us)) {
         hold_start_us = controller_hold_start_us;
+        is_dpad = true;
     }
     
     if (hold_start_us == 0) {
@@ -797,7 +799,9 @@ static int get_setting_acceleration_multiplier(void)
     
     int64_t elapsed_ms = (esp_timer_get_time() - hold_start_us) / 1000;
 
-    if (elapsed_ms >= 1000) {
+    /* Make dpad turbo kick in sooner than touch. */
+    int threshold_ms = is_dpad ? 700 : 1000;
+    if (elapsed_ms >= threshold_ms) {
         return 10;  /* Turbo speed (10x multiplier) */
     }
     
