@@ -91,25 +91,27 @@ static const char *TAG = "RIG";
 /* ---------- Settings data model ---------- */
 
 typedef enum {
-    SGRP_TIMELAPSE = 0,
+    SGRP_BRIGHTNESS = 0,
     SGRP_SYSTEM,
+    SGRP_TIMELAPSE,
     SGRP_ZEROING,
     SGRP_COUNT,
 } SettingGroup;
 
 static const char *setting_group_names[SGRP_COUNT] = {
-    "TIMELAPSE",
+    "BRIGHTNESS",
     "SYSTEM",
+    "TIMELAPSE",
     "ZEROING",
 };
 
 typedef enum {
-    SETTING_TL_INTERVAL = 0,
-    SETTING_TL_STEPDIST,
-    SETTING_RUMBLE_MUTE,
+    SETTING_MTX_BRIGHTNESS = 0,
     SETTING_BRIGHTNESS,
-    SETTING_MTX_BRIGHTNESS,
+    SETTING_RUMBLE_MUTE,
     SETTING_LOGO_THEME,
+    SETTING_TL_INTERVAL,
+    SETTING_TL_STEPDIST,
     SETTING_HOME_SET,
     SETTING_HOME_GO,
     SETTING_HOME_CLEAR,
@@ -137,24 +139,26 @@ typedef struct {
 } SettingDef;
 
 static SettingDef settings[SETTING_COUNT] = {
+    [SETTING_MTX_BRIGHTNESS] = { "Matrix",            "%", SGRP_BRIGHTNESS, STYPE_INT_RANGE, 5,   5,   0,   100, 1,  true,  false },
+    [SETTING_BRIGHTNESS]     = { "Display",           "%", SGRP_BRIGHTNESS, STYPE_INT_RANGE, 100, 100, 0,   100, 1,  false, false },
+    [SETTING_RUMBLE_MUTE]    = { "Rumble Mute",      "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
+    [SETTING_LOGO_THEME]     = { "Logo Theme",       "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
     [SETTING_TL_INTERVAL]    = { "Interval",         "s",  SGRP_TIMELAPSE, STYPE_INT_RANGE, 15,  15,  1,   99,  1,  true,  true  },
     [SETTING_TL_STEPDIST]    = { "Step Dist",        "ms", SGRP_TIMELAPSE, STYPE_INT_RANGE, 100, 100, 20,  150, 10, true,  true  },
-    [SETTING_RUMBLE_MUTE]    = { "Rumble Mute",      "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  true,  false },
-    [SETTING_BRIGHTNESS]     = { "Brightness",       "%",  SGRP_SYSTEM,    STYPE_INT_RANGE, 100, 100, 0,   100, 1,  false, false },
-    [SETTING_MTX_BRIGHTNESS] = { "Matrix Brightness", "%", SGRP_SYSTEM,    STYPE_INT_RANGE, 5,   5,   0,   100, 1,  true,  false },
-    [SETTING_LOGO_THEME]     = { "Logo Theme",       "",   SGRP_SYSTEM,    STYPE_BOOL,      0,   0,   0,   1,   1,  false, false },
     [SETTING_HOME_SET]       = { "Set Home",         "",   SGRP_ZEROING,   STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
     [SETTING_HOME_GO]        = { "Go Home",          "",   SGRP_ZEROING,   STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
     [SETTING_HOME_CLEAR]     = { "Clear Home",       "",   SGRP_ZEROING,   STYPE_ACTION,    0,   0,   0,   0,   0,  true,  false },
 };
 
 /* NVS keys for the 5 settings (short for 15-char NVS limit) */
-static const char *nvs_keys[SETTING_COUNT] = { "tl_int", "tl_step", "r_mute", "bright", "mtx_brt", "theme", "h_set", "h_go", "h_clr" };
+static const char *nvs_keys[SETTING_COUNT] = { "mtx_brt", "bright", "r_mute", "theme", "tl_int", "tl_step", "h_set", "h_go", "h_clr" };
 
 /* ---------- Settings menu state ---------- */
 static lv_obj_t           *selected_row = NULL;
 static lv_obj_t           *group_header_cont[SGRP_COUNT] = {NULL};
 static lv_obj_t           *setting_row_objs[SETTING_COUNT] = {NULL};
+static int                 settings_open_snapshot[SETTING_COUNT] = {0};
+static bool                setting_recently_changed[SETTING_COUNT] = {false};
 static volatile bool       settings_refresh_pending = false;
 static bool                settings_visible = false;
 static bool                editor_visible = false;
@@ -231,6 +235,9 @@ static lv_obj_t *settings_list_panel = NULL;
 static lv_obj_t *settings_editor_panel = NULL;
 static lv_obj_t *settings_confirm_panel = NULL;
 static lv_obj_t *reset_defaults_btn = NULL;
+static lv_obj_t *settings_exit_btn = NULL;
+static lv_obj_t *settings_exit_lbl = NULL;
+static lv_obj_t *reset_defaults_lbl = NULL;
 static lv_obj_t *editor_title_label = NULL;
 static lv_obj_t *editor_value_label = NULL;
 static bool status_error_active = false;
@@ -577,7 +584,30 @@ static void editor_inc_cb(lv_event_t *e);
 static void editor_dec_cb(lv_event_t *e);
 static void editor_save_cb(lv_event_t *e);
 static void editor_exit_cb(lv_event_t *e);
+static void settings_exit_cb(lv_event_t *e);
+static void reset_defaults_cb(lv_event_t *e);
 static void open_settings_menu(void);
+static void clear_confirm_dialog_state(void);
+static void update_confirm_dialog_controller_highlight(void);
+static bool confirm_primary_selected;
+static void (*confirm_primary_action)(lv_event_t *);
+static void (*confirm_secondary_action)(lv_event_t *);
+
+#define NAV_FOOTER_CLOSE_IDX (SETTING_COUNT)
+#define NAV_FOOTER_RESET_IDX (SETTING_COUNT + 1)
+#define NAV_TOTAL_ITEMS      (SETTING_COUNT + 2)
+
+static void controller_clear_footer_highlight(void)
+{
+    if (settings_exit_btn && settings_exit_lbl) {
+        lv_obj_set_style_bg_color(settings_exit_btn, lv_color_make(20, 20, 20), 0);
+        lv_obj_set_style_text_color(settings_exit_lbl, lv_color_make(200, 120, 40), 0);
+    }
+    if (reset_defaults_btn && reset_defaults_lbl) {
+        lv_obj_set_style_bg_color(reset_defaults_btn, lv_color_make(20, 20, 20), 0);
+        lv_obj_set_style_text_color(reset_defaults_lbl, lv_color_make(180, 50, 50), 0);
+    }
+}
 
 /* ================================================================
  *  Settings UI — controller navigation helpers
@@ -593,6 +623,26 @@ static void controller_highlight_row(int idx)
         lv_obj_set_style_bg_grad_dir(selected_row, LV_GRAD_DIR_NONE, 0);
         lv_obj_t *prev_val = lv_obj_get_child(selected_row, 1);
         if (prev_val) lv_obj_set_style_text_color(prev_val, lv_color_make(255, 180, 80), 0);
+    }
+
+    controller_clear_footer_highlight();
+
+    if (idx == NAV_FOOTER_CLOSE_IDX && settings_exit_btn && settings_exit_lbl) {
+        selected_row = NULL;
+        controller_nav_index = idx;
+        lv_obj_set_style_bg_color(settings_exit_btn, lv_color_make(155, 60, 0), 0);
+        lv_obj_set_style_text_color(settings_exit_lbl, lv_color_black(), 0);
+        lv_obj_scroll_to_view(settings_exit_btn, LV_ANIM_ON);
+        return;
+    }
+
+    if (idx == NAV_FOOTER_RESET_IDX && reset_defaults_btn && reset_defaults_lbl) {
+        selected_row = NULL;
+        controller_nav_index = idx;
+        lv_obj_set_style_bg_color(reset_defaults_btn, lv_color_make(160, 35, 35), 0);
+        lv_obj_set_style_text_color(reset_defaults_lbl, lv_color_black(), 0);
+        lv_obj_scroll_to_view(reset_defaults_btn, LV_ANIM_ON);
+        return;
     }
 
     if (idx < 0 || idx >= SETTING_COUNT || !setting_row_objs[idx]) {
@@ -660,10 +710,20 @@ static void handle_settings_nav(const char *nav_cmd)
 
     /* Confirm dialog is showing */
     if (settings_confirm_panel) {
-        if (strcmp(nav_cmd, "SELECT") == 0) {
-            editor_save_cb(NULL);
+        if (strcmp(nav_cmd, "LEFT") == 0 || strcmp(nav_cmd, "RIGHT") == 0
+            || strcmp(nav_cmd, "UP") == 0 || strcmp(nav_cmd, "DOWN") == 0) {
+            confirm_primary_selected = !confirm_primary_selected;
+            update_confirm_dialog_controller_highlight();
+        } else if (strcmp(nav_cmd, "SELECT") == 0) {
+            if (confirm_primary_selected) {
+                if (confirm_primary_action) confirm_primary_action(NULL);
+            } else {
+                if (confirm_secondary_action) confirm_secondary_action(NULL);
+            }
         } else if (strcmp(nav_cmd, "BACK") == 0) {
-            editor_exit_cb(NULL);
+            if (confirm_secondary_action) {
+                confirm_secondary_action(NULL);
+            }
         }
         return;
     }
@@ -719,15 +779,20 @@ static void handle_settings_nav(const char *nav_cmd)
 
     if (strcmp(nav_cmd, "UP") == 0) {
         int next = controller_nav_index - 1;
-        if (next < 0) next = SETTING_COUNT - 1;
+        if (next < 0) next = NAV_TOTAL_ITEMS - 1;
         controller_highlight_row(next);
     } else if (strcmp(nav_cmd, "DOWN") == 0) {
         int next = controller_nav_index + 1;
-        if (next >= SETTING_COUNT) next = 0;
+        if (next >= NAV_TOTAL_ITEMS) next = 0;
         controller_highlight_row(next);
     } else if (strcmp(nav_cmd, "SELECT") == 0) {
         if (controller_nav_index >= 0 && controller_nav_index < SETTING_COUNT) {
             open_editor((SettingId)controller_nav_index);
+        } else if (controller_nav_index == NAV_FOOTER_CLOSE_IDX) {
+            settings_exit_cb(NULL);
+            controller_nav_index = -1;
+        } else if (controller_nav_index == NAV_FOOTER_RESET_IDX) {
+            reset_defaults_cb(NULL);
         }
     } else if (strcmp(nav_cmd, "BACK") == 0) {
         close_settings_menu();
@@ -754,6 +819,13 @@ static void format_setting_value(SettingId id, char *buf, size_t sz)
         }
     } else {
         snprintf(buf, sz, "%d%s", s->value, s->unit);
+    }
+}
+
+static void recompute_recently_changed_flags(void)
+{
+    for (int i = 0; i < SETTING_COUNT; i++) {
+        setting_recently_changed[i] = (settings[i].value != settings_open_snapshot[i]);
     }
 }
 
@@ -850,6 +922,7 @@ static void editor_dec_cb(lv_event_t *e)
     int delta = get_editor_step_delta(s, false);
     s->value -= delta;
     if (s->value < s->min_val) s->value = s->min_val;
+    recompute_recently_changed_flags();
     update_editor_value_label();
     editor_value_pop();
     if (!s->mega_backed) {
@@ -873,6 +946,7 @@ static void editor_inc_cb(lv_event_t *e)
     int delta = get_editor_step_delta(s, true);
     s->value += delta;
     if (s->value > s->max_val) s->value = s->max_val;
+    recompute_recently_changed_flags();
     update_editor_value_label();
     editor_value_pop();
     if (!s->mega_backed) {
@@ -916,6 +990,36 @@ static confirm_pair_t save_dlg_pair;
 static confirm_pair_t reset_dlg_pair;
 static confirm_pair_t editor_pm_pair;
 
+typedef enum {
+    CONFIRM_MODE_NONE = 0,
+    CONFIRM_MODE_SAVE,
+    CONFIRM_MODE_RESET,
+} ConfirmDialogMode;
+
+static ConfirmDialogMode confirm_dialog_mode = CONFIRM_MODE_NONE;
+static bool confirm_primary_selected = true;
+static btn_press_ctx_t *confirm_primary_ctx = NULL;
+static btn_press_ctx_t *confirm_secondary_ctx = NULL;
+static void (*confirm_primary_action)(lv_event_t *) = NULL;
+static void (*confirm_secondary_action)(lv_event_t *) = NULL;
+
+static void clear_confirm_dialog_state(void)
+{
+    confirm_dialog_mode = CONFIRM_MODE_NONE;
+    confirm_primary_selected = true;
+    confirm_primary_ctx = NULL;
+    confirm_secondary_ctx = NULL;
+    confirm_primary_action = NULL;
+    confirm_secondary_action = NULL;
+}
+
+static void update_confirm_dialog_controller_highlight(void)
+{
+    if (!settings_confirm_panel || !confirm_primary_ctx || !confirm_secondary_ctx) return;
+    highlight_btn(confirm_primary_ctx, confirm_primary_selected);
+    highlight_btn(confirm_secondary_ctx, !confirm_primary_selected);
+}
+
 static btn_press_ctx_t save_press_ctx;
 static btn_press_ctx_t cancel_press_ctx;
 static btn_press_ctx_t done_press_ctx;
@@ -935,6 +1039,7 @@ static void editor_save_cb(lv_event_t *e)
     /* Notify MEGA to rumble */
     const char *saved_cmd = "SETTINGS_SAVED\n";
     uart_write_bytes(STATUS_UART_PORT, saved_cmd, strlen(saved_cmd));
+    clear_confirm_dialog_state();
     close_editor();
 }
 
@@ -946,6 +1051,7 @@ static void editor_exit_cb(lv_event_t *e)
     if (editor_setting_id == SETTING_BRIGHTNESS) apply_brightness();
     if (editor_setting_id == SETTING_LOGO_THEME) apply_theme();
     if (editor_setting_id == SETTING_MTX_BRIGHTNESS) send_set_command(editor_setting_id);
+    clear_confirm_dialog_state();
     close_editor();
 }
 
@@ -1018,6 +1124,14 @@ static void editor_done_cb(lv_event_t *e)
     lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESSING, &save_dlg_pair);
     lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_RELEASED, &save_dlg_pair);
     lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESS_LOST, &save_dlg_pair);
+
+    confirm_dialog_mode = CONFIRM_MODE_SAVE;
+    confirm_primary_selected = true;
+    confirm_primary_ctx = &save_press_ctx;
+    confirm_secondary_ctx = &cancel_press_ctx;
+    confirm_primary_action = editor_save_cb;
+    confirm_secondary_action = editor_exit_cb;
+    update_confirm_dialog_controller_highlight();
 }
 
 /* helpers: create objects with theme fully suppressed */
@@ -1203,11 +1317,13 @@ static void open_editor(SettingId id)
 static void close_editor(void)
 {
     editor_visible = false;
+    clear_confirm_dialog_state();
     if (settings_confirm_panel) {
         lv_obj_del_async(settings_confirm_panel);
         settings_confirm_panel = NULL;
     }
     if (settings_editor_panel) lv_obj_add_flag(settings_editor_panel, LV_OBJ_FLAG_HIDDEN);
+    recompute_recently_changed_flags();
     /* Rebuild the list so row value labels reflect any changes */
     if (settings_list_panel) {
         lv_obj_del(settings_list_panel);
@@ -1284,6 +1400,7 @@ static void setting_row_click_cb(lv_event_t *e)
 static void confirm_reset_yes_cb(lv_event_t *e)
 {
     (void)e;
+    clear_confirm_dialog_state();
     if (settings_confirm_panel) {
         lv_obj_del_async(settings_confirm_panel);
         settings_confirm_panel = NULL;
@@ -1292,7 +1409,7 @@ static void confirm_reset_yes_cb(lv_event_t *e)
     apply_brightness();
     apply_theme();
     for (int i = 0; i < SETTING_COUNT; i++) {
-        if (settings[i].mega_backed) {
+        if (settings[i].mega_backed && settings[i].type != STYPE_ACTION) {
             send_set_command((SettingId)i);
         }
     }
@@ -1302,6 +1419,7 @@ static void confirm_reset_yes_cb(lv_event_t *e)
 static void confirm_reset_no_cb(lv_event_t *e)
 {
     (void)e;
+    clear_confirm_dialog_state();
     if (settings_confirm_panel) {
         lv_obj_del_async(settings_confirm_panel);
         settings_confirm_panel = NULL;
@@ -1453,6 +1571,14 @@ static void reset_defaults_cb(lv_event_t *e)
     lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESSING, &reset_dlg_pair);
     lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_RELEASED, &reset_dlg_pair);
     lv_obj_add_event_cb(settings_confirm_panel, confirm_touch_cb, LV_EVENT_PRESS_LOST, &reset_dlg_pair);
+
+    confirm_dialog_mode = CONFIRM_MODE_RESET;
+    confirm_primary_selected = true;
+    confirm_primary_ctx = &yes_press_ctx;
+    confirm_secondary_ctx = &close_press_ctx;
+    confirm_primary_action = confirm_reset_yes_cb;
+    confirm_secondary_action = confirm_reset_no_cb;
+    update_confirm_dialog_controller_highlight();
 }
 
 static void create_settings_list(void)
@@ -1521,14 +1647,22 @@ static void create_settings_list(void)
             lv_obj_set_user_data(row, (void *)(intptr_t)i);
 
             lv_obj_t *name_lbl = create_label_no_theme(row);
-            lv_label_set_text(name_lbl, settings[i].name);
+            char name_buf[48];
+            snprintf(name_buf, sizeof(name_buf), "%s%s", setting_recently_changed[i] ? "* " : "", settings[i].name);
+            lv_label_set_text(name_lbl, name_buf);
             lv_obj_set_style_text_font(name_lbl, &lv_font_montserrat_48, 0);
+            lv_obj_set_style_text_color(name_lbl,
+                                        setting_recently_changed[i] ? lv_color_make(255, 205, 120)
+                                                                    : lv_color_white(),
+                                        0);
             lv_obj_align(name_lbl, LV_ALIGN_LEFT_MID, 0, 0);
 
             lv_obj_t *val_lbl = create_label_no_theme(row);
             char buf[16];
+            char disp[24];
             format_setting_value((SettingId)i, buf, sizeof(buf));
-            lv_label_set_text(val_lbl, buf);
+            snprintf(disp, sizeof(disp), "%s%s", setting_recently_changed[i] ? "* " : "", buf);
+            lv_label_set_text(val_lbl, disp);
             lv_obj_set_style_text_color(val_lbl, lv_color_make(255, 180, 80), 0);
             lv_obj_align(val_lbl, LV_ALIGN_RIGHT_MID, 0, 0);
         }
@@ -1541,6 +1675,7 @@ static void create_settings_list(void)
     lv_obj_t *exit_btn = make_plain_button(settings_list_panel,
                                             LCD_H_RES - 160, 64,
                                             lv_color_make(20, 20, 20), 8);
+    settings_exit_btn = exit_btn;
     set_border_all_states(exit_btn, lv_color_make(155, 60, 0), 2);
     lv_obj_set_style_bg_color(exit_btn, lv_color_make(155, 60, 0), LV_STATE_PRESSED);
     lv_obj_set_style_bg_opa(exit_btn, LV_OPA_COVER, LV_STATE_PRESSED);
@@ -1549,6 +1684,7 @@ static void create_settings_list(void)
     lv_obj_add_event_cb(exit_btn, settings_exit_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *exit_lbl = create_label_no_theme(exit_btn);
     lv_label_set_text(exit_lbl, "Close");
+    settings_exit_lbl = exit_lbl;
     lv_obj_set_style_text_color(exit_lbl, lv_color_make(200, 120, 40), 0);
     lv_obj_set_style_text_font(exit_lbl, &lv_font_montserrat_40_limited, 0);
     lv_obj_align(exit_lbl, LV_ALIGN_CENTER, 0, 0);
@@ -1581,6 +1717,7 @@ static void create_settings_list(void)
     lv_obj_add_event_cb(reset_defaults_btn, reset_defaults_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t *reset_lbl = create_label_no_theme(reset_defaults_btn);
     lv_label_set_text(reset_lbl, "Reset Defaults");
+    reset_defaults_lbl = reset_lbl;
     lv_obj_set_style_text_color(reset_lbl, lv_color_make(180, 50, 50), 0);
     lv_obj_set_style_text_font(reset_lbl, &lv_font_montserrat_40_limited, 0);
     lv_obj_align(reset_lbl, LV_ALIGN_CENTER, 0, 0);
@@ -1632,6 +1769,11 @@ static void open_settings_menu(void)
     editor_visible = false;
     touch_guard = true;  /* block until finger lifts */
 
+    for (int i = 0; i < SETTING_COUNT; i++) {
+        settings_open_snapshot[i] = settings[i].value;
+        setting_recently_changed[i] = false;
+    }
+
     /* refresh list values — rebuild is simplest for dynamic value labels */
     if (settings_list_panel) {
         lv_obj_del(settings_list_panel);
@@ -1663,6 +1805,7 @@ static void close_settings_menu(void)
     }
     settings_visible = false;
     editor_visible = false;
+    clear_confirm_dialog_state();
     selected_row = NULL;
     if (settings_confirm_panel) {
         lv_obj_del_async(settings_confirm_panel);
