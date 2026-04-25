@@ -812,6 +812,11 @@ static int get_editor_step_delta(const SettingDef *s, bool increasing)
 {
     /* For percentage sliders, use coarse 10-step once past edge band. */
     if (s->type == STYPE_INT_RANGE && s->step == 1 && strcmp(s->unit, "%") == 0) {
+        int accel = get_setting_acceleration_multiplier();
+        if (accel == 1) {
+            return 1;
+        }
+
         if (increasing) {
             return (s->value >= 10) ? 10 : 1;
         }
