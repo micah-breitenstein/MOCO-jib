@@ -616,8 +616,13 @@ static void controller_highlight_row(int idx)
     if (sel_val) lv_obj_set_style_text_color(sel_val, lv_color_white(), 0);
     update_accent_bars((int)settings[idx].group);
 
-    /* Scroll row into view */
-    lv_obj_scroll_to_view(row, LV_ANIM_ON);
+    /* Scroll row into view; for the first item also scroll to top so its group
+       header is fully visible. */
+    if (idx == 0) {
+        lv_obj_scroll_to_y(settings_list_panel, 0, LV_ANIM_ON);
+    } else {
+        lv_obj_scroll_to_view(row, LV_ANIM_ON);
+    }
 }
 
 static void handle_settings_nav(const char *nav_cmd)
