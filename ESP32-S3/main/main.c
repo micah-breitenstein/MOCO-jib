@@ -628,7 +628,7 @@ static void handle_settings_nav(const char *nav_cmd)
     
     if (controller_hold_start_us > 0 && last_dpad_cmd_us > 0) {
         int64_t gap_ms = (now_us - last_dpad_cmd_us) / 1000;
-        if (gap_ms > 150) {  /* More than 150ms gap = button was released */
+        if (gap_ms > 300) {  /* More than 300ms gap = button was released */
             controller_hold_start_us = 0;
             controller_hold_cmd[0] = 0;
         }
@@ -667,20 +667,20 @@ static void handle_settings_nav(const char *nav_cmd)
     if (editor_visible) {
         if (strcmp(nav_cmd, "UP") == 0 || strcmp(nav_cmd, "RIGHT") == 0) {
             /* Track dpad hold for acceleration */
-            /* Reset timer if switching from DOWN/LEFT to UP/RIGHT */
+            /* Reset only when switching from opposite direction group. */
             if (strcmp(controller_hold_cmd, "DOWN") == 0 || strcmp(controller_hold_cmd, "LEFT") == 0) {
                 controller_hold_start_us = esp_timer_get_time();
-            } else if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+            } else if (controller_hold_start_us == 0) {
                 controller_hold_start_us = esp_timer_get_time();
             }
             strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
             editor_inc_cb(NULL);
         } else if (strcmp(nav_cmd, "DOWN") == 0 || strcmp(nav_cmd, "LEFT") == 0) {
             /* Track dpad hold for acceleration */
-            /* Reset timer if switching from UP/RIGHT to DOWN/LEFT */
+            /* Reset only when switching from opposite direction group. */
             if (strcmp(controller_hold_cmd, "UP") == 0 || strcmp(controller_hold_cmd, "RIGHT") == 0) {
                 controller_hold_start_us = esp_timer_get_time();
-            } else if (strcmp(nav_cmd, controller_hold_cmd) != 0) {
+            } else if (controller_hold_start_us == 0) {
                 controller_hold_start_us = esp_timer_get_time();
             }
             strncpy(controller_hold_cmd, nav_cmd, sizeof(controller_hold_cmd) - 1);
