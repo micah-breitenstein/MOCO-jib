@@ -587,6 +587,7 @@ static void editor_exit_cb(lv_event_t *e);
 static void settings_exit_cb(lv_event_t *e);
 static void reset_defaults_cb(lv_event_t *e);
 static void open_settings_menu(void);
+static int get_setting_acceleration_multiplier(void);
 static void clear_confirm_dialog_state(void);
 static void update_confirm_dialog_controller_highlight(void);
 static bool confirm_primary_selected;
@@ -673,6 +674,27 @@ static void controller_highlight_row(int idx)
     } else {
         lv_obj_scroll_to_view(row, LV_ANIM_ON);
     }
+}
+
+static int first_setting_in_group(SettingGroup group)
+{
+    for (int i = 0; i < SETTING_COUNT; i++) {
+        if (settings[i].group == group && setting_row_objs[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static SettingGroup nav_group_from_index(int idx)
+{
+    if (idx >= 0 && idx < SETTING_COUNT) {
+        return settings[idx].group;
+    }
+    if (idx == NAV_FOOTER_CLOSE_IDX || idx == NAV_FOOTER_RESET_IDX) {
+        return SGRP_ZEROING;
+    }
+    return SGRP_BRIGHTNESS;
 }
 
 static void handle_settings_nav(const char *nav_cmd)
@@ -785,6 +807,17 @@ static void handle_settings_nav(const char *nav_cmd)
         int next = controller_nav_index + 1;
         if (next >= NAV_TOTAL_ITEMS) next = 0;
         controller_highlight_row(next);
+    } else if (strcmp(nav_cmd, "GROUP_NEXT") == 0 || strcmp(nav_cmd, "GROUP_PREV") == 0) {
+        SettingGroup cur = nav_group_from_index(controller_nav_index);
+        int dir = (strcmp(nav_cmd, "GROUP_NEXT") == 0) ? 1 : -1;
+        for (int hop = 1; hop <= SGRP_COUNT; hop++) {
+            int gi = ((int)cur + dir * hop + SGRP_COUNT * 4) % SGRP_COUNT;
+            int target = first_setting_in_group((SettingGroup)gi);
+            if (target >= 0) {
+                controller_highlight_row(target);
+                break;
+            }
+        }
     } else if (strcmp(nav_cmd, "SELECT") == 0) {
         if (controller_nav_index >= 0 && controller_nav_index < SETTING_COUNT) {
             open_editor((SettingId)controller_nav_index);
@@ -852,9 +885,14 @@ static void editor_value_pop(void)
 static void update_editor_value_label(void)
 {
     if (!editor_value_label) return;
-    char val[16], buf[20];
+    char val[16], buf[32];
     format_setting_value(editor_setting_id, val, sizeof(val));
-    snprintf(buf, sizeof(buf), "[ %s ]", val);
+    int accel = get_setting_acceleration_multiplier();
+    if (accel > 1) {
+        snprintf(buf, sizeof(buf), "[%s]x%d", val, accel);
+    } else {
+        snprintf(buf, sizeof(buf), "[%s]", val);
+    }
     lv_label_set_text(editor_value_label, buf);
 }
 
@@ -1222,6 +1260,7 @@ static void create_editor_panel(void)
     lv_obj_set_style_text_color(editor_value_label, lv_color_make(255, 180, 80), 0);
     lv_obj_set_style_text_font(editor_value_label, &lv_font_montserrat_120, 0);
     lv_obj_set_style_text_align(editor_value_label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_set_long_mode(editor_value_label, LV_LABEL_LONG_CLIP);
     lv_obj_set_width(editor_value_label, LCD_H_RES - 40);
     lv_obj_set_pos(editor_value_label, 20, 160);
 
@@ -1574,10 +1613,10 @@ static void reset_defaults_cb(lv_event_t *e)
 
     confirm_dialog_mode = CONFIRM_MODE_RESET;
     confirm_primary_selected = true;
-    confirm_primary_ctx = &yes_press_ctx;
-    confirm_secondary_ctx = &close_press_ctx;
-    confirm_primary_action = confirm_reset_yes_cb;
-    confirm_secondary_action = confirm_reset_no_cb;
+    confirm_primary_ctx = &close_press_ctx;
+    confirm_secondary_ctx = &yes_press_ctx;
+    confirm_primary_action = confirm_reset_no_cb;
+    confirm_secondary_action = confirm_reset_yes_cb;
     update_confirm_dialog_controller_highlight();
 }
 

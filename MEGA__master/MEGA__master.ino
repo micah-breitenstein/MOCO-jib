@@ -223,11 +223,11 @@ constexpr unsigned long TIMELAPSE_SETTLE_DWELL_MS = 500;
 constexpr unsigned long PERSISTED_SETTINGS_RESET_HOLD_MS = 1500;
 constexpr unsigned long SETTINGS_TOGGLE_HOLD_MS = 800;
 constexpr uint8_t RUMBLE_ACTIVE_INTENSITY = 255;
-constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 400;
+constexpr unsigned long INTERVAL_RUMBLE_LONG_MS = 1600;
 constexpr unsigned long INTERVAL_RUMBLE_LONG_PAUSE_MS = 400;
-constexpr unsigned long INTERVAL_RUMBLE_GROUP_SEPARATOR_MS = 500;
-constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 150;
-constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 300;
+constexpr unsigned long INTERVAL_RUMBLE_GROUP_SEPARATOR_MS = 2000;
+constexpr unsigned long INTERVAL_RUMBLE_SHORT_ON_MS = 600;
+constexpr unsigned long INTERVAL_RUMBLE_SHORT_TOTAL_MS = 1200;
 constexpr unsigned long STEP_DIST_RUMBLE_LONG_ON_MS = 400;
 constexpr unsigned long STEP_DIST_RUMBLE_LONG_TOTAL_MS = 800;
 constexpr unsigned long RUMBLE_PATTERN_SEPARATOR_MS = 300;
@@ -3882,6 +3882,13 @@ void startIntervalRumbleFeedbackNow() {
   intervalRumbleLongsRemaining = timelapseIntervalSeconds / 10;
   intervalRumbleShortsRemaining = timelapseIntervalSeconds % 10;
 
+  // Manual compensation requested: add one pulse to active interval group.
+  if (intervalRumbleShortsRemaining > 0) {
+    intervalRumbleShortsRemaining++;
+  } else if (intervalRumbleLongsRemaining > 0) {
+    intervalRumbleLongsRemaining++;
+  }
+
   if (intervalRumbleLongsRemaining > 0) {
     intervalRumblePhase = INTERVAL_RUMBLE_LONG_ACTIVE;
   } else if (intervalRumbleShortsRemaining > 0) {
@@ -4872,6 +4879,8 @@ void handleSettingsInput() {
   static bool lastDpadDown = false;
   static bool lastCircle = false;
   static bool lastCross = false;
+  static bool lastL1 = false;
+  static bool lastR1 = false;
   static unsigned long dpadUpHoldStart = 0;
   static unsigned long dpadDownHoldStart = 0;
   static unsigned long dpadUpLastRepeat = 0;
@@ -4891,6 +4900,8 @@ void handleSettingsInput() {
   bool dpadLeft = ps2x.Button(PSB_PAD_LEFT);
   bool circle = ps2x.Button(PSB_CIRCLE);
   bool cross = ps2x.Button(PSB_CROSS);
+  bool l1 = ps2x.Button(PSB_L1);
+  bool r1 = ps2x.Button(PSB_R1);
   unsigned long now = millis();
 
   if (dpadUp && !lastDpadUp) {
@@ -4919,6 +4930,12 @@ void handleSettingsInput() {
   if (cross && !lastCross) {
     sendToDisplayESP("SETTINGS_NAV:BACK");
   }
+  if (l1 && !lastL1) {
+    sendToDisplayESP("SETTINGS_NAV:GROUP_PREV");
+  }
+  if (r1 && !lastR1) {
+    sendToDisplayESP("SETTINGS_NAV:GROUP_NEXT");
+  }
 
   if (dpadRight && !lastDpadRight) {
     sendToDisplayESP("SETTINGS_NAV:RIGHT");
@@ -4946,6 +4963,8 @@ void handleSettingsInput() {
   lastDpadLeft = dpadLeft;
   lastCircle = circle;
   lastCross = cross;
+  lastL1 = l1;
+  lastR1 = r1;
 }
 
 void handleDroneModeToggle() {
