@@ -808,6 +808,19 @@ static int get_setting_acceleration_multiplier(void)
     return 1;       /* Normal speed initially */
 }
 
+static int get_editor_step_delta(const SettingDef *s, bool increasing)
+{
+    /* For percentage sliders, use coarse 10-step once past edge band. */
+    if (s->type == STYPE_INT_RANGE && s->step == 1 && strcmp(s->unit, "%") == 0) {
+        if (increasing) {
+            return (s->value >= 10) ? 10 : 1;
+        }
+        return (s->value <= 90) ? 10 : 1;
+    }
+
+    return s->step * get_setting_acceleration_multiplier();
+}
+
 static void editor_dec_cb(lv_event_t *e)
 {
     (void)e;
@@ -816,8 +829,8 @@ static void editor_dec_cb(lv_event_t *e)
         return;
     }
     
-    int multiplier = get_setting_acceleration_multiplier();
-    s->value -= (s->step * multiplier);
+    int delta = get_editor_step_delta(s, false);
+    s->value -= delta;
     if (s->value < s->min_val) s->value = s->min_val;
     update_editor_value_label();
     editor_value_pop();
@@ -839,8 +852,8 @@ static void editor_inc_cb(lv_event_t *e)
         return;
     }
     
-    int multiplier = get_setting_acceleration_multiplier();
-    s->value += (s->step * multiplier);
+    int delta = get_editor_step_delta(s, true);
+    s->value += delta;
     if (s->value > s->max_val) s->value = s->max_val;
     update_editor_value_label();
     editor_value_pop();
