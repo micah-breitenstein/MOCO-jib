@@ -3,7 +3,7 @@
 	url = https://github.com/micah-breitenstein/MOCO-display.git
 [submodule "MOCO-matrix"]
 	path = MOCO-matrix
-	url = https://github.com/micah-breitenstein/MOCO-Matrix
+	url = https://github.com/micah-breitenstein/MOCO-matrix.git
 [submodule "MOCO-stepper"]
 	path = MOCO-stepper
 	url = https://github.com/micah-breitenstein/MOCO-stepper.git
