@@ -4,3 +4,6 @@
 [submodule "ESP32-S3-Matrix"]
 	path = ESP32-S3-Matrix
 	url = https://github.com/micah-breitenstein/MOCO-Matrix
+[submodule "MOCO-stepper"]
+	path = MOCO-stepper
+	url = https://github.com/micah-breitenstein/MOCO-stepper.git
