@@ -1,0 +1,6 @@
+[submodule "ESP32-S3"]
+	path = ESP32-S3
+	url = https://github.com/micah-breitenstein/MOCO-Display
+[submodule "ESP32-S3-Matrix"]
+	path = ESP32-S3-Matrix
+	url = https://github.com/micah-breitenstein/MOCO-Matrix
