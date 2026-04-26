@@ -9,4 +9,4 @@
 	url = https://github.com/micah-breitenstein/MOCO-stepper.git
 [submodule "MOCO-control"]
 	path = MOCO-control
-	url = https://github.com/micah-breitenstein/MOCO-Control.git
+	url = https://github.com/micah-breitenstein/MOCO-control.git
