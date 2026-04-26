@@ -246,22 +246,18 @@ flowchart TD
 
 ## Repository Structure
 
-- `MEGA__master/MEGA__master.ino` — main controller logic
-- `NANO_slave_1_SWING/NANO_slave_1_SWING.ino` — swing axis slave
-- `NANO_slave_2_PAN/NANO_slave_2_PAN.ino` — pan axis slave
-- `NANO_slave_3_LIFT/NANO_slave_3_LIFT.ino` — lift axis slave
-- `NANO_slave_4_TILT/NANO_slave_4_TILT.ino` — tilt axis slave
-- `NANO_slave_5_FOCUS/NANO_slave_5_FOCUS.ino` — focus axis slave
-- `ESP32-S3/RIG_Display.ino` — ESP32-S3 display firmware (UART1 RX=40 TX=41 115200; `CONTROLLER_ERROR` → error screen, `MODE:*` → mode UI, `CONTROL:*` → brief overlay, `DRONE_STICK:*` → live stick animation)
-- `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (UART1 RX=44 TX=43 115200; `CONTROLLER_ERROR` → red twinkle, `CONTROLLER_OK` → white breathing pulse, `MODE:*` → latched color)
+- `MOCO-control/MEGA__master/MEGA__master.ino` — main controller logic (Arduino Mega)
+- `MOCO-stepper/examples/*/*.ino` — Nano axis firmware (Swing, Pan, Lift, Tilt, Focus)
+- `MOCO-display/` — ESP32-S3 display firmware (ESP-IDF)
+- `MOCO-matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` — matrix status listener (UART1 RX=44 TX=43 115200; `CONTROLLER_ERROR` → red twinkle, `CONTROLLER_OK` → white breathing pulse, `MODE:*` → latched color)
 
 ## Notes
 
-- Each folder contains a standalone `.ino` sketch for that board.
-- Upload the corresponding sketch to each target board (Mega master or Nano slave).
+- Firmware is split by subsystem repo (`MOCO-control`, `MOCO-stepper`, `MOCO-display`, `MOCO-matrix`).
+- Upload the corresponding firmware to each target board (Mega, Nanos, display ESP32-S3, matrix ESP32-S3).
 - Keep serial/communication settings synchronized between master and all slaves.
 - Arduino Mega/Nano onboard LEDs are single-color only (no native RGB mode indicator support).
-- For color mode indicators (blue/green/red/yellow), use the optional ESP32-S3 matrix status firmware (`ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino`).
+- For color mode indicators (blue/green/red/yellow), use the optional matrix status firmware (`MOCO-matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino`).
 
 ## Setup and Flashing
 
@@ -285,11 +281,38 @@ arduino-cli core update-index
 arduino-cli core install arduino:avr
 ```
 
-Install the `PS2X_lib` library from the vendored copy:
+Install the `PS2X_lib` library from the vendored copy in `MOCO-control`:
 
 ```sh
-cp -r third_party/PS2X_lib ~/Documents/Arduino/libraries/PS2X_lib
+cp -r MOCO-control/libraries/PS2X_lib ~/Documents/Arduino/libraries/PS2X_lib
 ```
+
+### Tomorrow bring-up checklist (with Will)
+
+1. Verify ports:
+	```sh
+	ls /dev/cu.*
+	```
+2. Flash Mega (`MOCO-control`):
+	```sh
+	arduino-cli compile --fqbn arduino:avr:mega --libraries MOCO-control/libraries MOCO-control/MEGA__master
+	arduino-cli upload -v -p /dev/cu.usbmodem1401 --fqbn arduino:avr:mega MOCO-control/MEGA__master
+	```
+3. Flash one Nano axis (`MOCO-stepper`, example Swing):
+	```sh
+	arduino-cli compile --fqbn arduino:avr:nano --library MOCO-stepper MOCO-stepper/examples/Swing
+	arduino-cli upload -v -p /dev/cu.usbserial-BG02A9YU --fqbn arduino:avr:nano MOCO-stepper/examples/Swing
+	```
+4. Flash matrix (`MOCO-matrix`):
+	```sh
+	arduino-cli compile --fqbn esp32:esp32:esp32s3 MOCO-matrix/ESP32_S3_Matrix_Status
+	arduino-cli upload -v -p /dev/cu.usbmodem1301 --fqbn esp32:esp32:esp32s3 MOCO-matrix/ESP32_S3_Matrix_Status
+	```
+5. Flash display (`MOCO-display`, ESP-IDF):
+	```sh
+	(cd MOCO-display && idf.py build)
+	(cd MOCO-display && idf.py flash -p /dev/cu.usbmodem1301)
+	```
 
 ### PS2 receiver wiring (Mega 2560)
 
@@ -328,7 +351,7 @@ Notes:
    ```
 3. Upload:
    ```sh
-   arduino-cli upload -p /dev/cu.usbmodem101 --fqbn arduino:avr:mega MEGA__master
+	arduino-cli upload -p /dev/cu.usbmodem101 --fqbn arduino:avr:mega MOCO-control/MEGA__master
    # Replace /dev/cu.usbmodem101 with your actual port
    ```
 4. Confirm boot over serial (optional):
@@ -341,11 +364,12 @@ Notes:
 
 1. Connect the target Nano via USB.
 2. Find its port with `arduino-cli board list`.
-3. Upload the matching sketch (replace `NANO_slave_1_SWING` and port as needed):
+3. Upload the matching axis example (replace `Swing` and port as needed):
    ```sh
-   arduino-cli upload -p /dev/cu.usbmodem201 --fqbn arduino:avr:nano:cpu=atmega328 NANO_slave_1_SWING
+	arduino-cli compile --fqbn arduino:avr:nano --library MOCO-stepper MOCO-stepper/examples/Swing
+	arduino-cli upload -p /dev/cu.usbmodem201 --fqbn arduino:avr:nano MOCO-stepper/examples/Swing
    ```
-4. Repeat for each axis slave (`NANO_slave_2_PAN`, `NANO_slave_3_LIFT`, `NANO_slave_4_TILT`, `NANO_slave_5_FOCUS`).
+4. Repeat for each axis (`Pan`, `Lift`, `Tilt`, `Focus`).
 
 > **Note:** Some Nano clones require `cpu=atmega328old` instead of `cpu=atmega328`. If upload fails with a sync error, try the `old` variant.
 
@@ -394,8 +418,8 @@ Board silkscreen reference:
 
 Recommended Mega serial assignments:
 
-- `Serial1` (`TX1=18`, `RX1=19`) → display ESP32-S3
-- `Serial2` (`TX2=16`, `RX2=17`) → RGB matrix ESP32-S3
+- `Serial1` (`TX1=18`, `RX1=19`) → `MOCO-display` ESP32-S3
+- `Serial2` (`TX2=16`, `RX2=17`) → `MOCO-matrix` ESP32-S3
 
 ESP-side UART pins used by current sketches:
 
@@ -440,7 +464,7 @@ UART rule reminder: `TX` always goes to the other board's `RX`, and `RX` goes to
 
 ### Waveshare ESP32-S3 Matrix status test
 
-Use `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` to drive the onboard 8×8 matrix from Mega status messages.
+Use `MOCO-matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` to drive the onboard 8×8 matrix from Mega status messages.
 
 #### Flashing the matrix ESP32-S3
 
@@ -452,21 +476,21 @@ Use `ESP32-S3-Matrix/ESP32_S3_Matrix_Status/ESP32_S3_Matrix_Status.ino` to drive
    ```
 3. Compile and upload:
    ```sh
-   arduino-cli compile --fqbn esp32:esp32:esp32s3 ESP32-S3-Matrix/ESP32_S3_Matrix_Status && \
-   arduino-cli upload -p /dev/cu.usbmodem11101 --fqbn esp32:esp32:esp32s3 ESP32-S3-Matrix/ESP32_S3_Matrix_Status
+	arduino-cli compile --fqbn esp32:esp32:esp32s3 MOCO-matrix/ESP32_S3_Matrix_Status && \
+	arduino-cli upload -p /dev/cu.usbmodem11101 --fqbn esp32:esp32:esp32s3 MOCO-matrix/ESP32_S3_Matrix_Status
    # Replace /dev/cu.usbmodem11101 with your actual port
    ```
 
 #### Matrix behavior
 
-- UART mapping in sketch defaults to `RX=GPIO40`, `TX=GPIO41`, `9600 baud`
+- UART mapping in sketch defaults to `RX=GPIO44`, `TX=GPIO43`, `115200 baud`
 - `CONTROLLER_ERROR:*` sets the matrix to red with animating pink twinkles
 - `CONTROLLER_OK:*` displays white pulsing breathing animation
 
 Recommended Mega serial path for matrix:
 
-- Mega `TX2` (pin `16`) → level shifter `HV3` ↔ `LV3` → matrix ESP `GPIO40` (`RX`)
-- Mega `RX2` (pin `17`) ← level shifter `HV4` ↔ `LV4` ← matrix ESP `GPIO41` (`TX`)
+- Mega `TX2` (pin `16`) → level shifter `HV3` ↔ `LV3` → matrix ESP `GPIO44` (`RX`)
+- Mega `RX2` (pin `17`) ← level shifter `HV4` ↔ `LV4` ← matrix ESP `GPIO43` (`TX`)
 
 If your matrix board routes the LED data line to a different GPIO, update `MATRIX_DATA_PIN` in the sketch before flashing.
 
@@ -474,7 +498,7 @@ If your matrix board routes the LED data line to a different GPIO, update `MATRI
 
 - Required Arduino library: `PS2X_lib` (for `#include <PS2X_lib.h>` in the Mega sketch)
 - Source: https://github.com/madsci1016/Arduino-PS2X.git
-- Vendored copy in this repo: `third_party/PS2X_lib/`
+- Vendored copy in this repo: `MOCO-control/libraries/PS2X_lib/`
 - Install location (macOS): `~/Documents/Arduino/libraries/PS2X_lib/`
 - Expected header path after install: `~/Documents/Arduino/libraries/PS2X_lib/PS2X_lib.h`
 - Restart Arduino IDE after installing so the library index refreshes
@@ -484,7 +508,7 @@ If your matrix board routes the LED data line to a different GPIO, update `MATRI
 
 This project has been verified to build from the terminal/VS Code using:
 
-- `arduino-cli compile --fqbn arduino:avr:mega "/Users/micahbreitenstein/Downloads/to Micah/MEGA__master"`
+- `arduino-cli compile --fqbn arduino:avr:mega --libraries "/Users/micahbreitenstein/Downloads/to Micah/MOCO-control/libraries" "/Users/micahbreitenstein/Downloads/to Micah/MOCO-control/MEGA__master"`
 
 This targets the Arduino Mega 2560 (`arduino:avr:mega`) and compiles the master sketch without needing to open Arduino IDE.
 
@@ -744,7 +768,7 @@ Speed level is based on how far you push either stick from center (small deflect
 
 #### Drone mode tuning constants (firmware)
 
-These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control Drone Mode feel:
+These constants live in [MOCO-control/MEGA__master/MEGA__master.ino](MOCO-control/MEGA__master/MEGA__master.ino) and control Drone Mode feel:
 
 - Per-axis expo curves:
 	- `DRONE_SWING_EXPO_PERCENT` (currently `45`)
@@ -780,7 +804,7 @@ These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__maste
 
 #### Timelapse tuning constants (firmware)
 
-These constants live in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino) and control timelapse motion smoothness:
+These constants live in [MOCO-control/MEGA__master/MEGA__master.ino](MOCO-control/MEGA__master/MEGA__master.ino) and control timelapse motion smoothness:
 
 - Motion ramping:
 	- `DEFAULT_TIMELAPSE_ANTI_BACKLASH_ENABLED` (currently `true`) — boot default for preload behavior
@@ -871,7 +895,7 @@ Quick tuning guide:
 
 #### Starter profiles (copy these values)
 
-Pick one profile and set the constants in [MEGA__master/MEGA__master.ino](MEGA__master/MEGA__master.ino):
+Pick one profile and set the constants in [MOCO-control/MEGA__master/MEGA__master.ino](MOCO-control/MEGA__master/MEGA__master.ino):
 
 - **Safe / Indoor (slow + smooth):**
 	- `DRONE_SWING_EXPO_PERCENT = 75`
