@@ -1,6 +1,6 @@
 [submodule "MOCO-display"]
 	path = MOCO-display
-	url = https://github.com/micah-breitenstein/MOCO-Display
+	url = https://github.com/micah-breitenstein/MOCO-display.git
 [submodule "MOCO-matrix"]
 	path = MOCO-matrix
 	url = https://github.com/micah-breitenstein/MOCO-Matrix
