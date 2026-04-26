@@ -9,7 +9,7 @@
 				"compile",
 				"--fqbn",
 				"arduino:avr:mega",
-				"${workspaceFolder}/MEGA__master"
+				"${workspaceFolder}/MOCO-control/MEGA__master"
 			],
 			"group": {
 				"kind": "build",
@@ -28,7 +28,7 @@
 				"/dev/cu.usbmodem1401",
 				"--fqbn",
 				"arduino:avr:mega",
-				"${workspaceFolder}/MEGA__master"
+				"${workspaceFolder}/MOCO-control/MEGA__master"
 			],
 			"group": "build"
 		},
@@ -40,7 +40,7 @@
 				"compile",
 				"--fqbn",
 				"esp32:esp32:esp32s3",
-				"${workspaceFolder}/ESP32-S3-Matrix/ESP32_S3_Matrix_Status"
+				"${workspaceFolder}/MOCO-matrix/ESP32_S3_Matrix_Status"
 			],
 			"group": "build",
 			"problemMatcher": []
@@ -53,10 +53,10 @@
 				"upload",
 				"-v",
 				"-p",
-				"/dev/cu.usbmodem1201",
+				"/dev/cu.usbmodem1301",
 				"--fqbn",
 				"esp32:esp32:esp32s3",
-				"${workspaceFolder}/ESP32-S3-Matrix/ESP32_S3_Matrix_Status"
+				"${workspaceFolder}/MOCO-matrix/ESP32_S3_Matrix_Status"
 			],
 			"group": "build",
 			"problemMatcher": []
@@ -71,7 +71,7 @@
 				"/dev/cu.usbmodem1301"
 			],
 			"options": {
-				"cwd": "${workspaceFolder}/ESP32-S3"
+				"cwd": "${workspaceFolder}/MOCO-display"
 			},
 			"group": "build",
 			"problemMatcher": []
@@ -84,7 +84,7 @@
 				"build"
 			],
 			"options": {
-				"cwd": "${workspaceFolder}/ESP32-S3"
+				"cwd": "${workspaceFolder}/MOCO-display"
 			},
 			"group": "build",
 			"problemMatcher": []

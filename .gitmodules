@@ -1,12 +1,12 @@
-[submodule "ESP32-S3"]
-	path = ESP32-S3
+[submodule "MOCO-display"]
+	path = MOCO-display
 	url = https://github.com/micah-breitenstein/MOCO-Display
-[submodule "ESP32-S3-Matrix"]
-	path = ESP32-S3-Matrix
+[submodule "MOCO-matrix"]
+	path = MOCO-matrix
 	url = https://github.com/micah-breitenstein/MOCO-Matrix
 [submodule "MOCO-stepper"]
 	path = MOCO-stepper
 	url = https://github.com/micah-breitenstein/MOCO-stepper.git
-[submodule "MOCO-Control"]
-	path = MOCO-Control
+[submodule "MOCO-control"]
+	path = MOCO-control
 	url = https://github.com/micah-breitenstein/MOCO-Control.git
