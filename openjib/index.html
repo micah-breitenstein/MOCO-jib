@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenJib | Open-Source Motion Control</title>
+
+  <style>
+    :root {
+      --cyan: #00d8ff;
+      --green: #20f59a;
+      --text: #f4f7fb;
+      --muted: #9aa7b2;
+      --line: rgba(0, 216, 255, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+
+      background:
+        linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.75)),
+        url('https://s3.us-west-1.amazonaws.com/openjib.com/multi-axis-crane.gif') center / cover no-repeat fixed;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 64px;
+      padding: 32px;
+    }
+
+    /* HERO */
+    .frame {
+      width: min(1100px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 56px;
+      background: rgba(0, 0, 0, 0.15);
+      backdrop-filter: blur(3px);
+    }
+
+    /* LOGO */
+    .logo img {
+      width: clamp(220px, 40vw, 420px);
+      display: block;
+      margin-bottom: 24px;
+
+      mix-blend-mode: screen;
+
+      filter:
+        drop-shadow(0 0 6px rgba(38, 54, 76, 0.6))
+        drop-shadow(0 0 16px rgba(38, 54, 76, 0.4));
+
+      animation: glowPulse 3.5s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% {
+        filter:
+          drop-shadow(0 0 6px rgba(38, 54, 76, 0.5))
+          drop-shadow(0 0 12px rgba(38, 54, 76, 0.3));
+      }
+      50% {
+        filter:
+          drop-shadow(0 0 14px rgba(38, 54, 76, 0.8))
+          drop-shadow(0 0 28px rgba(38, 54, 76, 0.5));
+      }
+    }
+
+    .kicker {
+      color: var(--cyan);
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .tagline {
+      font-size: clamp(22px, 3vw, 36px);
+      margin-bottom: 24px;
+    }
+
+    .description {
+      color: var(--muted);
+      margin-bottom: 36px;
+      max-width: 760px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+
+    .pill {
+      border: 1px solid rgba(38, 54, 76, 0.6);
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(38, 54, 76, 0.12);
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    a.button {
+      background: linear-gradient(90deg, var(--cyan), var(--green));
+      color: black;
+      padding: 14px 22px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    /* ROTARY SECTION */
+    .rotary-section {
+      width: min(1100px, 100%);
+    }
+
+    .rotary-card {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 40px;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(5px);
+    }
+
+    .footage-label {
+      color: var(--cyan);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .rotary-card h2 {
+      font-size: clamp(28px, 4vw, 48px);
+      margin: 0 0 16px;
+    }
+
+    .rotary-card p {
+      color: var(--muted);
+      margin-bottom: 24px;
+      max-width: 700px;
+    }
+
+    .video-container {
+      width: 100%;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      box-shadow: 0 0 16px rgba(38, 54, 76, 0.4);
+    }
+
+    video {
+      width: 100%;
+      display: block;
+    }
+
+    .footer {
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 14px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HERO -->
+  <main class="frame">
+
+    <div class="logo">
+      <img src="https://s3.us-west-1.amazonaws.com/openjib.com/moco-jib-logo-two-line-black.png">
+    </div>
+
+    <div class="kicker">Open hardware • Open community • Endless motion</div>
+
+    <p class="tagline">
+      Open-source motion control for cinematic capture
+    </p>
+
+    <p class="description">
+      Drone-style movement. No-fly zones. 20’ lift. Modular hardware.
+      Built by people who show up.
+    </p>
+
+    <div class="pill-row">
+      <span class="pill">Pan</span>
+      <span class="pill">Tilt</span>
+      <span class="pill">Lift</span>
+      <span class="pill">Swing</span>
+      <span class="pill">Focus</span>
+      <span class="pill">Shutter</span>
+      <span class="pill">No-fly-zone friendly</span>
+      <span class="pill">Up to 20’ lift</span>
+    </div>
+
+    <div class="actions">
+      <a class="button" href="https://github.com/micah-breitenstein/MOCO-jib">View on GitHub</a>
+      <a class="button" href="/MOCO_Jib_Final_Visual_Deck.pdf" target="_blank">📽️ View Demo Deck</a>
+      <a class="button" href="mailto:micah.breitenstein@gmail.com">🚀 Join the Project</a>
+    </div>
+
+    <div class="footer">
+      Coming soon — built by people who show up
+    </div>
+
+  </main>
+
+  <!-- ROTARY TABLE -->
+  <section class="rotary-section">
+    <div class="rotary-card">
+
+      <div class="footage-label">Footage</div>
+
+      <h2>Rotary Table Demo</h2>
+
+      <p>
+        A single-axis motion-control module demonstrating how OpenJib extends
+        beyond the jib into modular systems like turntables and sliders.
+      </p>
+
+      <div class="video-container">
+        <video controls playsinline preload="auto">
+          <source src="/demo.mp4" type="video/mp4">
+        </video>
+      </div>
+
+    </div>
+  </section>
+
+</body>
+</html>

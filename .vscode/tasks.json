@@ -88,6 +88,36 @@
 			},
 			"group": "build",
 			"problemMatcher": []
+		},
+		{
+			"label": "Clean and rebuild MOCO display",
+			"type": "shell",
+			"command": "cd MOCO-display && rm -rf build && . $HOME/.espressif/v5.5.2/esp-idf/export.sh && idf.py build flash -p /dev/cu.usbmodem1301 monitor",
+			"isBackground": false
+		},
+		{
+			"label": "Flash and Monitor MOCO display",
+			"type": "shell",
+			"command": "cd MOCO-display && . $HOME/.espressif/v5.5.2/esp-idf/export.sh && idf.py flash -p /dev/cu.usbmodem1301 monitor",
+			"isBackground": false
+		},
+		{
+			"label": "Flash and Monitor",
+			"type": "shell",
+			"command": "cd MOCO-display && . $HOME/.espressif/v5.5.2/esp-idf/export.sh && idf.py flash -p /dev/cu.usbmodem1301 monitor",
+			"isBackground": true
+		},
+		{
+			"label": "Clean rebuild and flash",
+			"type": "shell",
+			"command": "cd MOCO-display && rm -rf build sdkconfig && . $HOME/.espressif/v5.5.2/esp-idf/export.sh && idf.py build && idf.py -p /dev/cu.usbmodem1301 flash monitor",
+			"isBackground": true
+		},
+		{
+			"label": "Restore and rebuild",
+			"type": "shell",
+			"command": "cd MOCO-display && git checkout sdkconfig && . $HOME/.espressif/v5.5.2/esp-idf/export.sh && idf.py build flash -p /dev/cu.usbmodem1301 monitor",
+			"isBackground": true
 		}
 	]
 }
