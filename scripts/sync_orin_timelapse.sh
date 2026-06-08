@@ -14,7 +14,7 @@ INTERVAL_SECONDS=60
 RUN_ANALYZER=1
 SSH_TIMEOUT_SECONDS=12
 RSYNC_TIMEOUT_SECONDS=30
-ANALYZER_PATH="$SCRIPT_DIR/camera_ai_analyzer.py"
+ANALYZER_PATH="$SCRIPT_DIR/../holy-grail-timelapse/camera_ai_analyzer.py"
 ANALYZER_ARGS=""
 SSH_KEY_FILE="${ORIN_SYNC_SSH_KEY:-$HOME/.ssh/id_ed25519_orin_nopass}"
 LIST_VIEW="optimal"
@@ -51,7 +51,7 @@ Behavior options:
   --list-view <all|optimal>    Show remote directory listing using all/ or optimal/ paths (default: optimal)
   --local-root <path>          Local root that contains named folders
   --no-analyzer                Skip analyzer processing step
-  --analyzer-path <path>       Analyzer script path (default: camera_ai_analyzer.py)
+  --analyzer-path <path>       Analyzer script path (default: ../holy-grail-timelapse/camera_ai_analyzer.py)
   --analyzer-args <args>       Extra args appended to analyzer command
   --help                       Show this help text
 

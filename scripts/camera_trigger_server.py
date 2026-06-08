@@ -27,7 +27,7 @@ from PIL import Image
 UDP_PORT = 8888
 HTTP_PORT = 8080
 SCRIPT_DIR = Path(__file__).resolve().parent
-AUTOTUNE_SCRIPT = SCRIPT_DIR / 'camera_auto_tune.py'
+AUTOTUNE_SCRIPT = SCRIPT_DIR.parent / 'holy-grail-timelapse' / 'camera_auto_tune.py'
 AUTOTUNE_LOG_PATH = SCRIPT_DIR / 'camera_autotune.log'
 CAMERA_STATUS_SETTINGS = {
         'f-number': 'f-number',

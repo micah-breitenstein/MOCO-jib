@@ -1,5 +1,7 @@
 python3 camera_trigger_server.py
 
+This runner now uses the canonical timelapse tools from ../holy-grail-timelapse.
+
 Orin timelapse sync automation:
 
 1) One-time sync + process for all remote timelapse_[timestamp] folders:
