@@ -10,3 +10,6 @@
 [submodule "MOCO-control"]
 	path = MOCO-control
 	url = https://github.com/micah-breitenstein/MOCO-control.git
+[submodule "holy-grail-timelapse"]
+	path = holy-grail-timelapse
+	url = https://github.com/micah-breitenstein/holy-grail-timelapse.git

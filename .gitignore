@@ -1,4 +1,10 @@
 .DS_Store
+*.pyc
+__pycache__/
+
+# Ignore local preview captures.
+capture_preview.jpg
+tests/images/capture_preview.jpg
 
 MOCO-display/build/
 RM690B0_ESP32S3_HARDWARE_CONFIG.md
@@ -14,3 +20,43 @@ NANO_slave_3_LIFT/
 NANO_slave_4_TILT/
 Wills_Email
 MEGA__master.zip
+
+# Ignore camera capture images.
+**/capt_*.jpg
+**/capt_*.jpeg
+**/capt_*.png
+**/capt_*.webp
+**/capt_*.bmp
+**/capt_*.tif
+**/capt_*.tiff
+**/capt_*.[Jj][Pp][Gg]
+**/capt_*.[Jj][Pp][Ee][Gg]
+**/capt_*.[Pp][Nn][Gg]
+**/capt_*.[Ww][Ee][Bb][Pp]
+**/capt_*.[Bb][Mm][Pp]
+**/capt_*.[Tt][Ii][Ff]
+**/capt_*.[Tt][Ii][Ff][Ff]
+
+# Ignore timelapse output directories anywhere in the repo.
+**/timelapse/
+
+# Ignore generated timelapse mirrors, exports, and sync state.
+scripts/.sync_state/
+scripts/timelapse_orin/
+scripts/timelapse_orin_*/
+scripts/timelapse_exports/
+scripts/timelapse_field_test_fetch/
+scripts/timelapse_first/
+scripts/timelapse_second/
+scripts/timelapse_third/
+scripts/tl_test/
+
+# Ignore generated logs and preview artifacts.
+scripts/.timelapse_*.json
+scripts/*.log
+scripts/movie.mjpg
+scripts/reject_candidates.csv
+scripts/my-logfile.txt
+scripts/server.log
+scripts/sony-a7r4-log.txt
+scripts/timelapse_preview_original.html

@@ -64,12 +64,7 @@
 		{
 			"label": "IDF: Flash Display",
 			"type": "shell",
-			"command": "idf.py",
-			"args": [
-				"flash",
-				"-p",
-				"/dev/cu.usbmodem11301"
-			],
+			"command": ". $HOME/.espressif/v5.5.2/esp-idf/export.sh && idf.py flash -p /dev/cu.usbmodem11301",
 			"options": {
 				"cwd": "${workspaceFolder}/MOCO-display"
 			},
@@ -79,10 +74,7 @@
 		{
 			"label": "IDF: Build Display",
 			"type": "shell",
-			"command": "idf.py",
-			"args": [
-				"build"
-			],
+			"command": ". $HOME/.espressif/v5.5.2/esp-idf/export.sh && idf.py build",
 			"options": {
 				"cwd": "${workspaceFolder}/MOCO-display"
 			},
