@@ -27,7 +27,11 @@ from PIL import Image
 UDP_PORT = 8888
 HTTP_PORT = 8080
 SCRIPT_DIR = Path(__file__).resolve().parent
-AUTOTUNE_SCRIPT = SCRIPT_DIR.parent / 'holy-grail-timelapse' / 'camera_auto_tune.py'
+HOLY_GRAIL_DIR = SCRIPT_DIR.parent / 'holy-grail-timelapse'
+TIMELAPSE_LOCAL_ROOT = HOLY_GRAIL_DIR / 'timelapse'
+TIMELAPSE_LEGACY_LOCAL_ROOT = SCRIPT_DIR
+TIMELAPSE_LEGACY_MIRROR_ROOT = SCRIPT_DIR / 'timelapse_orin'
+AUTOTUNE_SCRIPT = HOLY_GRAIL_DIR / 'camera_auto_tune.py'
 AUTOTUNE_LOG_PATH = SCRIPT_DIR / 'camera_autotune.log'
 CAMERA_STATUS_SETTINGS = {
         'f-number': 'f-number',
@@ -92,8 +96,9 @@ ORIN_SSH_HOST = os.environ.get('ORIN_SSH_HOST', '10.42.0.1')
 ORIN_SSH_KEY = os.environ.get('ORIN_SSH_KEY', str(Path.home() / '.ssh' / 'id_ed25519_orin_nopass'))
 SYNC_SCRIPT_PATH = SCRIPT_DIR / 'sync_orin_timelapse.sh'
 SYNC_LOG_PATH = SCRIPT_DIR / 'sync_orin.log'
-TIMELAPSE_PREVIEW_HTML_PATH = SCRIPT_DIR / 'timelapse_preview_original.html'
-TIMELAPSE_EXPORT_DIR = SCRIPT_DIR / 'timelapse_exports'
+TIMELAPSE_PREVIEW_HTML_PATH = HOLY_GRAIL_DIR / 'timelapse_preview_original.html'
+TIMELAPSE_PREVIEW_HTML_LEGACY_PATH = SCRIPT_DIR / 'timelapse_preview_original.html'
+TIMELAPSE_EXPORT_DIR = HOLY_GRAIL_DIR / 'timelapse_exports'
 TIMELAPSE_HIDDEN_DIRS_PATH = SCRIPT_DIR / '.timelapse_hidden_dirs.json'
 SYNC_STATE_LOCK = threading.Lock()
 SYNC_PROCESS = None
@@ -301,6 +306,20 @@ def _save_hidden_timelapse_dirs(hidden_dirs):
                 return False
 
 
+def _is_path_within_allowed_local_roots(path_obj):
+        try:
+                resolved = path_obj.resolve()
+                for root in (SCRIPT_DIR.resolve(), HOLY_GRAIL_DIR.resolve()):
+                        try:
+                                resolved.relative_to(root)
+                                return True
+                        except Exception:
+                                pass
+        except Exception:
+                return False
+        return False
+
+
 def hide_timelapse_dir(dir_name):
         name = str(dir_name or '').strip()
         if not _timelapse_local_dir_name_is_valid(name):
@@ -316,23 +335,35 @@ def delete_local_timelapse_dir(dir_name, source=''):
         if not _timelapse_local_dir_name_is_valid(folder):
                 return {'ok': False, 'error': 'Invalid dir'}
 
-        mirror_candidate = SCRIPT_DIR / 'timelapse_orin' / folder
-        local_candidate = SCRIPT_DIR / folder
+        primary_candidate = TIMELAPSE_LOCAL_ROOT / folder
+        legacy_mirror_candidate = TIMELAPSE_LEGACY_MIRROR_ROOT / folder
+        legacy_local_candidate = TIMELAPSE_LEGACY_LOCAL_ROOT / folder
 
         if source_hint == 'remote':
-                target = mirror_candidate
+                target = primary_candidate if primary_candidate.exists() else legacy_mirror_candidate
         elif source_hint == 'local':
-                target = local_candidate
+                target = primary_candidate if primary_candidate.exists() else legacy_local_candidate
         else:
-                if mirror_candidate.exists() and mirror_candidate.is_dir():
-                        target = mirror_candidate
+                if primary_candidate.exists() and primary_candidate.is_dir():
+                        target = primary_candidate
+                elif legacy_mirror_candidate.exists() and legacy_mirror_candidate.is_dir():
+                        target = legacy_mirror_candidate
                 else:
-                        target = local_candidate
+                        target = legacy_local_candidate
 
         try:
                 resolved = target.resolve()
-                root_resolved = SCRIPT_DIR.resolve()
-                resolved.relative_to(root_resolved)
+                allowed_roots = [TIMELAPSE_LOCAL_ROOT.resolve(), SCRIPT_DIR.resolve()]
+                path_ok = False
+                for root_resolved in allowed_roots:
+                        try:
+                                resolved.relative_to(root_resolved)
+                                path_ok = True
+                                break
+                        except Exception:
+                                pass
+                if not path_ok:
+                        raise ValueError('Path out of bounds')
         except Exception:
                 return {'ok': False, 'error': 'Path out of bounds'}
 
@@ -383,8 +414,9 @@ def delete_local_timelapse_frame(dir_name, frame_name):
                 for path_obj in _timelapse_frame_dir_candidates(folder, preferred_view=preferred):
                         try:
                                 resolved_dir = path_obj.resolve()
-                                resolved_dir.relative_to(SCRIPT_DIR.resolve())
                         except Exception:
+                                continue
+                        if not _is_path_within_allowed_local_roots(resolved_dir):
                                 continue
                         key = str(resolved_dir)
                         if key in seen_dirs:
@@ -395,8 +427,9 @@ def delete_local_timelapse_frame(dir_name, frame_name):
         for path_obj in delete_dirs:
                 try:
                         candidate = (path_obj / frame).resolve()
-                        candidate.relative_to(SCRIPT_DIR.resolve())
                 except Exception:
+                        continue
+                if not _is_path_within_allowed_local_roots(candidate):
                         continue
 
                 if not candidate.exists() or not candidate.is_file():
@@ -515,8 +548,9 @@ def delete_local_timelapse_frame_range(dir_name, start_name, end_name, view='opt
                 for path_obj in _timelapse_frame_dir_candidates(folder, preferred_view=preferred):
                         try:
                                 resolved_dir = path_obj.resolve()
-                                resolved_dir.relative_to(SCRIPT_DIR.resolve())
                         except Exception:
+                                continue
+                        if not _is_path_within_allowed_local_roots(resolved_dir):
                                 continue
                         key = str(resolved_dir)
                         if key in seen_dirs:
@@ -533,8 +567,9 @@ def delete_local_timelapse_frame_range(dir_name, start_name, end_name, view='opt
                 for path_obj in delete_dirs:
                         try:
                                 candidate = (path_obj / frame).resolve()
-                                candidate.relative_to(SCRIPT_DIR.resolve())
                         except Exception:
+                                continue
+                        if not _is_path_within_allowed_local_roots(candidate):
                                 continue
 
                         if not candidate.exists() or not candidate.is_file():
@@ -627,6 +662,11 @@ def _count_image_files(path_obj):
                 for child in path_obj.iterdir():
                         if not child.is_file():
                                 continue
+                        try:
+                                if child.stat().st_size <= 0:
+                                        continue
+                        except Exception:
+                                continue
                         lower_name = child.name.lower()
                         if lower_name.startswith('timelapse_') or lower_name.startswith('capt_'):
                                 count += 1
@@ -647,6 +687,8 @@ def _latest_local_image_info(path_obj):
                         if not (lower_name.startswith('timelapse_') or lower_name.startswith('capt_')):
                                 continue
                         try:
+                                if child.stat().st_size <= 0:
+                                        continue
                                 mtime = child.stat().st_mtime
                         except Exception:
                                 continue
@@ -1162,31 +1204,40 @@ def _timelapse_frame_dir_candidates(dir_name, preferred_view='optimal'):
         if preferred not in ('optimal', 'all'):
                 preferred = 'optimal'
 
-        local_root = SCRIPT_DIR / name
+        local_root = TIMELAPSE_LOCAL_ROOT / name
         local_opt = local_root / 'optimal'
         local_all = local_root / 'all'
-        mirror_root = SCRIPT_DIR / 'timelapse_orin' / name
+        legacy_local_root = TIMELAPSE_LEGACY_LOCAL_ROOT / name
+        legacy_local_opt = legacy_local_root / 'optimal'
+        legacy_local_all = legacy_local_root / 'all'
+        mirror_root = TIMELAPSE_LEGACY_MIRROR_ROOT / name
         mirror_opt = mirror_root / 'optimal'
         mirror_all = mirror_root / 'all'
 
-        # Canonical legacy folder `timelapse` should prefer local scripts/timelapse.
+        # Canonical local timelapses now live under holy-grail-timelapse/timelapse.
         if name == 'timelapse':
                 return [
                         local_opt,
                         local_root,
+                        legacy_local_opt,
+                        legacy_local_root,
                         mirror_opt,
                         mirror_root,
                         local_all,
+                        legacy_local_all,
                         mirror_all,
                 ]
 
         return [
-                mirror_opt,
-                mirror_root,
                 local_opt,
                 local_root,
-                mirror_all,
                 local_all,
+                legacy_local_opt,
+                legacy_local_root,
+                legacy_local_all,
+                mirror_opt,
+                mirror_root,
+                mirror_all,
         ]
 
 
@@ -1922,7 +1973,7 @@ def _ensure_local_preview_frame(dir_name, frame_name, preferred_subdir='optimal'
         if not _timelapse_name_is_valid(folder) or not _frame_name_is_valid(frame):
                 return None
 
-        target_dir = SCRIPT_DIR / 'timelapse_orin' / folder / subdir
+        target_dir = TIMELAPSE_LOCAL_ROOT / folder / subdir
         target_path = target_dir / frame
         try:
                 if target_path.exists() and target_path.is_file() and target_path.stat().st_size > 0:
@@ -2289,7 +2340,7 @@ def _remote_count_image_files(remote_dir):
         remote_q = shlex.quote(str(remote_dir))
         cmd = (
                 f"test -d {remote_q} && "
-                f"find {remote_q} -maxdepth 1 -type f | wc -l || echo 0"
+                f"find {remote_q} -maxdepth 1 -type f -size +0c | wc -l || echo 0"
         )
         probe = subprocess.run(
                 [
@@ -2328,7 +2379,7 @@ def _remote_counts_by_subdir(subdir_name):
                 "[ -d \"$d\" ] || continue; "
                 f"target=\"$d\"/{subdir_q}; "
                 "[ -d \"$target\" ] || continue; "
-                "c=$(find \"$target\" -maxdepth 1 -type f | wc -l); "
+                "c=$(find \"$target\" -maxdepth 1 -type f -size +0c | wc -l); "
                 "printf '%s\t%s\n' \"$(basename \"$d\")\" \"$c\"; "
                 "done | LC_ALL=C sort"
         )
@@ -2345,6 +2396,7 @@ def _remote_counts_by_subdir(subdir_name):
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=8,
         )
         if probe.returncode != 0:
                 with REMOTE_COUNTS_CACHE_LOCK:
@@ -2404,6 +2456,7 @@ def _remote_latest_mtime_by_subdir(subdir_name):
                 capture_output=True,
                 text=True,
                 check=False,
+                timeout=8,
         )
         if probe.returncode != 0:
                 with REMOTE_LATEST_MTIME_CACHE_LOCK:
@@ -2447,7 +2500,7 @@ def _remote_first_image_info(folder_name, preferred_subdir='optimal'):
                 # Prefer the latest browser-displayable image (avoids early white calibration frames).
                 cmd = (
                         f"if [ -d {remote_dir_q} ]; then "
-                        f"find {remote_dir_q} -maxdepth 1 -type f \\( "
+                        f"find {remote_dir_q} -maxdepth 1 -type f -size +0c \\( "
                         "-iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' "
                         "-o -iname '*.webp' -o -iname '*.gif' -o -iname '*.bmp' \\) "
                         "-printf '%T@ %p\\n' | sort -n | tail -n 1 | cut -d' ' -f2-; "
@@ -2474,7 +2527,7 @@ def _remote_first_image_info(folder_name, preferred_subdir='optimal'):
                         # Fallback: latest timelapse/capt file. May still be non-renderable (e.g., RAW).
                         fallback_cmd = (
                                 f"if [ -d {remote_dir_q} ]; then "
-                                f"find {remote_dir_q} -maxdepth 1 -type f \\( "
+                                f"find {remote_dir_q} -maxdepth 1 -type f -size +0c \\( "
                                 "-name 'timelapse_*' -o -name 'capt_*' \\) "
                                 "-printf '%T@ %p\\n' | sort -n | tail -n 1 | cut -d' ' -f2-; "
                                 "fi"
@@ -2526,7 +2579,7 @@ def _remote_preview_frame_urls(folder_name, preferred_subdir='optimal', limit=80
                 remote_q = shlex.quote(remote_dir)
                 cmd = (
                         f"if [ -d {remote_q} ]; then "
-                        f"find {remote_q} -maxdepth 1 -type f "
+                        f"find {remote_q} -maxdepth 1 -type f -size +0c "
                         "\\( -name 'timelapse_*' -o -name 'capt_*' \\) "
                         "-printf '%f\\n' | LC_ALL=C sort; "
                         "fi"
@@ -2846,7 +2899,7 @@ def list_timelapse_directories(view='optimal', profile=False):
                 if not has_optimal:
                         continue
                 selected_path = f"{TIMELAPSE_ROOT}/{name}/{view_mode}"
-                local_base_dir = SCRIPT_DIR / 'timelapse_orin' / name
+                local_base_dir = TIMELAPSE_LOCAL_ROOT / name
                 local_optimal_dir = local_base_dir / 'optimal'
                 local_all_dir = local_base_dir / 'all'
                 local_selected_dir = local_all_dir if view_mode == 'all' else local_optimal_dir
@@ -2942,63 +2995,68 @@ def list_timelapse_directories(view='optimal', profile=False):
 
         # Include existing local timelapse folders so prior captures remain visible.
         phase_start = time.perf_counter()
-        for child in sorted(SCRIPT_DIR.iterdir(), key=lambda p: p.name):
-                if not child.is_dir():
+        local_dirs_to_scan = [TIMELAPSE_LOCAL_ROOT, SCRIPT_DIR]
+        
+        for parent_dir in local_dirs_to_scan:
+                if not parent_dir.exists():
                         continue
-                if not child.name.startswith('timelapse'):
-                        continue
-                if child.name == 'timelapse_orin':
-                        continue
-                if child.name in hidden_dirs:
-                        continue
+                for child in sorted(parent_dir.iterdir(), key=lambda p: p.name):
+                        if not child.is_dir():
+                                continue
+                        if not child.name.startswith('timelapse'):
+                                continue
+                        if child.name == 'timelapse_orin':
+                                continue
+                        if child.name in hidden_dirs:
+                                continue
 
-                if any(r.get('name') == child.name and r.get('source') == 'remote' for r in results):
-                        continue
+                        if any(r.get('name') == child.name and r.get('source') == 'remote' for r in results):
+                                continue
 
-                optimal_dir = child / 'optimal'
-                all_dir = child / 'all'
-                selected_dir = optimal_dir if optimal_dir.is_dir() else child
-                local_optimal_count = _count_image_files(optimal_dir) if optimal_dir.is_dir() else _count_image_files(selected_dir)
-                local_all_count = _count_image_files(all_dir) if all_dir.is_dir() else _count_image_files(selected_dir)
-                local_latest = _latest_local_image_info(selected_dir)
-                preview_frames = _preview_frame_urls(selected_dir)
-                ai_meta = ai_summary_by_dir.get(child.name, {})
-                preview_url = None
-                if local_latest.get('path'):
-                        preview_url = f"/api/timelapse-preview?path={quote(local_latest['path'])}&ts={int(local_latest.get('mtime') or 0)}"
-                latest_export = get_latest_timelapse_export(child.name, prefer_tag='thumb', fallback_to_any=False) if _timelapse_name_is_valid(child.name) else {'ok': True, 'available': False}
-                export_available = bool(latest_export.get('ok') and latest_export.get('available') and latest_export.get('download_url'))
-                results.append({
-                        'name': child.name,
-                        'source': 'local',
-                        'path': str(child),
-                        'has_all': (child / 'all').is_dir(),
-                        'has_optimal': optimal_dir.is_dir(),
-                        'selected_view': 'local',
-                        'selected_path': str(selected_dir),
-                        'selected_exists': selected_dir.is_dir(),
-                        'remote_selected_count': 0,
-                        'local_selected_count': _count_image_files(selected_dir),
-                        'local_optimal_path': str(optimal_dir),
-                        'local_optimal_count': local_optimal_count,
-                        'local_all_path': str(all_dir),
-                        'local_all_count': local_all_count,
-                        'last_photo_name': local_latest.get('name'),
-                        'last_photo_is_fallback': _frame_name_is_fallback(local_latest.get('name')),
-                        'last_photo_mtime': local_latest.get('mtime'),
-                        'last_photo_url': preview_url,
-                        'preview_url': preview_url,
-                        'preview_name': local_latest.get('name'),
-                        'latest_export_available': export_available,
-                        'latest_export_name': latest_export.get('file_name') if export_available else None,
-                        'latest_export_url': (latest_export.get('media_url') or latest_export.get('download_url')) if export_available else None,
-                        'latest_export_download_url': latest_export.get('download_url') if export_available else None,
-                        'preview_frames': preview_frames,
-                        'ai_score': ai_meta.get('overall_score'),
-                        'ai_scores': ai_meta.get('scores') or {},
-                        'ai_recommendation': ai_meta.get('recommendation'),
-                        'frame_meta': build_latest_frame_meta_summary(child.name, selected_dir, preferred_subdir='optimal'),
-                })
+                        optimal_dir = child / 'optimal'
+                        all_dir = child / 'all'
+                        selected_dir = optimal_dir if optimal_dir.is_dir() else child
+                        local_optimal_count = _count_image_files(optimal_dir) if optimal_dir.is_dir() else _count_image_files(selected_dir)
+                        local_all_count = _count_image_files(all_dir) if all_dir.is_dir() else _count_image_files(selected_dir)
+                        local_latest = _latest_local_image_info(selected_dir)
+                        preview_frames = _preview_frame_urls(selected_dir)
+                        ai_meta = ai_summary_by_dir.get(child.name, {})
+                        preview_url = None
+                        if local_latest.get('path'):
+                                preview_url = f"/api/timelapse-preview?path={quote(local_latest['path'])}&ts={int(local_latest.get('mtime') or 0)}"
+                        latest_export = get_latest_timelapse_export(child.name, prefer_tag='thumb', fallback_to_any=False) if _timelapse_name_is_valid(child.name) else {'ok': True, 'available': False}
+                        export_available = bool(latest_export.get('ok') and latest_export.get('available') and latest_export.get('download_url'))
+                        results.append({
+                                'name': child.name,
+                                'source': 'local',
+                                'path': str(child),
+                                'has_all': (child / 'all').is_dir(),
+                                'has_optimal': optimal_dir.is_dir(),
+                                'selected_view': 'local',
+                                'selected_path': str(selected_dir),
+                                'selected_exists': selected_dir.is_dir(),
+                                'remote_selected_count': 0,
+                                'local_selected_count': _count_image_files(selected_dir),
+                                'local_optimal_path': str(optimal_dir),
+                                'local_optimal_count': local_optimal_count,
+                                'local_all_path': str(all_dir),
+                                'local_all_count': local_all_count,
+                                'last_photo_name': local_latest.get('name'),
+                                'last_photo_is_fallback': _frame_name_is_fallback(local_latest.get('name')),
+                                'last_photo_mtime': local_latest.get('mtime'),
+                                'last_photo_url': preview_url,
+                                'preview_url': preview_url,
+                                'preview_name': local_latest.get('name'),
+                                'latest_export_available': export_available,
+                                'latest_export_name': latest_export.get('file_name') if export_available else None,
+                                'latest_export_url': (latest_export.get('media_url') or latest_export.get('download_url')) if export_available else None,
+                                'latest_export_download_url': latest_export.get('download_url') if export_available else None,
+                                'preview_frames': preview_frames,
+                                'ai_score': ai_meta.get('overall_score'),
+                                'ai_scores': ai_meta.get('scores') or {},
+                                'ai_recommendation': ai_meta.get('recommendation'),
+                                'frame_meta': build_latest_frame_meta_summary(child.name, selected_dir, preferred_subdir='optimal'),
+                        })
         mark('build_local_rows', phase_start)
 
         phase_start = time.perf_counter()
@@ -3026,8 +3084,9 @@ def _latest_local_timelapse_image_for_folder(folder_name):
                 return {}
 
         base_candidates = [
-                SCRIPT_DIR / 'timelapse_orin' / name,
-                SCRIPT_DIR / name,
+                TIMELAPSE_LOCAL_ROOT / name,
+                TIMELAPSE_LEGACY_LOCAL_ROOT / name,
+                TIMELAPSE_LEGACY_MIRROR_ROOT / name,
         ]
         latest = {}
         best_rank = (-1, -1.0, '')
@@ -3535,7 +3594,8 @@ def send_file(handler, file_path):
 
         handler.send_response(HTTPStatus.OK)
         handler.send_header('Content-Type', mime_type)
-        handler.send_header('Cache-Control', 'no-store')
+        # Timelapse frame URLs include path+ts(+w), so immutable caching is safe.
+        handler.send_header('Cache-Control', 'public, max-age=31536000, immutable')
         handler._send_cors_headers()
         handler.send_header('Content-Length', str(len(data)))
         handler.end_headers()
@@ -6037,10 +6097,24 @@ TIMELAPSE_PAGE = """<!doctype html>
                                         setPlaybarProgress(loopRange);
                                 };
 
-                                video.addEventListener('mouseenter', playPreview);
-                                video.addEventListener('mouseleave', stopPreview);
-                                video.addEventListener('pointerenter', playPreview);
-                                video.addEventListener('pointerleave', stopPreview);
+                                const autoplayPreview = () => {
+                                        if (document.hidden) return;
+                                        playPreview();
+                                };
+                                const onVisibility = () => {
+                                        if (document.hidden) {
+                                                stopPreview();
+                                        } else {
+                                                autoplayPreview();
+                                        }
+                                };
+                                video.autoplay = true;
+                                video.setAttribute('autoplay', 'autoplay');
+                                video.addEventListener('loadeddata', autoplayPreview);
+                                document.addEventListener('visibilitychange', onVisibility);
+                                window.requestAnimationFrame(() => {
+                                        autoplayPreview();
+                                });
                                 video.addEventListener('timeupdate', onTimeUpdate);
                                 video.addEventListener('ended', loopBack);
 
@@ -7007,12 +7081,19 @@ class CameraHTTPHandler(BaseHTTPRequestHandler):
                         return
 
                 if self.path.startswith('/timelapse-preview'):
-                        if TIMELAPSE_PREVIEW_HTML_PATH.exists() and TIMELAPSE_PREVIEW_HTML_PATH.is_file():
-                                body = TIMELAPSE_PREVIEW_HTML_PATH.read_text(encoding='utf-8').encode('utf-8')
-                        else:
+                        preview_candidates = [TIMELAPSE_PREVIEW_HTML_PATH, TIMELAPSE_PREVIEW_HTML_LEGACY_PATH]
+                        body = None
+                        for candidate in preview_candidates:
+                                if candidate.exists() and candidate.is_file():
+                                        body = candidate.read_text(encoding='utf-8').encode('utf-8')
+                                        break
+                        if body is None:
                                 body = VIEWER_PAGE.encode('utf-8')
                         self.send_response(HTTPStatus.OK)
                         self.send_header('Content-Type', 'text/html; charset=utf-8')
+                        self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+                        self.send_header('Pragma', 'no-cache')
+                        self.send_header('Expires', '0')
                         self._send_cors_headers()
                         self.send_header('Content-Length', str(len(body)))
                         self.end_headers()
@@ -7244,6 +7325,7 @@ class CameraHTTPHandler(BaseHTTPRequestHandler):
                         parsed = urlparse(self.path)
                         query = parse_qs(parsed.query)
                         requested = str((query.get('path') or [''])[0]).strip()
+                        requested_w = str((query.get('w') or [''])[0]).strip()
                         if not requested:
                                 self._send_json({'error': 'Missing path'}, status=HTTPStatus.BAD_REQUEST)
                                 return
@@ -7252,14 +7334,56 @@ class CameraHTTPHandler(BaseHTTPRequestHandler):
                         except Exception:
                                 self._send_json({'error': 'Invalid path'}, status=HTTPStatus.BAD_REQUEST)
                                 return
-                        try:
-                                preview_path.relative_to(SCRIPT_DIR.resolve())
-                        except Exception:
+                        _allowed_roots = [SCRIPT_DIR.resolve(), HOLY_GRAIL_DIR.resolve()]
+                        _path_ok = False
+                        for _root in _allowed_roots:
+                                try:
+                                        preview_path.relative_to(_root)
+                                        _path_ok = True
+                                        break
+                                except Exception:
+                                        pass
+                        if not _path_ok:
                                 self._send_json({'error': 'Path out of bounds'}, status=HTTPStatus.FORBIDDEN)
                                 return
                         if not preview_path.exists() or not preview_path.is_file():
                                 self._send_json({'error': 'Image not found'}, status=HTTPStatus.NOT_FOUND)
                                 return
+
+                        preview_max_w = None
+                        if requested_w:
+                                try:
+                                        preview_max_w = int(requested_w)
+                                except Exception:
+                                        preview_max_w = None
+                                if preview_max_w is not None:
+                                        preview_max_w = max(240, min(4096, preview_max_w))
+
+                        if preview_max_w:
+                                try:
+                                        with Image.open(preview_path) as img:
+                                                src_w, src_h = img.size
+                                                if src_w > preview_max_w and src_h > 0:
+                                                        scale = float(preview_max_w) / float(src_w)
+                                                        dst_h = max(1, int(round(src_h * scale)))
+                                                        resampling = getattr(Image, 'Resampling', Image).LANCZOS
+                                                        img = img.resize((preview_max_w, dst_h), resampling)
+                                                if img.mode not in ('RGB', 'L'):
+                                                        img = img.convert('RGB')
+                                                out = io.BytesIO()
+                                                img.save(out, format='JPEG', quality=84, optimize=True)
+                                                body = out.getvalue()
+                                        self.send_response(HTTPStatus.OK)
+                                        self.send_header('Content-Type', 'image/jpeg')
+                                        self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+                                        self._send_cors_headers()
+                                        self.send_header('Content-Length', str(len(body)))
+                                        self.end_headers()
+                                        self._write_body_safe(body)
+                                        return
+                                except Exception:
+                                        pass
+
                         send_file(self, preview_path)
                         return
 
@@ -7321,9 +7445,16 @@ class CameraHTTPHandler(BaseHTTPRequestHandler):
                         except Exception:
                                 self._send_json({'error': 'Invalid path'}, status=HTTPStatus.BAD_REQUEST)
                                 return
-                        try:
-                                frame_path.relative_to(SCRIPT_DIR.resolve())
-                        except Exception:
+                        _allowed_roots = [SCRIPT_DIR.resolve(), HOLY_GRAIL_DIR.resolve()]
+                        _path_ok = False
+                        for _root in _allowed_roots:
+                                try:
+                                        frame_path.relative_to(_root)
+                                        _path_ok = True
+                                        break
+                                except Exception:
+                                        pass
+                        if not _path_ok:
                                 self._send_json({'error': 'Path out of bounds'}, status=HTTPStatus.FORBIDDEN)
                                 return
                         if not frame_path.exists() or not frame_path.is_file():
@@ -7693,8 +7824,12 @@ class CameraHTTPHandler(BaseHTTPRequestHandler):
                 self._send_json({'error': 'Not found'}, status=HTTPStatus.NOT_FOUND)
 
         def log_message(self, _format, *args):
-                # Keep HTTP request logs concise.
-                return
+                try:
+                        request_line = str(getattr(self, 'requestline', '') or '')
+                        ua = str(self.headers.get('User-Agent', '-'))
+                        print(f"[http] {self.address_string()} {request_line} | ua={ua}")
+                except Exception:
+                        return
 
 
 def run_http_server():

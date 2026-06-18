@@ -37,7 +37,13 @@
                 .nav label { color: var(--muted); display: flex; align-items: center; gap: 6px; min-width: 190px; justify-content: center; }
                 .nav label.nav-group { min-width: 170px; }
                 .nav select { background: #111; border: 1px solid #333; color: #fff; border-radius: 4px; padding: 5px 8px; width: 150px; }
-                .wrap { max-width: 1500px; margin: 18px auto; padding: 0 14px 28px; }
+                .wrap {
+                        max-width: 1500px;
+                        margin: 18px auto;
+                        padding: 0 14px 28px;
+                        overflow-x: auto;
+                        overflow-y: visible;
+                }
                 h1 { font-size: 1.25rem; margin-bottom: 4px; }
                 .sub { color: var(--muted); font-size: .88rem; margin-bottom: 12px; }
                 .toolbar {
@@ -229,19 +235,242 @@
                 .main-grid {
                         display: grid;
                         grid-template-columns: 420px minmax(0, 1fr) 280px;
+                        min-width: 1120px;
                         gap: 12px;
                         align-items: start;
                 }
-                @media (max-width: 1360px) { .main-grid { grid-template-columns: minmax(0, 1fr) 280px; } }
-                @media (max-width: 740px) { .main-grid { grid-template-columns: 1fr; } }
-                .ai-col { display: flex; flex-direction: column; gap: 10px; }
-                .stage-col { display: flex; flex-direction: column; gap: 8px; }
-                .stage {
-                        background: #000; border: 1px solid var(--line); border-radius: 10px;
-                        overflow: hidden; min-height: 260px; display: grid; place-items: center; position: relative;
+                @media (max-width: 932px) {
+                        .ios-phone .wrap {
+                                padding: 0 8px 18px;
+                                overflow-x: hidden;
+                        }
+                        .ios-phone .main-grid {
+                                display: flex;
+                                flex-direction: column;
+                                gap: 8px;
+                                min-width: 0;
+                                width: 100%;
+                        }
+                        .ios-phone .stage-col,
+                        .ios-phone .stage,
+                        .ios-phone .timeline-wrap,
+                        .ios-phone .tl-controls {
+                                width: 100%;
+                                max-width: 100%;
+                        }
+                        .ios-phone .stage-col { order: 1; }
+                        .ios-phone .ai-col { order: 2; }
+                        .ios-phone .side-col { order: 3; }
+                        .ios-phone .stage {
+                                min-height: 0;
+                                height: auto;
+                                aspect-ratio: auto;
+                                max-height: none;
+                        }
+                        .ios-phone #frameImg {
+                                width: 100%;
+                                height: auto;
+                                max-height: min(62dvh, 520px);
+                                object-fit: contain;
+                                object-position: center center;
+                        }
+                        .ios-phone .timeline-wrap {
+                                padding: 6px 0 0;
+                        }
+                        .ios-phone .timeline-marker-track {
+                                top: 10px;
+                                height: 10px;
+                        }
+                        .ios-phone .tl-bubble {
+                                top: -22px;
+                                font-size: .7rem;
+                        }
+                        .ios-phone .tl-controls {
+                                margin-top: 2px;
+                                gap: 4px;
+                        }
+                        .ios-phone .tl-controls button {
+                                padding: 4px 8px;
+                                font-size: .78rem;
+                        }
+                        .ios-phone .frame-loop-controls,
+                        .ios-phone .section-delete-controls {
+                                display: none;
+                        }
+                        .ios-phone #aiPanel {
+                                max-height: 28vh;
+                                overflow: auto;
+                                -webkit-overflow-scrolling: touch;
+                                overflow-anchor: none;
+                        }
+                }
+                @media (max-width: 932px) and (orientation: landscape) {
+                        .ios-phone .stage {
+                                height: auto;
+                                aspect-ratio: auto;
+                                max-height: none;
+                        }
+                        .ios-phone #frameImg {
+                                max-height: min(82dvh, 520px);
+                        }
+                        .ios-phone #aiPanel,
+                        .ios-phone .side-col {
+                                max-height: 22dvh;
+                                overflow: auto;
+                                -webkit-overflow-scrolling: touch;
+                        }
+                }
+                @media (min-width: 933px) {
+                        #playPauseBtn,
+                        #frameLoopPlayBtn {
+                                display: none;
+                        }
+                }
+                .stage-fullscreen-exit {
+                        position: absolute;
+                        top: 8px;
+                        right: 8px;
+                        z-index: 8;
+                        display: none;
+                        padding: 6px 10px;
+                        font-size: .78rem;
+                        border-radius: 999px;
+                        border: 1px solid #404040;
+                        background: rgba(20, 20, 20, 0.85);
+                        color: #f1f1f1;
+                }
+                .stage-fullscreen-exit.show { display: inline-flex; }
+                .stage-play-toggle {
+                        position: absolute;
+                        top: 8px;
+                        right: 120px;
+                        left: auto;
+                        bottom: auto;
+                        transform: none;
+                        z-index: 8;
+                        display: none;
+                        padding: 7px 14px;
+                        font-size: .82rem;
+                        border-radius: 999px;
+                        border: 1px solid #4a4a4a;
+                        background: rgba(15, 15, 15, 0.82);
+                        color: #f7f7f7;
+                        min-width: 94px;
+                        justify-content: center;
+                }
+                .stage-play-toggle.show { display: inline-flex; }
+                .stage:fullscreen #frameImg,
+                .stage:-webkit-full-screen #frameImg {
+                        width: 100%;
+                        height: 100%;
+                        max-height: 100dvh;
+                        object-fit: contain;
                 }
                 #frameImg {
                         width: 100%; max-height: 68vh; object-fit: contain; display: block; border-radius: 9px;
+                }
+                body.stage-pseudo-fullscreen {
+                        overflow: hidden;
+                        background: #000;
+                }
+                body.stage-fullscreen-active .timeline-wrap {
+                        display: none;
+                }
+                body.stage-fullscreen-active .tl-controls {
+                        display: flex;
+                        position: fixed;
+                        right: 8px;
+                        top: max(8px, env(safe-area-inset-top));
+                        left: auto;
+                        width: auto;
+                        margin: 0;
+                        z-index: 20003;
+                        background: rgba(0, 0, 0, 0.62);
+                        border: 1px solid #2f2f2f;
+                        border-radius: 999px;
+                        padding: 5px;
+                        gap: 4px;
+                }
+                body.stage-fullscreen-active .stage {
+                        padding-top: calc(52px + env(safe-area-inset-top));
+                        box-sizing: border-box;
+                }
+                body.stage-fullscreen-active #frameImg {
+                        max-height: calc(100dvh - 56px - env(safe-area-inset-top));
+                }
+                body.stage-fullscreen-active #prevBtn,
+                body.stage-fullscreen-active #nextBtn,
+                body.stage-fullscreen-active .tl-pos {
+                        display: none;
+                }
+                body.stage-fullscreen-active .frame-loop-controls,
+                body.stage-fullscreen-active .section-delete-controls {
+                        display: none !important;
+                }
+                body.stage-pseudo-fullscreen .header,
+                body.stage-pseudo-fullscreen .toolbar,
+                body.stage-pseudo-fullscreen .ai-col,
+                body.stage-pseudo-fullscreen .side-col,
+                body.stage-pseudo-fullscreen .meta-row,
+                body.stage-pseudo-fullscreen #statsPanel {
+                        display: none !important;
+                }
+                body.stage-pseudo-fullscreen .wrap {
+                        max-width: none;
+                        margin: 0;
+                        padding: 0;
+                }
+                body.stage-pseudo-fullscreen .main-grid {
+                        display: block;
+                }
+                body.stage-pseudo-fullscreen .stage-col {
+                        position: fixed;
+                        inset: 0;
+                        z-index: 20000;
+                        margin: 0;
+                        padding: 0;
+                        background: #000;
+                        gap: 0;
+                }
+                body.stage-pseudo-fullscreen .stage {
+                        width: 100vw;
+                        height: 100dvh;
+                        min-height: 0;
+                        border: 0;
+                        border-radius: 0;
+                        margin: 0;
+                        padding: 0;
+                }
+                body.stage-pseudo-fullscreen .timeline-wrap {
+                        display: none;
+                }
+                body.stage-pseudo-fullscreen .tl-controls {
+                        display: flex;
+                        position: fixed;
+                        right: 8px;
+                        top: max(8px, env(safe-area-inset-top));
+                        left: auto;
+                        width: auto;
+                        margin: 0;
+                        z-index: 20003;
+                        background: rgba(0, 0, 0, 0.62);
+                        border: 1px solid #2f2f2f;
+                        border-radius: 999px;
+                        padding: 5px;
+                        gap: 4px;
+                }
+                .mini-fullscreen-exit { display: none; }
+                body.stage-fullscreen-active .mini-fullscreen-exit { display: inline-flex; }
+                body.stage-pseudo-fullscreen .mini-fullscreen-exit { display: inline-flex; }
+                .ios-phone body.stage-pseudo-fullscreen .stage {
+                        height: 100dvh;
+                }
+                .ios-phone body.stage-pseudo-fullscreen .timeline-wrap { display: none; }
+                body.stage-pseudo-fullscreen #frameImg {
+                        width: 100%;
+                        height: 100%;
+                        max-height: 100dvh;
+                        object-fit: contain;
                 }
                 #frameImg.first-load-pending {
                         opacity: 0;
@@ -283,12 +512,71 @@
                         max-width: 90%;
                         line-height: 1.35;
                 }
+                .frame-debug-watermark {
+                        position: absolute;
+                        left: 10px;
+                        bottom: 10px;
+                        z-index: 4;
+                        padding: 5px 8px;
+                        border-radius: 7px;
+                        border: 1px solid rgba(255, 255, 255, 0.26);
+                        background: rgba(0, 0, 0, 0.58);
+                        color: #e8ecf2;
+                        font-size: .74rem;
+                        line-height: 1.25;
+                        letter-spacing: .01em;
+                        pointer-events: none;
+                        max-width: min(92%, 560px);
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                }
                 @keyframes frameStageSpin {
                         from { transform: rotate(0deg); }
                         to { transform: rotate(360deg); }
                 }
-                .timeline-wrap { position: relative; padding: 2px 0; }
+                .timeline-wrap { position: relative; padding: 12px 0 2px; }
+                .timeline-marker-track {
+                        position: absolute;
+                        left: 0;
+                        right: 0;
+                        top: 16px;
+                        height: 14px;
+                        border-radius: 999px;
+                        border: 1px solid #3b4f62;
+                        background: linear-gradient(180deg, #0f141c, #0b0f14);
+                        overflow: hidden;
+                        z-index: 0;
+                }
+                .timeline-marker-track .video-loop-range {
+                        position: absolute;
+                        top: 0;
+                        height: 100%;
+                        border-radius: 999px;
+                        pointer-events: none;
+                }
+                .timeline-marker-track .video-loop-marker {
+                        position: absolute;
+                        top: -6px;
+                        width: 6px;
+                        height: 24px;
+                        border-radius: 3px;
+                        border: 1px solid #09131a;
+                        transform: translateX(-50%);
+                        pointer-events: auto;
+                        cursor: ew-resize;
+                        z-index: 3;
+                }
+                .timeline-marker-track .video-loop-marker:hover {
+                        filter: brightness(1.08);
+                }
+                .timeline-marker-track .video-loop-marker.out { z-index: 4; }
+                .timeline-marker-track .video-loop-marker.loop { background: #79cbff; }
+                .timeline-marker-track .video-loop-marker.delete { background: #ff9e9e; }
+                .timeline-marker-track .video-loop-marker.delete.out { background: #ffc27a; }
                 #tlScrub {
+                        position: relative;
+                        z-index: 2;
                         width: 100%; accent-color: var(--accent); cursor: pointer; display: block;
                 }
                 #tlScrub:disabled { opacity: .45; cursor: not-allowed; }
@@ -304,6 +592,28 @@
                 }
                 .tl-controls button { padding: 5px 12px; font-size: .83rem; }
                 .tl-pos { color: var(--muted); font-size: .82rem; margin-left: auto; }
+                .play-warmup {
+                        display: none;
+                        align-items: center;
+                        gap: 6px;
+                        font-size: .78rem;
+                        color: #b8cde0;
+                        border: 1px solid #314355;
+                        border-radius: 999px;
+                        padding: 4px 9px;
+                        background: #111922;
+                }
+                .play-warmup.show {
+                        display: inline-flex;
+                }
+                .play-warmup-spinner {
+                        width: 12px;
+                        height: 12px;
+                        border-radius: 50%;
+                        border: 2px solid #32526d;
+                        border-top-color: #80c8ff;
+                        animation: spin .8s linear infinite;
+                }
                 .frame-loop-controls {
                         display: flex;
                         gap: 6px;
@@ -350,7 +660,7 @@
                 }
                 .timeline-marker-row {
                         display: grid;
-                        grid-template-columns: 88px 1fr;
+                        grid-template-columns: 126px 1fr;
                         align-items: center;
                         gap: 8px;
                 }
@@ -360,9 +670,6 @@
                         letter-spacing: .02em;
                         text-transform: uppercase;
                 }
-                .timeline-marker-row.delete .timeline-marker-label {
-                        color: #ffc3c3;
-                }
                 .video-loop-track.timeline-loop-track {
                         height: 14px;
                 }
@@ -370,17 +677,22 @@
                         top: -4px;
                         height: 22px;
                 }
-                .video-loop-track.timeline-loop-track.delete {
-                        border-color: #4e2b2b;
-                        background: linear-gradient(180deg, #1a1010, #140b0b);
+                .timeline-combined-track {
+                        border-color: #3b4f62;
+                        background: linear-gradient(180deg, #0f141c, #0b0f14);
                 }
-                .video-loop-track.timeline-loop-track.delete .video-loop-range {
-                        background: linear-gradient(90deg, rgba(255, 123, 123, 0.45), rgba(255, 169, 122, 0.3));
+                .timeline-combined-track #deleteLoopRange {
+                        background: linear-gradient(90deg, rgba(255, 123, 123, 0.5), rgba(255, 169, 122, 0.34));
+                        box-shadow: 0 0 0 1px rgba(255, 170, 170, 0.25) inset;
                 }
-                .video-loop-track.timeline-loop-track.delete .video-loop-marker {
+                .timeline-combined-track #deleteLoopInMarker,
+                .timeline-combined-track #deleteLoopOutMarker {
+                        top: -6px;
+                        height: 24px;
                         background: #ff9e9e;
+                        z-index: 4;
                 }
-                .video-loop-track.timeline-loop-track.delete .video-loop-marker.out {
+                .timeline-combined-track #deleteLoopOutMarker {
                         background: #ffc27a;
                 }
                 .meta-row { color: var(--muted); font-size: .84rem; min-height: 1.3em; }
@@ -544,6 +856,91 @@
                 .panel-title {
                         color: var(--accent); font-size: .88rem; font-weight: 700; margin-bottom: 8px;
                 }
+                .ai-drawer {
+                        border: 1px solid #2f2f2f;
+                        border-radius: 10px;
+                        background: #151515;
+                        overflow: hidden;
+                }
+                .ai-drawer-toggle {
+                        width: 100%;
+                        text-align: left;
+                        border: 0;
+                        border-bottom: 1px solid #2a2a2a;
+                        border-radius: 0;
+                        background: #181818;
+                        color: #d8d8d8;
+                        padding: 10px 12px;
+                        font-size: .82rem;
+                        font-weight: 700;
+                }
+                .ai-drawer.open .ai-drawer-toggle {
+                        color: var(--accent);
+                }
+                .ai-drawer-body {
+                        display: none;
+                        padding: 8px;
+                }
+                .ai-drawer.open .ai-drawer-body {
+                        display: block;
+                }
+                .ai-summary-card {
+                        border: 1px solid #303030;
+                        border-radius: 10px;
+                        background: #161616;
+                        padding: 10px;
+                        margin-bottom: 8px;
+                }
+                .ai-summary-head {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        gap: 8px;
+                        margin-bottom: 6px;
+                }
+                .ai-summary-score {
+                        font-size: 1.35rem;
+                        font-weight: 800;
+                        line-height: 1;
+                        color: #f3f3f3;
+                }
+                .ai-kpi-grid {
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 6px;
+                        margin-bottom: 8px;
+                }
+                .ai-kpi {
+                        border: 1px solid #2f2f2f;
+                        border-radius: 8px;
+                        padding: 6px 7px;
+                        background: #131313;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        gap: 6px;
+                        font-size: .76rem;
+                }
+                .ai-kpi label { color: #a9a9a9; font-size: .72rem; }
+                .ai-kpi strong { color: #f0f0f0; font-size: .8rem; }
+                .ai-detail {
+                        border: 1px solid #2d2d2d;
+                        border-radius: 8px;
+                        background: #121212;
+                        padding: 6px 8px;
+                        margin-top: 6px;
+                }
+                .ai-detail > summary {
+                        cursor: pointer;
+                        color: #d8d8d8;
+                        font-size: .78rem;
+                        font-weight: 700;
+                        list-style: none;
+                }
+                .ai-detail > summary::-webkit-details-marker { display: none; }
+                .ai-detail table { margin-top: 6px; width: 100%; border-collapse: collapse; }
+                .ai-detail td { padding: 1px 0; font-size: .74rem; color: #c9c9c9; }
+                .ai-detail td:last-child { text-align: right; color: #f1f1f1; }
                 #histCanvas {
                         width: 100%; height: 140px; background: #111; border: 1px solid var(--line);
                         border-radius: 7px; display: block;
@@ -791,13 +1188,15 @@
         <div class="nav">
                 <label for="navControlSelect" class="nav-group">Control
                         <select id="navControlSelect">
-                                <option value="console" selected>Console</option>
+                                <option value="" selected>Select</option>
+                                <option value="console">Console</option>
                                 <option value="settings">Settings</option>
                         </select>
                 </label>
                 <label for="navModeSelect">Mode
                         <select id="navModeSelect">
-                                <option value="waypoint" selected>Waypoint Mode</option>
+                                <option value="" selected>Select</option>
+                                <option value="waypoint">Waypoint Mode</option>
                                 <option value="timelapse">Timelapse</option>
                                 <option value="bounce">Bounce</option>
                                 <option value="drone">Drone</option>
@@ -816,6 +1215,10 @@
                 <button id="recomputeBtn">Recompute Stats (Current Dir)</button>
                 <button id="deleteFrameBtn" title="Remove current frame from this local timelapse">Delete Frame</button>
                 <button id="playPauseBtn">Play</button>
+                <span id="playWarmupIndicator" class="play-warmup" aria-live="polite">
+                        <span class="play-warmup-spinner"></span>
+                        <span id="playWarmupText">Warming playback...</span>
+                </span>
                 <button id="closeBtn">Close</button>
                 <span class="view-chip">View <strong id="viewIndicator">OPTIMAL</strong></span>
                 <span class="view-toggle" role="group" aria-label="Timelapse view">
@@ -917,29 +1320,38 @@
 
         <div class="main-grid">
                 <div class="ai-col">
-                        <div class="panel" id="aiPanel">
-                                <div class="panel-title">AI Analysis</div>
-                                <div class="stat-card">Loading...</div>
+                        <div class="panel" id="statsPanel">
+                                <div class="panel-title">Frame Metadata</div>
+                                Loading...
                         </div>
                 </div>
 
                 <div class="stage-col">
-                        <div class="stage"><img id="frameImg" class="first-load-pending" alt="Timelapse frame" /><div id="frameStageOverlay" class="stage-overlay show"><div class="stage-spinner"></div><div id="frameStageOverlayLabel" class="stage-overlay-label">Loading frames...</div></div></div>
+                        <div class="stage"><button id="stageFullscreenExit" class="stage-fullscreen-exit" type="button" aria-label="Exit fullscreen">Exit Fullscreen</button><button id="stagePlayToggle" class="stage-play-toggle" type="button" aria-label="Play or pause timelapse">Play</button><img id="frameImg" class="first-load-pending" alt="Timelapse frame" /><div id="frameStageOverlay" class="stage-overlay show"><div class="stage-spinner"></div><div id="frameStageOverlayLabel" class="stage-overlay-label">Loading frames...</div></div><div id="frameDebugWatermark" class="frame-debug-watermark">Frame debug: waiting</div></div>
 
                         <div class="timeline-wrap">
+                                <div id="sharedTimelineTrack" class="timeline-marker-track" title="Loop and delete range markers">
+                                        <div id="frameLoopRange" class="video-loop-range"></div>
+                                        <div id="frameLoopInMarker" class="video-loop-marker loop"></div>
+                                        <div id="frameLoopOutMarker" class="video-loop-marker loop out"></div>
+                                        <div id="deleteLoopRange" class="video-loop-range"></div>
+                                        <div id="deleteLoopInMarker" class="video-loop-marker delete"></div>
+                                        <div id="deleteLoopOutMarker" class="video-loop-marker delete out"></div>
+                                </div>
                                 <div class="tl-bubble" id="tlBubble">1/1</div>
                                 <input type="range" id="tlScrub" min="1" max="1" value="1" disabled>
                         </div>
                         <div class="tl-controls">
                                 <button id="prevBtn" title="Previous frame">&laquo; Prev</button>
                                 <button id="nextBtn" title="Next frame">Next &raquo;</button>
+                                <button id="miniPlayPauseBtn" title="Play/Pause">Play</button>
+                                <button id="miniExitFullscreenBtn" class="mini-fullscreen-exit" title="Exit fullscreen">Exit Fullscreen</button>
                                 <span class="tl-pos" id="tlPos">-- / --</span>
                         </div>
                         <div class="frame-loop-controls">
                                 <button id="frameLoopInBtn" type="button">Set Loop In</button>
                                 <button id="frameLoopOutBtn" type="button">Set Loop Out</button>
                                 <button id="frameLoopPlayBtn" type="button">Play</button>
-                                <button id="frameLoopStopBtn" type="button">Stop</button>
                                 <button id="frameLoopClearBtn" type="button">Clear Loop</button>
                                 <button id="loopModeToggleBtn" type="button">Loop Off</button>
                                 <span id="frameLoopReadout" class="frame-loop-readout">Loop: full range</span>
@@ -951,28 +1363,15 @@
                                 <button id="deleteSectionBtn" type="button">Delete Marked Section</button>
                                 <span id="deleteSectionReadout" class="section-delete-readout">Delete section: not set</span>
                         </div>
-                        <div class="timeline-marker-stack" aria-label="Timeline markers">
-                                <div class="timeline-marker-row">
-                                        <span class="timeline-marker-label">Loop In/Out</span>
-                                        <div id="frameLoopTrack" class="video-loop-track timeline-loop-track" title="Loop range markers">
-                                                <div id="frameLoopRange" class="video-loop-range"></div>
-                                                <div id="frameLoopInMarker" class="video-loop-marker"></div>
-                                                <div id="frameLoopOutMarker" class="video-loop-marker out"></div>
-                                        </div>
-                                </div>
-                                <div class="timeline-marker-row delete">
-                                        <span class="timeline-marker-label">Delete In/Out</span>
-                                        <div id="deleteLoopTrack" class="video-loop-track timeline-loop-track delete" title="Delete range markers">
-                                                <div id="deleteLoopRange" class="video-loop-range"></div>
-                                                <div id="deleteLoopInMarker" class="video-loop-marker"></div>
-                                                <div id="deleteLoopOutMarker" class="video-loop-marker out"></div>
-                                        </div>
-                                </div>
-                        </div>
                         <div class="meta-row" id="metaRow">Loading...</div>
-                        <div class="panel" id="statsPanel">
-                                <div class="panel-title">Frame Metadata</div>
-                                Loading...
+                        <div class="ai-drawer" id="aiDrawer">
+                                <button id="aiDrawerToggle" class="ai-drawer-toggle" type="button" aria-expanded="false">AI Analysis (Show)</button>
+                                <div id="aiDrawerBody" class="ai-drawer-body">
+                                        <div class="panel" id="aiPanel">
+                                                <div class="panel-title">AI Analysis</div>
+                                                <div class="stat-card">Loading...</div>
+                                        </div>
+                                </div>
                         </div>
                 </div>
 
@@ -1063,16 +1462,30 @@
 </div>
 
 <script>
+        const ua = navigator.userAgent || '';
+        if (/iPhone/i.test(ua)) document.documentElement.classList.add('ios-phone');
+        const isLikelyIPhone = /iPhone|iPod/i.test(ua);
+        const isLikelyIPad = /iPad/i.test(ua) || (/Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1);
+        const useIosPlaybackFastPath = isLikelyIPhone || isLikelyIPad;
+        const useIosRenderNonce = false;
+
         const frameImg = document.getElementById('frameImg');
         const navControlSelect = document.getElementById('navControlSelect');
         const navModeSelect = document.getElementById('navModeSelect');
         const navViewer = document.getElementById('navViewer');
         const metaRow = document.getElementById('metaRow');
+        const aiDrawer = document.getElementById('aiDrawer');
+        const aiDrawerToggle = document.getElementById('aiDrawerToggle');
         const aiPanel = document.getElementById('aiPanel');
         const statsPanel = document.getElementById('statsPanel');
         const recomputeBtn = document.getElementById('recomputeBtn');
         const deleteFrameBtn = document.getElementById('deleteFrameBtn');
         const playPauseBtn = document.getElementById('playPauseBtn');
+        const stageFullscreenBtn = document.getElementById('stageFullscreenBtn');
+        const stageFullscreenExit = document.getElementById('stageFullscreenExit');
+        const stagePlayToggle = document.getElementById('stagePlayToggle');
+        const playWarmupIndicator = document.getElementById('playWarmupIndicator');
+        const playWarmupText = document.getElementById('playWarmupText');
         const closeBtn = document.getElementById('closeBtn');
         const exportVideoBtn = document.getElementById('exportVideoBtn');
         const exportDrawer = document.getElementById('exportDrawer');
@@ -1080,6 +1493,11 @@
         const viewVideoBtn = document.getElementById('viewVideoBtn');
         const editLoopBtn = document.getElementById('editLoopBtn');
         const fpsInput = document.getElementById('fpsInput');
+        if (isLikelyIPhone) {
+                fpsInput.value = '8';
+        } else if (isLikelyIPad) {
+                fpsInput.value = '15';
+        }
         const exportHideBannerInput = document.getElementById('exportHideBannerInput');
         const exportLoglevelSelect = document.getElementById('exportLoglevelSelect');
         const exportConcatSafeSelect = document.getElementById('exportConcatSafeSelect');
@@ -1107,11 +1525,11 @@
         const frameLoopInBtn = document.getElementById('frameLoopInBtn');
         const frameLoopOutBtn = document.getElementById('frameLoopOutBtn');
         const frameLoopPlayBtn = document.getElementById('frameLoopPlayBtn');
-        const frameLoopStopBtn = document.getElementById('frameLoopStopBtn');
         const frameLoopClearBtn = document.getElementById('frameLoopClearBtn');
         const loopModeToggleBtn = document.getElementById('loopModeToggleBtn');
         const frameLoopReadout = document.getElementById('frameLoopReadout');
-        const frameLoopTrack = document.getElementById('frameLoopTrack');
+        const sharedTimelineTrack = document.getElementById('sharedTimelineTrack');
+        const frameLoopTrack = sharedTimelineTrack;
         const frameLoopRange = document.getElementById('frameLoopRange');
         const frameLoopInMarker = document.getElementById('frameLoopInMarker');
         const frameLoopOutMarker = document.getElementById('frameLoopOutMarker');
@@ -1120,7 +1538,7 @@
         const deleteMarkClearBtn = document.getElementById('deleteMarkClearBtn');
         const deleteSectionBtn = document.getElementById('deleteSectionBtn');
         const deleteSectionReadout = document.getElementById('deleteSectionReadout');
-        const deleteLoopTrack = document.getElementById('deleteLoopTrack');
+        const deleteLoopTrack = sharedTimelineTrack;
         const deleteLoopRange = document.getElementById('deleteLoopRange');
         const deleteLoopInMarker = document.getElementById('deleteLoopInMarker');
         const deleteLoopOutMarker = document.getElementById('deleteLoopOutMarker');
@@ -1129,6 +1547,8 @@
         const tlPos = document.getElementById('tlPos');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
+        const miniPlayPauseBtn = document.getElementById('miniPlayPauseBtn');
+        const miniExitFullscreenBtn = document.getElementById('miniExitFullscreenBtn');
         const histCanvas = document.getElementById('histCanvas');
         const histCtx = histCanvas.getContext('2d');
         const histSpinner = document.getElementById('histSpinner');
@@ -1178,11 +1598,14 @@
         const stageEl = document.querySelector('.stage');
         const frameStageOverlay = document.getElementById('frameStageOverlay');
         const frameStageOverlayLabel = document.getElementById('frameStageOverlayLabel');
+        const frameDebugWatermark = document.getElementById('frameDebugWatermark');
         const deleteToast = document.getElementById('deleteToast');
 
         let frames = [];
         let index = 0;
         let timer = null;
+        let frameAutoRefreshTimer = null;
+        let frameAutoRefreshInFlight = false;
         let playing = false;
         let timelapseDirectory = 'timelapse';
         let timelapseView = 'optimal';
@@ -1235,6 +1658,8 @@
         let lastPlaybackBgWorkAt = 0;
         let lastPlaybackHistogramBgWorkAt = 0;
         let lastPlaybackMetadataRenderAt = 0;
+        let iosRenderNonce = 0;
+        let frameSwapInFlight = false;
         let firstFrameResolved = false;
         let latestExportDownloadUrl = '';
         let latestExportFileName = '';
@@ -1418,7 +1843,6 @@
                 if (frameLoopInBtn) frameLoopInBtn.disabled = !hasFrames;
                 if (frameLoopOutBtn) frameLoopOutBtn.disabled = !hasFrames;
                 if (frameLoopPlayBtn) frameLoopPlayBtn.disabled = !hasFrames || playing;
-                if (frameLoopStopBtn) frameLoopStopBtn.disabled = !hasFrames || !playing;
                 if (frameLoopClearBtn) frameLoopClearBtn.disabled = !hasFrames;
                 if (loopModeToggleBtn) loopModeToggleBtn.disabled = !hasFrames;
                 syncFrameLoopMarkers();
@@ -1546,6 +1970,37 @@
                         deleteLoopRange.style.width = '0%';
                         deleteLoopRange.style.opacity = '0.35';
                 }
+        }
+
+        function getSharedTimelineSecondsFromEvent(evt) {
+                if (!sharedTimelineTrack || !frames.length) return 0;
+                const rect = sharedTimelineTrack.getBoundingClientRect();
+                const total = Math.max(1, frames.length - 1);
+                const x = clamp(Number(evt.clientX) - Number(rect.left), 0, Math.max(1, Number(rect.width)));
+                const ratio = x / Math.max(1, Number(rect.width));
+                return ratio * total;
+        }
+
+        function bindSharedTimelineMarkerDrag(markerEl, onMove) {
+                if (!markerEl) return;
+                let dragging = false;
+                const moveHandler = (evt) => {
+                        if (!dragging) return;
+                        onMove(evt);
+                    };
+                const upHandler = () => {
+                        if (!dragging) return;
+                        dragging = false;
+                        window.removeEventListener('pointermove', moveHandler);
+                        window.removeEventListener('pointerup', upHandler);
+                };
+                markerEl.addEventListener('pointerdown', (evt) => {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        dragging = true;
+                        window.addEventListener('pointermove', moveHandler);
+                        window.addEventListener('pointerup', upHandler);
+                });
         }
 
         function saveFrameLoopBounds() {
@@ -2015,14 +2470,22 @@
         }
 
         function setFrameImageSource(url, loadingMessage) {
-                const src = String(url || '').trim();
+                const src = _applyPreviewWidth(String(url || '').trim());
                 if (!src) {
+                        frameSwapInFlight = false;
                         frameImg.removeAttribute('src');
                         return;
                 }
+                frameSwapInFlight = true;
                 if (!firstFrameResolved) {
                         frameImg.classList.add('first-load-pending');
                         showFrameStageOverlay(loadingMessage || 'Loading frame...', false);
+                }
+                if (useIosRenderNonce) {
+                        iosRenderNonce = (iosRenderNonce + 1) % 1000000000;
+                        const finalSrc = src + (src.includes('?') ? '&' : '?') + '_n=' + String(iosRenderNonce);
+                        frameImg.src = finalSrc;
+                        return;
                 }
                 frameImg.src = src;
         }
@@ -2372,6 +2835,17 @@
 
                 clearInMemoryDirectoryCaches(dirName);
                 await clearDirectoryCachesFromStorage(dirName);
+                // Reset prep state so recompute always starts a fresh warmup run.
+                prepAbortRequested = true;
+                prepRerunRequested = false;
+                prepCurrentSignature = '';
+                prepPromise = null;
+                prepRunCounter += 1;
+                playbackReady = false;
+                if (prepPlaybackGateResolve) {
+                        try { prepPlaybackGateResolve(); } catch (_) {}
+                        prepPlaybackGateResolve = null;
+                }
                 aiWarmupInFlight = 0;
                 updateAiTelemetry({ done: 0, total: 0, activeOps: 0, queuedFrames: 0, startedAt: 0, complete: false });
 
@@ -2382,6 +2856,13 @@
                         ', AI ' + (c.ai_summary_entries || 0) + '.';
                 metaRow.textContent = statsMsg + ' Reloading...';
                 await loadFrames();
+                if (frames.length) {
+                        metaRow.textContent = 'Recomputed stats for ' + dirName + '. Starting warmup...';
+                        try {
+                                await prepareAllFramesForPlayback();
+                        } catch (_) {
+                        }
+                }
                 metaRow.textContent = 'Recomputed stats for ' + dirName + '. ' + statsMsg;
         }
 
@@ -2419,8 +2900,21 @@
         function setPlayUi() {
                 playPauseBtn.textContent = playing ? 'Pause' : 'Play';
                 playPauseBtn.classList.toggle('active', playing);
+                if (miniPlayPauseBtn) miniPlayPauseBtn.textContent = playing ? 'Pause' : 'Play';
+                if (stagePlayToggle) stagePlayToggle.textContent = playing ? 'Pause' : 'Play';
                 if (frameLoopPlayBtn) frameLoopPlayBtn.disabled = !frames.length || playing;
-                if (frameLoopStopBtn) frameLoopStopBtn.disabled = !frames.length || !playing;
+                if (playWarmupIndicator) {
+                        playWarmupIndicator.classList.toggle('show', !!playing && !playbackReady);
+                }
+        }
+
+        function setPlayWarmupIndicator(active, text) {
+                if (playWarmupText && text) {
+                        playWarmupText.textContent = String(text);
+                }
+                if (playWarmupIndicator) {
+                        playWarmupIndicator.classList.toggle('show', !!active);
+                }
         }
 
         function findNextRenderableFrameIndex(startIndex) {
@@ -2974,8 +3468,42 @@
                 return { names, map };
         }
 
+        // Max pixel width to request from server for this device. Null = full res.
+        function _currentPreviewMaxWidth() {
+                if (isLikelyIPhone) {
+                        const dpr = Number(window.devicePixelRatio || 1) || 1;
+                        const cssWidth = Math.max(
+                                1,
+                                Number(window.innerWidth || 0),
+                                Number((document.documentElement && document.documentElement.clientWidth) || 0),
+                                Number((window.screen && window.screen.width) || 0)
+                        );
+                        const isLandscape = !!(window.matchMedia && window.matchMedia('(orientation: landscape)').matches);
+                        const cap = isLandscape ? 1728 : 1320;
+                        return Math.min(cap, Math.round(cssWidth * dpr));
+                }
+                if (isLikelyIPad) return 2752;
+                if (window.screen && window.screen.width && window.screen.width < 1400) {
+                        return Math.min(1280, Math.round(window.screen.width * (window.devicePixelRatio || 1)));
+                }
+                return null;
+        }
+
+        function _applyPreviewWidth(url) {
+                const previewMaxWidth = _currentPreviewMaxWidth();
+                if (!previewMaxWidth || !url) return url;
+                try {
+                        const u = new URL(url, window.location.origin);
+                        if (u.pathname.includes('timelapse-preview')) {
+                                u.searchParams.set('w', String(previewMaxWidth));
+                                return u.pathname + u.search;
+                        }
+                } catch (_) {}
+                return url;
+        }
+
         function frameInfoFromUrl(urlValue, fallbackIndex) {
-                const safeUrl = String(urlValue || '');
+                const safeUrl = _applyPreviewWidth(String(urlValue || ''));
                 const fallbackName = 'frame_' + String(fallbackIndex + 1).padStart(6, '0');
                 try {
                         const u = new URL(safeUrl, window.location.origin);
@@ -3015,7 +3543,16 @@
 
         async function loadServerCapacity() {
                 try {
-                        const r = await fetch('/api/server-capacity', { cache: 'no-store' });
+                        const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                        const timeoutId = controller ? setTimeout(() => {
+                                try { controller.abort(); } catch (_) {}
+                        }, 2500) : null;
+                        const r = await fetch('/api/server-capacity', {
+                                cache: 'no-store',
+                                signal: controller ? controller.signal : undefined,
+                        }).finally(() => {
+                                if (timeoutId) clearTimeout(timeoutId);
+                        });
                         if (!r.ok) throw new Error('server capacity unavailable');
                         const body = await r.json();
                         serverCapacity.cpu_count = Number(body.cpu_count) || null;
@@ -3100,6 +3637,75 @@
                 }
         }
 
+        function getFullscreenElement() {
+                return document.fullscreenElement || document.webkitFullscreenElement || null;
+        }
+
+        function isStageFullscreenActive() {
+                const fsEl = getFullscreenElement();
+                if (document.body.classList.contains('stage-pseudo-fullscreen')) return true;
+                if (!fsEl || !stageEl) return false;
+                return fsEl === stageEl || stageEl.contains(fsEl) || fsEl.contains(stageEl);
+        }
+
+        function updateStageFullscreenUi() {
+                const active = isStageFullscreenActive();
+                const pseudo = document.body.classList.contains('stage-pseudo-fullscreen');
+                if (stageFullscreenBtn) stageFullscreenBtn.textContent = active ? 'Exit Fullscreen' : 'Fullscreen';
+                if (stageFullscreenExit) stageFullscreenExit.classList.toggle('show', active && !pseudo);
+                if (stagePlayToggle) stagePlayToggle.classList.toggle('show', active && !pseudo);
+                document.body.classList.toggle('stage-fullscreen-active', active);
+                if (miniExitFullscreenBtn) miniExitFullscreenBtn.style.display = active ? 'inline-flex' : 'none';
+        }
+
+        async function exitStageFullscreen() {
+                if (document.body.classList.contains('stage-pseudo-fullscreen')) {
+                        document.body.classList.remove('stage-pseudo-fullscreen');
+                        updateStageFullscreenUi();
+                        return;
+                }
+                if (document.fullscreenElement && document.exitFullscreen) {
+                        try { await document.exitFullscreen(); } catch (_) {}
+                } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+                        try { document.webkitExitFullscreen(); } catch (_) {}
+                }
+                updateStageFullscreenUi();
+        }
+
+        async function requestStageFullscreen() {
+                if (!stageEl) return;
+                if (isStageFullscreenActive()) {
+                        await exitStageFullscreen();
+                        return;
+                }
+
+                // Force app-managed fullscreen on iPad to avoid Safari-native chrome (top-left X)
+                // and keep our Play/Exit controls consistently visible.
+                if (isLikelyIPad) {
+                        document.body.classList.add('stage-pseudo-fullscreen');
+                        updateStageFullscreenUi();
+                        return;
+                }
+
+                let entered = false;
+                try {
+                        if (stageEl.requestFullscreen) {
+                                await stageEl.requestFullscreen();
+                                entered = true;
+                        } else if (stageEl.webkitRequestFullscreen) {
+                                stageEl.webkitRequestFullscreen();
+                                entered = true;
+                        }
+                } catch (_) {
+                        entered = false;
+                }
+
+                if (!entered) {
+                        document.body.classList.add('stage-pseudo-fullscreen');
+                }
+                updateStageFullscreenUi();
+        }
+
         async function openVideoModal(downloadUrl, fileName) {
                 const url = String(downloadUrl || latestExportDownloadUrl || '').trim();
                 if (!url || !videoModal || !videoModalPlayer) {
@@ -3157,19 +3763,20 @@
                 const selectedView = normalizeTimelapseView(timelapseView);
                 timelapseView = selectedView;
                 let loadedFrames = [];
-                let framesPromise = null;
                 const cachedFrames = getCachedFrameList(timelapseDirectory, selectedView);
                 if (cachedFrames && cachedFrames.length) {
                         loadedFrames = cachedFrames;
-                } else {
-                        framesPromise = fetchFrameListForView(timelapseDirectory, selectedView).catch(() => []);
                 }
+                // Always revalidate frame list against the server so manual file deletes
+                // immediately update frame counts and playback ranges.
+                const framesPromise = fetchFrameListForView(timelapseDirectory, selectedView).catch(() => {
+                        if (cachedFrames && cachedFrames.length) return cachedFrames;
+                        return [];
+                });
 
                 const dirsPromise = fetchDirectoriesPayload().catch(() => null);
 
-                if (framesPromise) {
-                        try { loadedFrames = await framesPromise; } catch (_) { loadedFrames = []; }
-                }
+                try { loadedFrames = await framesPromise; } catch (_) { loadedFrames = []; }
 
                 const body = await dirsPromise;
                 const normalized = normalizeDirectoriesFromPayload(body);
@@ -3244,18 +3851,9 @@
                 if (verifiedIndex >= 0) {
                         index = verifiedIndex;
                 }
-                const playbackWarmReady = frames.every((f) => {
-                        if (!f || !f.name) return true;
-                        const key = timelapseDirectory + '|' + f.name;
-                        return (framePreloadedCache.has(key) || prepAttemptedCache.has(key)) && histogramCache.has(key);
-                });
-                playbackReady = playbackWarmReady;
-                if (playbackWarmReady) {
-                        updatePrepTelemetry({ phase: 'Cache already warm', done: 1, total: 1, targetWorkers: 0, activeWorkers: 0, queued: 0, phase1Total: 0, phase2Total: 0, startedAt: 0, complete: true });
-                        histStatus.textContent = 'Prepared 100% - cache hit';
-                } else {
-                        updatePrepTelemetry({ phase: 'Idle', done: 0, total: 0, targetWorkers: 0, activeWorkers: 0, queued: 0, phase1Total: 0, phase2Total: 0, startedAt: 0, complete: false });
-                }
+                playbackReady = false;
+                updatePrepTelemetry({ phase: 'Warming browser cache', done: 0, total: 0, targetWorkers: 0, activeWorkers: 0, queued: 0, phase1Total: 0, phase2Total: 0, startedAt: 0, complete: false });
+                histStatus.textContent = 'Warming browser image cache before playback...';
                 updateAiTelemetry({ done: 0, total: frames.length, activeOps: 0, queuedFrames: frames.length, startedAt: 0, complete: false });
                 playing = false;
                 setPlayUi();
@@ -3296,11 +3894,23 @@
                 if (autoHide) setTimeout(() => tlBubble.classList.remove('show'), 700);
         }
 
+        function updateFrameDebugWatermark(frame) {
+                if (!frameDebugWatermark) return;
+                const deviceMode = isLikelyIPad ? 'IPAD' : (isLikelyIPhone ? 'IPHONE' : 'OTHER');
+                if (!frames.length || !frame) {
+                        frameDebugWatermark.textContent = 'Frame debug: no frame | ' + deviceMode;
+                        return;
+                }
+                const mode = playing ? 'PLAY' : 'PAUSE';
+                frameDebugWatermark.textContent = mode + ' | ' + String(index + 1) + '/' + String(frames.length) + ' | ' + String(frame.name || '-') + ' | ' + deviceMode;
+        }
+
         function renderFrame() {
                 if (!frames.length) return;
                 const preferred = findNextRenderableFrameIndex(index);
                 if (preferred >= 0) index = preferred;
                 const frame = frames[index];
+                updateFrameDebugWatermark(frame);
                 if (!frame || !frame.url || !frame.name) {
                         frameImg.removeAttribute('src');
                         frameImg.classList.remove('first-load-pending');
@@ -3356,6 +3966,60 @@
                 }
                 renderRightChartsForFrame(frame.name);
                 refreshAiTelemetryFromCurrentState();
+        }
+
+        async function maybeAutoRefreshFrames() {
+                if (frameAutoRefreshInFlight || document.hidden) return;
+                frameAutoRefreshInFlight = true;
+                try {
+                        const selectedView = normalizeTimelapseView(timelapseView);
+                        const latestFrames = await fetchFrameListForView(timelapseDirectory, selectedView).catch(() => []);
+                        if (!Array.isArray(latestFrames) || !latestFrames.length) return;
+
+                        const prevCount = Array.isArray(frames) ? frames.length : 0;
+                        const prevLast = prevCount ? String(frames[prevCount - 1].name || '') : '';
+                        const nextCount = latestFrames.length;
+                        const nextLast = nextCount ? String(latestFrames[nextCount - 1].name || '') : '';
+                        if (prevCount === nextCount && prevLast === nextLast) return;
+
+                        const currentName = frames[index] && frames[index].name ? String(frames[index].name) : '';
+                        frames = latestFrames;
+                        setCachedFrameList(timelapseDirectory, selectedView, latestFrames);
+
+                        if (currentName) {
+                                const preservedIdx = frames.findIndex((f) => f && f.name === currentName);
+                                if (preservedIdx >= 0) {
+                                        index = preservedIdx;
+                                } else {
+                                        index = Math.max(0, Math.min(index, frames.length - 1));
+                                }
+                        } else {
+                                index = Math.max(0, Math.min(index, frames.length - 1));
+                        }
+
+                        normalizeFrameLoopBounds();
+                        updateFrameLoopUi();
+                        syncTimeline();
+                        if (!playing) {
+                                renderFrame();
+                        }
+
+                        const added = Math.max(0, nextCount - prevCount);
+                        if (added > 0) {
+                                const suffix = added === 1 ? '' : 's';
+                                metaRow.textContent = 'Auto-refresh: +' + added + ' new frame' + suffix + ' (' + nextCount + ' total).';
+                        }
+                } finally {
+                        frameAutoRefreshInFlight = false;
+                }
+        }
+
+        function startFrameAutoRefresh() {
+                if (frameAutoRefreshTimer) return;
+                // Keep preview current while captures arrive without forcing manual reloads.
+                frameAutoRefreshTimer = setInterval(() => {
+                        maybeAutoRefreshFrames().catch(() => {});
+                }, 8000);
         }
 
         // ── Histogram ────────────────────────────────────────────────────────
@@ -3984,7 +4648,7 @@ self.onmessage = async (event) => {
         function isFramePreloaded(frameName) {
                 if (!frameName) return false;
                 const cacheKey = timelapseDirectory + '|' + frameName;
-                return framePreloadedCache.has(cacheKey) || prepAttemptedCache.has(cacheKey);
+                return framePreloadedCache.has(cacheKey);
         }
 
         function isFrameChartReady(frameName) {
@@ -3993,10 +4657,10 @@ self.onmessage = async (event) => {
                 return chartCache.has(cacheKey);
         }
 
-        async function preloadFrameImage(frame) {
+        async function preloadFrameImage(frame, force) {
                 if (!frame || !frame.name || !frame.url) return;
                 const cacheKey = timelapseDirectory + '|' + frame.name;
-                if (framePreloadedCache.has(cacheKey)) return;
+                if (!force && framePreloadedCache.has(cacheKey)) return;
                 await new Promise((resolve, reject) => {
                         const img = new Image();
                         img.onload = () => {
@@ -4083,6 +4747,7 @@ self.onmessage = async (event) => {
                         const openPlaybackGate = () => {
                                 if (isStale()) return;
                                 playbackReady = true;
+                                setPlayWarmupIndicator(false);
                                 if (prepPlaybackGateResolve) {
                                         prepPlaybackGateResolve();
                                         prepPlaybackGateResolve = null;
@@ -4094,11 +4759,12 @@ self.onmessage = async (event) => {
                         setPrepProgress(0, snapshot.length);
                         try {
                                 if (isStale()) return;
+                                const imageWarmupFrames = snapshot
+                                        .filter(f => f && f.name && f.url);
                                 const missingHistNames = snapshot
                                         .filter(f => f && f.name)
                                         .map(f => f.name)
                                         .filter(name => !histogramCache.has(timelapseDirectory + '|' + name));
-                                const missingImageFrames = snapshot.filter(f => f && f.name && !isFramePreloaded(f.name));
                                 const missingChartFrames = snapshot.filter(f => f && f.name && !isFrameChartReady(f.name));
                                 const missingNames = snapshot
                                         .filter(f => f && f.name)
@@ -4106,7 +4772,7 @@ self.onmessage = async (event) => {
                                         .filter(name => !isFramePrepared(name) && !isFrameMetadataDetailed(name));
                                 const missingAiFrames = snapshot.filter(f => f && f.name && !isFrameAiReady(f.name));
 
-                                const totalTasks = missingImageFrames.length + missingHistNames.length + missingChartFrames.length + missingNames.length + missingAiFrames.length;
+                                const totalTasks = imageWarmupFrames.length + missingHistNames.length + missingChartFrames.length + missingNames.length + missingAiFrames.length;
                                 let done = 0;
                                 const prepStartedAt = performance.now();
                                 let targetWorkers = Math.max(4, prepConcurrency);
@@ -4117,7 +4783,7 @@ self.onmessage = async (event) => {
                                         targetWorkers,
                                         activeWorkers: 0,
                                         queued: totalTasks,
-                                        phase1Total: (missingImageFrames.length + missingHistNames.length),
+                                        phase1Total: (imageWarmupFrames.length + missingHistNames.length),
                                         phase2Total: (missingChartFrames.length + missingNames.length + missingAiFrames.length),
                                         startedAt: prepStartedAt,
                                         complete: false,
@@ -4227,30 +4893,32 @@ self.onmessage = async (event) => {
                                         clearInterval(tuner);
                                 };
 
-                                // Phase 1: build the playback stack (all frame images).
+                                // Phase 1: fully warm browser image cache across all frames.
                                 await runPhase({
-                                        items: missingImageFrames,
+                                        items: imageWarmupFrames,
                                         label: 'Phase 1/5: preloading frame images',
-                                        batchSize: 8,
-                                        workerCap: (target) => Math.max(4, Math.min(12, Math.floor(target / 8))),
+                                        batchSize: 4,
+                                        workerCap: (target) => Math.max(2, Math.min(4, Math.floor(target / 16))),
                                         work: async (batch) => {
                                                 try {
-                                                        await Promise.all(batch.map((frame) => preloadFrameImage(frame)));
+                                                        await Promise.all(batch.map((frame) => preloadFrameImage(frame, true)));
                                                 } catch (_) {
                                                         for (const frame of batch) {
-                                                                try { await preloadFrameImage(frame); } catch (_) {}
+                                                                try { await preloadFrameImage(frame, true); } catch (_) {}
                                                         }
                                                 }
                                         },
                                 });
                                 if (isStale()) return;
+                                const preloadReadyNow = snapshot.every((f) => !f || !f.name || isFramePreloaded(f.name));
+                                if (preloadReadyNow) openPlaybackGate();
 
                                 // Phase 2: generate 1:1 luma histogram coverage for every frame.
                                 await runPhase({
                                         items: missingHistNames,
                                         label: 'Phase 2/5: histogram warmup',
-                                        batchSize: 6,
-                                        workerCap: (target) => Math.max(3, Math.min(8, Math.floor(target / 12))),
+                                        batchSize: 4,
+                                        workerCap: (target) => Math.max(3, Math.min(6, Math.floor(target / 4))),
                                         work: async (batch) => {
                                                 try {
                                                         await fetchFramePayloadBatch(batch, true, false, 90000);
@@ -4262,15 +4930,14 @@ self.onmessage = async (event) => {
                                         },
                                 });
                                 if (isStale()) return;
-                                openPlaybackGate();
-                                histStatus.textContent = 'Playback ready (frames + luma). Warming waveform/RGB...';
+                                histStatus.textContent = 'Luma ready. Warming waveform/RGB...';
 
                                 // Phase 3: fill waveform/RGB charts for all frames.
                                 await runPhase({
                                         items: missingChartFrames,
                                         label: 'Phase 3/5: waveform/RGB warmup',
-                                        batchSize: 4,
-                                        workerCap: (target) => Math.max(2, Math.min(6, Math.floor(target / 16))),
+                                        batchSize: 1,
+                                        workerCap: (target) => Math.max(2, Math.min(6, Math.floor(target / 8))),
                                         work: async (batch) => {
                                                 for (const frame of batch) {
                                                         if (!frame || !frame.name) continue;
@@ -4284,8 +4951,8 @@ self.onmessage = async (event) => {
                                 await runPhase({
                                         items: missingNames,
                                         label: 'Phase 4/5: metadata warmup',
-                                        batchSize: 12,
-                                        workerCap: (target) => Math.max(3, Math.min(10, Math.floor(target / 10))),
+                                        batchSize: 4,
+                                        workerCap: (target) => Math.max(2, Math.min(4, Math.floor(target / 16))),
                                         work: async (batch) => {
                                                 try {
                                                         await fetchFramePayloadBatch(batch, false, false, 90000);
@@ -4311,8 +4978,8 @@ self.onmessage = async (event) => {
                                 await runPhase({
                                         items: missingAiFrames,
                                         label: 'Phase 5/5: AI warmup',
-                                        batchSize: 3,
-                                        workerCap: (target) => Math.max(2, Math.min(6, Math.floor(target / 16))),
+                                        batchSize: 1,
+                                        workerCap: (target) => Math.max(1, Math.min(4, Math.floor(target / 12))),
                                         work: async (batch) => {
                                                 await Promise.all(batch.map(async (frame) => {
                                                         try { await precomputeVisionForFrame(frame); } catch (_) {}
@@ -4663,7 +5330,38 @@ self.onmessage = async (event) => {
                 };
         }
 
-        function buildHorizonCard(horizon, smooth) {
+        function computeHorizonTemporalDrift(frameName, tiltDeg) {
+                if (!frameName || !isFinite(Number(tiltDeg)) || !Array.isArray(frames) || !frames.length) return null;
+                const curIdx = frames.findIndex((f) => f && f.name === frameName);
+                if (curIdx <= 0) return null;
+
+                const deltas = [];
+                for (let i = curIdx - 1; i >= 0 && deltas.length < 6; i--) {
+                        const prior = frames[i];
+                        if (!prior || !prior.name) continue;
+                        const key = timelapseDirectory + '|' + prior.name;
+                        const h = horizonCache.get(key);
+                        if (!h || !h.available) continue;
+                        const priorTilt = Number(h.tiltDeg);
+                        if (!isFinite(priorTilt)) continue;
+                        deltas.push(Math.abs(Number(tiltDeg) - priorTilt));
+                }
+                if (!deltas.length) return null;
+
+                const avgDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+                const maxDelta = Math.max.apply(null, deltas);
+                // Emphasize temporal stability for fixed-tripod use cases where
+                // scene geometry (bridges/cables/perspective) can bias absolute tilt.
+                const stabilityScore = Math.round(clamp(100 - (avgDelta * 34) - (maxDelta * 14), 0, 100));
+                return {
+                        avgDeltaDeg: Number(avgDelta.toFixed(2)),
+                        maxDeltaDeg: Number(maxDelta.toFixed(2)),
+                        sampleCount: deltas.length,
+                        stabilityScore,
+                };
+        }
+
+        function buildHorizonCard(horizon, smooth, drift) {
                 if (!horizon) {
                         return '<div class="stat-card"><div class="stat-title">Horizon Drift Score</div><div style="color:#94a3b8">Analyzing frame...</div></div>';
                 }
@@ -4671,25 +5369,57 @@ self.onmessage = async (event) => {
                         return '<div class="stat-card"><div class="stat-title">Horizon Drift Score</div><div style="color:#94a3b8">Unavailable for this frame</div></div>';
                 }
 
+                let displayScore = Number(horizon.score) || 0;
+                let displayCls = horizon.cls;
                 let state = horizon.band;
                 let note = '';
-                if (horizon.band === 'Uncertain') {
+                let temporalStabilityApplied = false;
+
+                if (drift && isFinite(Number(drift.stabilityScore))) {
+                        temporalStabilityApplied = true;
+                        const temporalScore = Number(drift.stabilityScore);
+                        // Favor frame-to-frame drift over single-frame absolute tilt.
+                        displayScore = Math.round(clamp((displayScore * 0.30) + (temporalScore * 0.70), 0, 100));
+
+                        if (drift.maxDeltaDeg <= 0.70 && drift.avgDeltaDeg <= 0.40) {
+                                state = 'Stable (tripod)';
+                                displayCls = 'score-good';
+                                displayScore = Math.max(displayScore, 90);
+                                note = 'Frame-to-frame horizon movement is minimal, so drift risk is low.';
+                        } else if (drift.maxDeltaDeg <= 1.4) {
+                                state = 'Mostly stable';
+                                displayCls = 'score-mid';
+                                note = 'Small frame-to-frame tilt change detected; keep monitoring.';
+                        } else {
+                                state = 'Drift detected';
+                                displayCls = 'score-low';
+                                note = 'Horizon angle is changing between frames more than expected for a fixed tripod.';
+                        }
+                }
+
+                if (horizon.band === 'Uncertain' && !temporalStabilityApplied) {
                         if (smooth && smooth.score >= 80) {
                                 state = 'Likely level (low confidence)';
                                 note = 'Horizon estimate confidence is low; sequence smoothness indicates no obvious drift.';
+                                displayCls = 'score-mid';
+                                displayScore = Math.max(displayScore, 74);
                         } else {
                                 state = 'Low-confidence tilt';
                                 note = 'Scene geometry is ambiguous; verify manually.';
+                                displayCls = 'score-mid';
                         }
                 }
 
                 return '<div class="stat-card"><div class="stat-title">Horizon Drift Score</div>' +
-                        '<div style="font-size:1.35rem;font-weight:800;line-height:1.1">' + horizon.score + '</div>' +
-                        '<div class="score-pill ' + horizon.cls + '">' + state + '</div>' +
+                        '<div style="font-size:1.35rem;font-weight:800;line-height:1.1">' + displayScore + '</div>' +
+                        '<div class="score-pill ' + displayCls + '">' + state + '</div>' +
                         (note ? '<div style="margin-top:7px;color:#cbd5e1;line-height:1.35">' + note + '</div>' : '') +
                         '<table style="margin-top:6px">' +
                         '<tr><td>Tilt</td><td>' + horizon.tiltDeg + '°</td></tr>' +
                         '<tr><td>Confidence</td><td>' + horizon.confidence + '</td></tr>' +
+                        (drift
+                                ? ('<tr><td>ΔTilt avg/max</td><td>' + drift.avgDeltaDeg.toFixed(2) + '° / ' + drift.maxDeltaDeg.toFixed(2) + '°</td></tr>')
+                                : '') +
                         '</table></div>';
         }
 
@@ -5000,53 +5730,23 @@ self.onmessage = async (event) => {
                 let rec = null;
                 let badTransition = null;
 
-                let trendCard = buildAiPendingCard('Exposure Trend Quality', 'Analyzing...');
-                let smoothCard = buildAiPendingCard('Ramp Smoothness', 'Analyzing...');
-                let recCard = buildAiPendingCard('AI Recommendation', 'Analyzing...');
-                let badTransitionCard = buildAiPendingCard('Bad Transition Detector', 'Analyzing...');
-
                 if (coreReady) {
                         trend = computeExposureTrendScore(payload);
                         smooth = computeRampSmoothnessScore(payload);
                         rec = computeFrameRecommendation(payload, trend, smooth);
                         badTransition = computeBadTransitionSignal(payload);
 
-                        trendCard = '<div class="stat-card"><div class="stat-title">Exposure Trend Quality</div>' +
-                                '<div style="font-size:1.35rem;font-weight:800;line-height:1.1">' + trend.score + '</div>' +
-                                '<div class="score-pill ' + trend.cls + '">' + trend.band + '</div>' +
-                                '<table style="margin-top:6px">' +
-                                '<tr><td>Smoothness</td><td>' + trend.parts.jumpScore + '</td></tr>' +
-                                '<tr><td>Luma target</td><td>' + trend.parts.lumaScore + '</td></tr>' +
-                                '<tr><td>Clip safety</td><td>' + trend.parts.clipScore + '</td></tr>' +
-                                '</table></div>';
-                        smoothCard = '<div class="stat-card"><div class="stat-title">Ramp Smoothness</div>' +
-                                '<div style="font-size:1.35rem;font-weight:800;line-height:1.1">' + smooth.score + '</div>' +
-                                '<div class="score-pill ' + smooth.cls + '">' + smooth.band + '</div>' +
-                                '<table style="margin-top:6px">' +
-                                '<tr><td>EV stability</td><td>' + smooth.parts.evScore + '</td></tr>' +
-                                '<tr><td>Luma stability</td><td>' + smooth.parts.lumaScore + '</td></tr>' +
-                                '<tr><td>Windows</td><td>' + smooth.parts.sampleCount + '/' + (smooth.parts.totalWindows || 4) + '</td></tr>' +
-                                '</table></div>';
-                        recCard = '<div class="stat-card"><div class="stat-title">AI Recommendation</div>' +
-                                '<div class="score-pill ' + rec.cls + '">' + rec.action + '</div>' +
-                                '<div style="margin-top:8px;color:#cbd5e1;line-height:1.45">' + rec.detail + '</div></div>';
-                        badTransitionCard = '<div class="stat-card"><div class="stat-title">Bad Transition Detector</div>' +
-                                '<div style="font-size:1.35rem;font-weight:800;line-height:1.1">' + badTransition.score + '</div>' +
-                                '<div class="score-pill ' + badTransition.cls + '">' + badTransition.band + '</div>' +
-                                '<div style="margin-top:7px;color:#cbd5e1;line-height:1.35">' + badTransition.note + '</div>' +
-                                '<table style="margin-top:6px">' +
-                                '<tr><td>Worst ΔEV</td><td>' + badTransition.parts.worstEv + '</td></tr>' +
-                                '<tr><td>Worst ΔLuma</td><td>' + badTransition.parts.worstLuma + '</td></tr>' +
-                                '<tr><td>Flagged</td><td>' + badTransition.parts.flagged + '/' + badTransition.parts.windows + '</td></tr>' +
-                                '</table></div>';
                 }
 
-                const horizonCard = (coreReady && horizonReady)
-                        ? buildHorizonCard(horizon, smooth)
-                        : buildAiPendingCard('Horizon Drift Score', 'Analyzing...');
-                const obstructionCard = (coreReady && obstructionReady)
-                        ? buildObstructionCard(obstruction)
-                        : buildAiPendingCard('Obstruction Notification', 'Analyzing...');
+                const horizonDrift = (coreReady && horizonReady && horizon.available)
+                        ? computeHorizonTemporalDrift(frameName, horizon.tiltDeg)
+                        : null;
+                const horizonScoreText = (coreReady && horizonReady && horizon && horizon.available)
+                        ? String(Math.round(Number(horizon.score || 0)))
+                        : '...';
+                const obstructionScoreText = (coreReady && obstructionReady && obstruction && obstruction.available)
+                        ? String(Math.round(Number(obstruction.score || 0)))
+                        : '...';
 
                 if (coreReady && horizonReady && obstructionReady) {
                         const aiSummary = {
@@ -5071,7 +5771,54 @@ self.onmessage = async (event) => {
                         notifyTimelapseAiSummary(timelapseDirectory, frameName, aiSummary);
                 }
 
-                aiPanel.innerHTML = '<div class="panel-title">AI Analysis</div><div class="ai-stack">' + trendCard + smoothCard + recCard + badTransitionCard + horizonCard + obstructionCard + '</div>';
+                const aiOverallScore = coreReady
+                        ? Math.round((
+                                (Number(trend && trend.score) || 0) +
+                                (Number(smooth && smooth.score) || 0) +
+                                (Number(badTransition && badTransition.score) || 0) +
+                                ((coreReady && horizonReady && horizon && horizon.available) ? (Number(horizon.score) || 0) : 0) +
+                                ((coreReady && obstructionReady && obstruction && obstruction.available) ? (Number(obstruction.score) || 0) : 0)
+                        ) / (((coreReady && horizonReady && horizon && horizon.available) ? 1 : 0) + ((coreReady && obstructionReady && obstruction && obstruction.available) ? 1 : 0) + 3))
+                        : null;
+
+                const recAction = rec ? String(rec.action || 'Review') : 'Analyzing...';
+                const recDetail = rec ? String(rec.detail || '') : 'Collecting metrics...';
+
+                const detailExposure = coreReady
+                        ? '<details class="ai-detail"><summary>Exposure Trend</summary><table>' +
+                                '<tr><td>Score</td><td>' + trend.score + ' (' + trend.band + ')</td></tr>' +
+                                '<tr><td>Smoothness</td><td>' + trend.parts.jumpScore + '</td></tr>' +
+                                '<tr><td>Luma target</td><td>' + trend.parts.lumaScore + '</td></tr>' +
+                                '<tr><td>Clip safety</td><td>' + trend.parts.clipScore + '</td></tr>' +
+                          '</table></details>'
+                        : '<details class="ai-detail"><summary>Exposure Trend</summary><table><tr><td>Status</td><td>Analyzing...</td></tr></table></details>';
+
+                const detailRisk = coreReady
+                        ? '<details class="ai-detail"><summary>Transition Risk</summary><table>' +
+                                '<tr><td>Score</td><td>' + badTransition.score + ' (' + badTransition.band + ')</td></tr>' +
+                                '<tr><td>Worst ΔEV</td><td>' + badTransition.parts.worstEv + '</td></tr>' +
+                                '<tr><td>Worst ΔLuma</td><td>' + badTransition.parts.worstLuma + '</td></tr>' +
+                                '<tr><td>Flagged windows</td><td>' + badTransition.parts.flagged + '/' + badTransition.parts.windows + '</td></tr>' +
+                          '</table></details>'
+                        : '<details class="ai-detail"><summary>Transition Risk</summary><table><tr><td>Status</td><td>Analyzing...</td></tr></table></details>';
+
+                aiPanel.innerHTML = '<div class="panel-title">AI Analysis</div>' +
+                        '<div class="ai-summary-card">' +
+                                '<div class="ai-summary-head">' +
+                                        '<div><div class="stat-sub">Overall AI signal</div><div class="ai-summary-score">' + (aiOverallScore === null ? '...' : aiOverallScore) + '</div></div>' +
+                                        '<div class="score-pill ' + (rec ? rec.cls : 'score-mid') + '">' + recAction + '</div>' +
+                                '</div>' +
+                                '<div style="color:#c9c9c9;font-size:.78rem;line-height:1.4">' + recDetail + '</div>' +
+                        '</div>' +
+                        '<div class="ai-kpi-grid">' +
+                                '<div class="ai-kpi"><label>Exposure</label><strong>' + (coreReady ? trend.score : '...') + '</strong></div>' +
+                                '<div class="ai-kpi"><label>Smoothness</label><strong>' + (coreReady ? smooth.score : '...') + '</strong></div>' +
+                                '<div class="ai-kpi"><label>Transition Risk</label><strong>' + (coreReady ? badTransition.score : '...') + '</strong></div>' +
+                                '<div class="ai-kpi"><label>Horizon</label><strong>' + horizonScoreText + '</strong></div>' +
+                                '<div class="ai-kpi"><label>Obstruction</label><strong>' + obstructionScoreText + '</strong></div>' +
+                                '<div class="ai-kpi"><label>Windows</label><strong>' + (coreReady ? (smooth.parts.sampleCount + '/' + (smooth.parts.totalWindows || 4)) : '...') + '</strong></div>' +
+                        '</div>' +
+                        detailExposure + detailRisk;
                 if (!playing) {
                         if (!horizon) ensureHorizonForFrame(frameName);
                         if (!obstruction) ensureObstructionForFrame(frameName);
@@ -5106,8 +5853,11 @@ self.onmessage = async (event) => {
                         const cached = metadataCache.get(cacheKey);
                         const cachedHasMetrics = !!(cached && cached.current && cached.current.metrics && cached.current.metrics.median_luma !== undefined);
                         const cachedHasDetails = isFrameMetadataDetailed(frameName);
-                        if (cachedHasMetrics && cachedHasDetails) {
+                        if (cachedHasMetrics) {
                                 renderMetadataPayload(cached, frameName);
+                                if (playing || cachedHasDetails) return;
+                        }
+                        if (cachedHasMetrics && cachedHasDetails) {
                                 return;
                         }
                 }
@@ -5140,20 +5890,24 @@ self.onmessage = async (event) => {
         }
 
         // ── Playback ─────────────────────────────────────────────────────────
+        function advancePlaybackIndex() {
+                const loopStart = loopPlaybackEnabled ? getFrameLoopStart() : 0;
+                const loopEnd = loopPlaybackEnabled ? getFrameLoopEnd() : (frames.length - 1);
+                if (index < loopStart || index > loopEnd) {
+                        index = loopStart;
+                } else if (index >= loopEnd) {
+                        index = loopStart;
+                } else {
+                        index += 1;
+                }
+        }
+
         function restartLoop() {
                 if (timer) { clearInterval(timer); timer = null; }
                 if (!playing || !frames.length) return;
                 const fps = Math.max(1, Math.min(60, Number(fpsInput.value) || 12));
                 timer = setInterval(() => {
-                        const loopStart = loopPlaybackEnabled ? getFrameLoopStart() : 0;
-                        const loopEnd = loopPlaybackEnabled ? getFrameLoopEnd() : (frames.length - 1);
-                        if (index < loopStart || index > loopEnd) {
-                                index = loopStart;
-                        } else if (index >= loopEnd) {
-                                index = loopStart;
-                        } else {
-                                index += 1;
-                        }
+                        advancePlaybackIndex();
                         renderFrame();
                 }, Math.round(1000 / fps));
         }
@@ -5478,12 +6232,6 @@ self.onmessage = async (event) => {
                         playPauseBtn.click();
                 });
         }
-        if (frameLoopStopBtn) {
-                frameLoopStopBtn.addEventListener('click', () => {
-                        if (!frames.length || !playing) return;
-                        playPauseBtn.click();
-                });
-        }
         if (frameLoopClearBtn) {
                 frameLoopClearBtn.addEventListener('click', () => {
                         if (!frames.length) return;
@@ -5539,6 +6287,34 @@ self.onmessage = async (event) => {
                         );
                         if (!ok) {
                                 metaRow.textContent = 'Delete section cancelled.';
+
+        bindSharedTimelineMarkerDrag(frameLoopInMarker, (evt) => {
+                if (!frames.length) return;
+                frameLoopInIndex = Math.round(getSharedTimelineSecondsFromEvent(evt));
+                const loopEnd = getFrameLoopEnd();
+                if (loopEnd < frameLoopInIndex) frameLoopOutIndex = frameLoopInIndex;
+                normalizeFrameLoopBounds();
+                updateFrameLoopUi();
+                saveFrameLoopBounds();
+            });
+        bindSharedTimelineMarkerDrag(frameLoopOutMarker, (evt) => {
+                if (!frames.length) return;
+                const next = Math.round(getSharedTimelineSecondsFromEvent(evt));
+                frameLoopOutIndex = (next <= getFrameLoopStart()) ? getFrameLoopStart() : next;
+                normalizeFrameLoopBounds();
+                updateFrameLoopUi();
+                saveFrameLoopBounds();
+            });
+        bindSharedTimelineMarkerDrag(deleteLoopInMarker, (evt) => {
+                if (!frames.length) return;
+                deleteSectionInIndex = Math.round(getSharedTimelineSecondsFromEvent(evt));
+                updateDeleteSectionUi();
+            });
+        bindSharedTimelineMarkerDrag(deleteLoopOutMarker, (evt) => {
+                if (!frames.length) return;
+                deleteSectionOutIndex = Math.round(getSharedTimelineSecondsFromEvent(evt));
+                updateDeleteSectionUi();
+            });
                                 return;
                         }
                         const confirmText = String(window.prompt('Type delete to confirm section removal:', '') || '').trim().toLowerCase();
@@ -5629,6 +6405,13 @@ self.onmessage = async (event) => {
                         }
                 });
         }
+        if (aiDrawer && aiDrawerToggle) {
+                aiDrawerToggle.addEventListener('click', () => {
+                        const open = aiDrawer.classList.toggle('open');
+                        aiDrawerToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                        aiDrawerToggle.textContent = open ? 'AI Analysis (Hide)' : 'AI Analysis (Show)';
+                });
+        }
         browseDirsBtn.addEventListener('click', () => window.open(viewerBaseOrigin + '/timelapse-directories', '_blank', 'noopener'));
         closeBtn.addEventListener('click', () => {
                 markReturnAutoplayPreference();
@@ -5670,12 +6453,12 @@ self.onmessage = async (event) => {
                         if (!prepPromise) {
                                 prepareAllFramesForPlayback().catch(() => {});
                         }
-                        if (!playbackReady && prepPlaybackGatePromise) {
-                                await prepPlaybackGatePromise;
-                        }
                         if (!playbackReady) {
-                                playPauseBtn.textContent = 'Play';
-                                return;
+                                setPlayWarmupIndicator(true, 'Warming browser image cache...');
+                                histStatus.textContent = 'Preparing browser cache before playback...';
+                                if (prepPlaybackGatePromise) {
+                                        try { await prepPlaybackGatePromise; } catch (_) {}
+                                }
                         }
                         const loopStart = loopPlaybackEnabled ? getFrameLoopStart() : 0;
                         const loopEnd = loopPlaybackEnabled ? getFrameLoopEnd() : (frames.length - 1);
@@ -5707,6 +6490,8 @@ self.onmessage = async (event) => {
 
         prevBtn.addEventListener('click', () => { if (playing) { playing = false; playPauseBtn.textContent = 'Play'; playPauseBtn.classList.remove('active'); restartLoop(); } seekTo(index - 1); showBubble(true); });
         nextBtn.addEventListener('click', () => { if (playing) { playing = false; playPauseBtn.textContent = 'Play'; playPauseBtn.classList.remove('active'); restartLoop(); } seekTo(index + 1); showBubble(true); });
+        if (miniPlayPauseBtn) miniPlayPauseBtn.addEventListener('click', () => { playPauseBtn.click(); });
+        if (miniExitFullscreenBtn) miniExitFullscreenBtn.addEventListener('click', () => { exitStageFullscreen().catch(() => {}); });
 
         tlScrub.addEventListener('pointerdown', () => { if (playing) { playing = false; playPauseBtn.textContent = 'Play'; playPauseBtn.classList.remove('active'); restartLoop(); } tlBubble.classList.add('show'); });
         tlScrub.addEventListener('input', () => { seekTo(parseInt(tlScrub.value, 10) - 1); showBubble(false); });
@@ -5722,13 +6507,21 @@ self.onmessage = async (event) => {
                         setPlayUi();
                         restartLoop();
                 }
-                const direction = delta > 0 ? 1 : -1;
-                const steps = Math.max(1, Math.min(12, Math.round(Math.abs(delta) / 80)));
-                seekTo(index + (direction * steps));
+                seekTo(index + (delta > 0 ? 1 : -1));
                 showBubble(false);
         }
 
+        function handleStageTapForFullscreen(event) {
+                if (isStageFullscreenActive()) return;
+                const target = event && event.target ? event.target : null;
+                if (target && target.closest && target.closest('button, a, input, select, textarea, label, .timeline-wrap, .tl-controls')) {
+                        return;
+                }
+                requestStageFullscreen().catch(() => {});
+        }
+
         if (stageEl) stageEl.addEventListener('wheel', scrubWithWheel, { passive: false });
+        if (stageEl) stageEl.addEventListener('click', handleStageTapForFullscreen);
         frameImg.addEventListener('wheel', scrubWithWheel, { passive: false });
         tlScrub.addEventListener('wheel', scrubWithWheel, { passive: false });
 
@@ -5748,6 +6541,11 @@ self.onmessage = async (event) => {
 
         if (videoModalCloseBtn) videoModalCloseBtn.addEventListener('click', () => { closeVideoModal().catch(() => {}); });
         if (videoModalFullscreenBtn) videoModalFullscreenBtn.addEventListener('click', () => { requestVideoModalFullscreen().catch(() => {}); });
+        if (stageFullscreenBtn) stageFullscreenBtn.addEventListener('click', () => { requestStageFullscreen().catch(() => {}); });
+        if (stageFullscreenExit) stageFullscreenExit.addEventListener('click', () => { exitStageFullscreen().catch(() => {}); });
+        if (stagePlayToggle) stagePlayToggle.addEventListener('click', () => { if (playPauseBtn) playPauseBtn.click(); });
+        document.addEventListener('fullscreenchange', updateStageFullscreenUi);
+        document.addEventListener('webkitfullscreenchange', updateStageFullscreenUi);
         if (videoModal) {
                 videoModal.addEventListener('click', (event) => {
                         if (event.target === videoModal) {
@@ -5758,6 +6556,10 @@ self.onmessage = async (event) => {
         document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && videoModal && videoModal.classList.contains('open')) {
                         closeVideoModal().catch(() => {});
+                        return;
+                }
+                if (event.key === 'Escape' && isStageFullscreenActive()) {
+                        exitStageFullscreen().catch(() => {});
                 }
         });
 
@@ -5769,6 +6571,7 @@ self.onmessage = async (event) => {
         // ── Init ─────────────────────────────────────────────────────────────
         drawHistPlaceholder('Loading...');
         setPlayUi();
+        updateStageFullscreenUi();
         updateFrameLoopUi();
         bindVideoModalLoopEditor();
         initMainNavLinks();
@@ -5792,6 +6595,7 @@ self.onmessage = async (event) => {
         }
 
         frameImg.addEventListener('load', () => {
+                frameSwapInFlight = false;
                 if (!firstFrameResolved) {
                         firstFrameResolved = true;
                         frameImg.classList.remove('first-load-pending');
@@ -5800,6 +6604,7 @@ self.onmessage = async (event) => {
         });
 
         frameImg.addEventListener('error', () => {
+                frameSwapInFlight = false;
                 if (!frames.length) {
                         clearStartupPreviewUrl(timelapseDirectory);
                         frameImg.removeAttribute('src');
@@ -5829,11 +6634,13 @@ self.onmessage = async (event) => {
                 firstFrameResolved = true;
                 showFrameStageOverlay('Unable to load frame image for this loop range.', true);
         });
-        Promise.all([loadDirectories(), loadServerCapacity()]).then(async () => {
+        loadServerCapacity().catch(() => {});
+        loadDirectories().then(async () => {
                 await loadFrames();
                 try { await fetchLatestExportInfo(); } catch (_) {}
                 promptExportFromDeepLink();
         }).catch(e => metaRow.textContent = 'Load failed: ' + e.message);
+        startFrameAutoRefresh();
         if (!openExportFromLink) {
                 setExportDrawerOpen(false);
         } else {
